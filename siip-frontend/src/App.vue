@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+// El componente principal solo actúa como contenedor del enrutador
 </script>
 
 <template>
-  <HelloWorld />
+  <router-view></router-view>
 </template>
