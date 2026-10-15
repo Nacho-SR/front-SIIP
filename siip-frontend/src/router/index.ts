@@ -18,11 +18,18 @@ const routes: Array<RouteRecordRaw> = [
     meta: { requiresAuth: true }, // Todo lo que esté dentro de este layout requiere estar logueado
     children: [
       {
-        path: '',
-        name: 'Consulta', 
+        path: 'estadisticas',
+        name: 'Estadisticas', 
+        // Esta será nuestra vista de gráficas y tarjetas (El HTML 1)
         component: () => import('../modules/dashboard/DashboardView.vue'),
-        // Todos los usuarios autenticados pueden ver la pantalla de consulta por defecto
       },
+      {
+        path: 'consulta',
+        name: 'Consulta', 
+        // Esta será nuestra vista de tablas con filtros
+        component: () => import('../modules/consulta/ConsultaView.vue'), 
+      },
+
       {
         path: 'captura',
         name: 'Captura',
