@@ -56,7 +56,8 @@ const routes: Array<RouteRecordRaw> = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  // Esto lee automáticamente el "base" de tu vite.config.ts
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes
 });
 
