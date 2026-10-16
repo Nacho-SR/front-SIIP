@@ -19,7 +19,7 @@ const handleLogout = () => {
   <div class="min-h-screen flex flex-col bg-gray-50 text-ink">
     
     <!-- Header Híbrido Superior -->
-    <header class="bg-white pt-6 px-8 flex flex-col gap-6">
+    <header class="bg-white pt-6 pb-4 px-8 flex flex-col gap-6 shadow-sm">
       
       <!-- Fila 1: Branding institucional y Usuario -->
       <div class="flex justify-between items-center">
@@ -93,12 +93,12 @@ const handleLogout = () => {
       </div>
 
       <!-- Fila 2: Navegación Horizontal -->
-      <nav class="flex gap-2 border-b-4 border-wine">
-        <router-link to="/estadisticas" class="nav-link" active-class="active-tab">Estadísticas</router-link>
-        <router-link to="/" class="nav-link" active-class="active-tab" exact>Consulta</router-link>
-        <router-link v-if="authStore.isCapturista || authStore.isAdmin" to="/captura" class="nav-link" active-class="active-tab">Captura</router-link>
-        <router-link v-if="authStore.isRevisor || authStore.isAdmin" to="/seguimiento" class="nav-link" active-class="active-tab">Seguimiento</router-link>
-        <router-link v-if="authStore.isAdmin" to="/administrador" class="nav-link" active-class="active-tab">Administrador</router-link>
+      <nav class="flex gap-2">
+        <router-link to="/estadisticas" class="nav-link" exact-active-class="active-tab">Estadísticas</router-link>
+        <router-link to="/" class="nav-link" exact-active-class="active-tab">Consulta</router-link>
+        <router-link v-if="authStore.isCapturista || authStore.isAdmin" to="/captura" class="nav-link" exact-active-class="active-tab">Captura</router-link>
+        <router-link v-if="authStore.isRevisor || authStore.isAdmin" to="/seguimiento" class="nav-link" exact-active-class="active-tab">Seguimiento</router-link>
+        <router-link v-if="authStore.isAdmin" to="/administrador" class="nav-link" exact-active-class="active-tab">Administrador</router-link>
       </nav>
     </header>
 
@@ -112,12 +112,12 @@ const handleLogout = () => {
 
 <style scoped>
 .nav-link {
-  @apply px-6 py-3 rounded-t-xl font-bold transition-all duration-200 text-wine bg-white;
+  @apply px-6 py-3 rounded-xl font-bold transition-all duration-200 text-wine bg-white border border-transparent;
 }
 .nav-link:hover:not(.active-tab) {
-  @apply bg-wine/5;
+  @apply bg-wine/5 border-gray-200;
 }
 .active-tab {
-  @apply bg-wine text-white;
+  @apply bg-wine text-white border-wine;
 }
 </style>
