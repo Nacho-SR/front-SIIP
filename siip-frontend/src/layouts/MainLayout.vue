@@ -115,7 +115,7 @@ const handleLogout = () => {
   @apply px-6 py-3 rounded-xl font-bold transition-all duration-200 text-wine bg-white border border-transparent;
 }
 .nav-link:hover:not(.active-tab) {
-  @apply bg-wine/5 border-gray-200;
+  @apply bg-wine/5;
 }
 .active-tab {
   @apply bg-wine text-white border-wine;
