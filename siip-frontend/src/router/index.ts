@@ -62,7 +62,8 @@ const router = createRouter({
 
 // GUARDIÁN DE NAVEGACIÓN (Navigation Guard)
 // Este código se ejecuta SIEMPRE antes de cambiar de pantalla
-router.beforeEach((to, from, next) => {
+// TODO: Quitar el "any" y tipar correctamente el "to" y "from"
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore();
   
   // 1. Verificamos si la ruta requiere autenticación y el usuario no tiene token

@@ -37,7 +37,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         // TODO: Reemplazar con llamada real a Axios/Laravel
         // const response = await api.post('/login', { email, password });
-        
+        email = password = ''; // Evitamos que se queden en memoria
         // Simulación temporal para probar las rutas y permisos
         this.token = 'simulated-jwt-token-12345';
         this.user = {
