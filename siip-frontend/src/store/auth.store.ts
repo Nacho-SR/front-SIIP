@@ -33,11 +33,10 @@ export const useAuthStore = defineStore('auth', {
   // ACTIONS: Funciones que modifican el estado (más adelante aquí conectaremos con Laravel)
   actions: {
     // Simularemos el login por ahora para poder avanzar con la interfaz
-    async login(email: string, password: string) {
+    async login(_email: string, _password: string) {
       try {
         // TODO: Reemplazar con llamada real a Axios/Laravel
         // const response = await api.post('/login', { email, password });
-        email = password = ''; // Evitamos que se queden en memoria
         // Simulación temporal para probar las rutas y permisos
         this.token = 'simulated-jwt-token-12345';
         this.user = {
