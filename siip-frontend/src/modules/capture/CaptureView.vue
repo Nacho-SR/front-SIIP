@@ -51,13 +51,8 @@ const descripcion = ref('');
 const archivoEvidencia = ref<File | null>(null);
 
 // ==========================================
-// 4. LÓGICA DE CÁLCULO Y ARCHIVOS
+// 4. LÓGICA DE ARCHIVOS
 // ==========================================
-const resultadoPreliminar = computed(() => {
-  if (!indicadorActivo.value) return null;
-  const resultado = indicadorActivo.value.calcular(valoresVariables.value);
-  return resultado;
-});
 
 // Manejador estricto para aceptar solo PDF
 const handleFileUpload = (event: Event) => {
@@ -77,7 +72,6 @@ const enviarSeguimiento = () => {
   console.log('Enviando datos...', {
     indicador: selectedIndicadorId.value,
     valores: valoresVariables.value,
-    resultado: resultadoPreliminar.value,
     archivo: archivoEvidencia.value?.name
   });
   // TODO: Conectar con Axios a Laravel
