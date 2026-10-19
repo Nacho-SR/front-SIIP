@@ -19,22 +19,13 @@ const indicadores = [
     id_familia: 1,
     clave: 'SIIP.01.F01.002',
     nombre: 'Variación porcentual de la incidencia delictiva',
-    algoritmo: 'ID = (IDA - IDPA) / IDPA * 100',
     frecuencia: 'Mensual',
-    meta: '20 %',
     medio_verificacion: 'Datos calculados con información del Secretariado Ejecutivo del Sistema Nacional de Seguridad Pública...',
     // Aquí definimos las variables dinámicas para renderizar los inputs
     variables: [
       { clave: 'IDPA', nombre: 'Incidencia delictiva periodo anterior' },
       { clave: 'IDA', nombre: 'Incidencia delictiva actual' }
-    ],
-    // Función de cálculo inyectable (luego podemos mover esto a un helper basado en tu Excel)
-    calcular: (valores: Record<string, number>) => {
-      const idpa = valores['IDPA'];
-      const ida = valores['IDA'];
-      if (idpa === undefined || ida === undefined || idpa === 0) return null;
-      return (((ida - idpa) / idpa) * 100);
-    }
+    ]
   }
 ];
 
@@ -166,9 +157,7 @@ const enviarSeguimiento = () => {
           <h3 class="font-bold mb-3">Información precargada</h3>
           <ul class="space-y-2">
             <li><strong>ID:</strong> {{ indicadorActivo.clave }}</li>
-            <li><strong>Algoritmo:</strong> {{ indicadorActivo.algoritmo }}</li>
             <li><strong>Frecuencia:</strong> {{ indicadorActivo.frecuencia }}</li>
-            <li><strong>Meta:</strong> {{ indicadorActivo.meta }}</li>
             <li class="pt-2 text-xs leading-relaxed">
               <strong>Medio de verificación:</strong> <br>
               {{ indicadorActivo.medio_verificacion }}
@@ -245,20 +234,6 @@ const enviarSeguimiento = () => {
               class="w-full border border-gray-300 rounded p-1.5 text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-wine/10 file:text-wine hover:file:bg-wine/20 cursor-pointer focus:outline-none"
             />
             <p class="text-[10px] text-gray-400 mt-1">Sustento documental de la captura.</p>
-          </div>
-        </div>
-
-        <!-- Tarjeta de Resultado Preliminar -->
-        <div class="bg-red-50 border border-red-100 rounded-md p-4 mb-6 flex justify-between items-center transition-all duration-300">
-          <div>
-            <p class="text-xs text-gray-500 mb-1">Resultado preliminar calculado por el sistema</p>
-            <h3 class="text-3xl font-black text-wine">
-              {{ resultadoPreliminar !== null ? resultadoPreliminar.toFixed(1) + ' %' : '--' }}
-            </h3>
-          </div>
-          <!-- Etiqueta de condición semafórica -->
-          <div v-if="resultadoPreliminar !== null" class="bg-green-100 text-green-700 px-4 py-1 rounded-full text-sm font-bold tracking-wide border border-green-200">
-            Verde
           </div>
         </div>
 
