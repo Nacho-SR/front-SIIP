@@ -24,7 +24,7 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../modules/dashboard/DashboardView.vue'),
       },
       {
-        path: 'consulta',
+        path: '',
         name: 'Consulta', 
         // Esta será nuestra vista de tablas con filtros
         component: () => import('../modules/consulta/ConsultaView.vue'), 
