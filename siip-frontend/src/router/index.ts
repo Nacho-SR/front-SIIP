@@ -39,10 +39,20 @@ const routes: Array<RouteRecordRaw> = [
       },
       {
         path: 'seguimiento',
-        name: 'Seguimiento',
-        component: () => import('../modules/review/ReviewView.vue'),
-        // Solo revisores y administradores
-        meta: { requiredRoles: ['seguimiento', 'administrador'] }
+        meta: { requiredRoles: ['seguimiento', 'administrador'] },
+        children: [
+          {
+            path: '',
+            name: 'Seguimiento',
+            component: () => import('../modules/review/ReviewView.vue'),
+          },
+          {
+            // Ruta dinámica que recibe el ID del indicador a revisar
+            path: ':id',
+            name: 'SeguimientoDetalle',
+            component: () => import('../modules/review/ReviewDetailView.vue'),
+          }
+        ]
       },
       {
         path: 'administrador',
