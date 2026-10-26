@@ -1,0 +1,3626 @@
+openapi: 3.1.1
+info:
+  title: API del SIIP Salamanca
+  version: 0.1.0
+  description: Borrador técnico del 26/10/2026, sin backend ni esquema aprobados. Los ejemplos DEMO son sintéticos
+    y no asignaciones reales. x-estado-contrato y x-pendientes identifican lo condicionado; ningún endpoint es definitivo.
+    Se conservan DEC-001..025. Primer recorrido de una dependencia con configuración conciliada; multidependencia,
+    calendario, vigencias y límites PDF pendientes. No incluye CRUD de tablas, importación, chat ni publicación
+    manual.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+servers:
+- url: /api/v1
+  description: Base relativa propuesta, sin despliegue existente.
+externalDocs:
+  description: Flujos, estados y contradicciones del SIIP
+  url: ../flujos-negocio.md
+tags:
+- name: Autenticacion
+- name: Indicadores
+- name: Captura
+- name: Revision
+- name: Validacion
+- name: Administracion
+- name: Consulta
+- name: Evidencias
+- name: Notificaciones
+security:
+- SesionCookie: []
+paths:
+  /auth/sesion:
+    get:
+      operationId: consultarSesion
+      summary: Consultar sesión y obtener CSRF
+      description: Bootstrap público técnico, también antes del login. Retorna usuario=null si no hay sesión autenticada;
+        no concede acceso a otros recursos. Propuesta de cookie opaca con persistencia servidor y CSRF; framework/hosting
+        y duración aún por definir.
+      tags:
+      - Autenticacion
+      x-roles: []
+      x-prioridad: P0
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - AUTENTICACION
+      responses:
+        '200':
+          description: Consultar sesión y obtener CSRF
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+            Set-Cookie:
+              description: Puede emitir una sesión técnica anónima para vincular el CSRF de bootstrap; no concede
+                autenticación. Mismos atributos de seguridad que la sesión autenticada.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sesion'
+              examples:
+                ejemplo:
+                  value:
+                    usuario: null
+                    csrf_token: csrf_sintetico_bootstrap_2026
+                autenticada:
+                  value:
+                    usuario:
+                      id: '1'
+                      nombre: Capturista de demostración
+                      correo: captura@example.test
+                      rol: captura
+                      dependencia_id: '7'
+                    csrf_token: csrf_sintetico_autenticado_2026
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+      security: []
+    post:
+      operationId: iniciarSesion
+      summary: Autenticar la cuenta
+      description: Exige bootstrap CSRF y Origin autorizado. Mensaje genérico ante credenciales inválidas/cuenta
+        inactiva. Rotar sesión y CSRF; no generar Bearer ni devolver contraseña.
+      tags:
+      - Autenticacion
+      x-roles: []
+      x-prioridad: P0
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - AUTENTICACION
+      parameters:
+      - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          description: Autenticar la cuenta
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+            Set-Cookie:
+              description: siip_session opaca; HttpOnly, Secure en HTTPS, SameSite=Lax y Path=/api/v1. No exponer
+                el ID en JSON.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sesion'
+              examples:
+                ejemplo:
+                  value:
+                    usuario:
+                      id: '1'
+                      nombre: Capturista de demostración
+                      correo: captura@example.test
+                      rol: captura
+                      dependencia_id: '7'
+                    csrf_token: csrf_sintetico_rotado_2026
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '422':
+          $ref: '#/components/responses/DatosInvalidos'
+        '429':
+          $ref: '#/components/responses/DemasiadosIntentos'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credenciales'
+            examples:
+              ejemplo:
+                value:
+                  correo: captura@example.test
+                  password: SoloEjemploDocumental!2026
+    delete:
+      operationId: cerrarSesion
+      summary: Invalidar sesión actual
+      description: Revoca la sesión servidor actual y expira la cookie. No basta borrar almacenamiento del navegador.
+        Sin sesión autenticada devuelve 401.
+      tags:
+      - Autenticacion
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P0
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - AUTENTICACION
+      parameters:
+      - $ref: '#/components/parameters/Csrf'
+      responses:
+        '204':
+          description: Invalidar sesión actual
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /indicadores:
+    get:
+      operationId: listarIndicadores
+      summary: Listar indicadores autorizados
+      description: Filtrar por vínculo de dependencia antes de paginar/contar. Captura solo indicadores relacionados;
+        Revisión/Administrador global. Orden estable codigo,id. No acepta un filtro para ampliar el ámbito.
+      tags:
+      - Indicadores
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P0
+      x-estado-contrato: propuesto
+      x-pendientes: []
+      parameters:
+      - $ref: '#/components/parameters/Pagina'
+      - $ref: '#/components/parameters/PorPagina'
+      responses:
+        '200':
+          description: Listar indicadores autorizados
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaIndicadores'
+              examples:
+                ejemplo:
+                  value:
+                    items:
+                    - id: '63'
+                      codigo: DEMO.IND.001
+                      nombre: Cobertura de demostración
+                      familia:
+                        id: '54'
+                        codigo: DEMO.F54
+                        nombre: Familia de demostración
+                        agrupacion:
+                          id: '8'
+                          codigo: DEMO.08
+                          nombre: Agrupación de demostración
+                      periodicidad: mensual
+                      primer_periodo_exigible: '2026-01-01'
+                      disponibilidad_captura: lista
+                      pendientes: []
+                    paginacion:
+                      pagina: 1
+                      por_pagina: 20
+                      total: 1
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /indicadores/{indicadorId}:
+    get:
+      operationId: obtenerIndicador
+      summary: Consultar ficha y entradas visibles
+      description: Captura solo recibe sus entradas capturables; Revisión/Administrador reciben las entradas autorizadas
+        globales. La fórmula textual no expone los valores de otras dependencias.
+      tags:
+      - Indicadores
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P0
+      x-estado-contrato: propuesto
+      x-pendientes: []
+      parameters:
+      - $ref: '#/components/parameters/indicadorId'
+      responses:
+        '200':
+          description: Consultar ficha y entradas visibles
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndicadorDetalle'
+              examples:
+                ejemplo:
+                  value:
+                    indicador:
+                      id: '63'
+                      codigo: DEMO.IND.001
+                      nombre: Cobertura de demostración
+                      familia:
+                        id: '54'
+                        codigo: DEMO.F54
+                        nombre: Familia de demostración
+                        agrupacion:
+                          id: '8'
+                          codigo: DEMO.08
+                          nombre: Agrupación de demostración
+                      periodicidad: mensual
+                      primer_periodo_exigible: '2026-01-01'
+                      disponibilidad_captura: lista
+                      pendientes: []
+                    ficha:
+                      definicion: Ejemplo sintético, no ficha oficial.
+                      objetivo: Ilustrar el recorrido contractual.
+                      formula_texto: A / T * 100
+                      unidad_medida: '%'
+                      medio_verificacion: Reporte municipal PDF de demostración
+                      periodo_linea_base: null
+                      regla_semaforo_texto: Ejemplo documental; no sustituye una regla oficial.
+                      criterio_interpretacion: null
+                      observaciones_limitaciones: null
+                      unidad_responsable_texto: null
+                      desagregacion_origen: null
+                      ipsm_origen: null
+                      nivel_objetivo: null
+                      tipo_indicador: null
+                      ambito_desempeno: null
+                      dimension_desempeno: null
+                      transversalidad: null
+                      funcion_indicador: null
+                      procedencia: null
+                      ids_origen: null
+                      justificacion: null
+                      linea_base: null
+                      meta: null
+                      anio_meta: null
+                      sentido: ascendente
+                      acumulable: false
+                    variables_captura:
+                    - id: '11'
+                      codigo: A
+                      descripcion: Cantidad atendida de demostración
+                      unidad_medida: unidades
+                      tipo_dato: entero
+                      papel_calculo: numerador
+                      obligatoria: true
+                      dependencia_id: '7'
+                    - id: '12'
+                      codigo: T
+                      descripcion: Total de demostración
+                      unidad_medida: unidades
+                      tipo_dato: entero
+                      papel_calculo: denominador
+                      obligatoria: true
+                      dependencia_id: '7'
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /indicadores/{indicadorId}/periodos:
+    get:
+      operationId: listarPeriodos
+      summary: Consultar calendario conocido
+      description: Consultar un intervalo acotado; desde<=hasta. Sin calendario aprobado retorna pendiente e intervalos
+        históricos conocidos, sin atraso ni apertura ficticios. Una respuesta pendiente no impide leer publicaciones
+        existentes.
+      tags:
+      - Indicadores
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P0
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - P-07
+      - P-12
+      parameters:
+      - $ref: '#/components/parameters/indicadorId'
+      - name: desde
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: hasta
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Consultar calendario conocido
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Calendario'
+              examples:
+                ejemplo:
+                  value:
+                    indicador_id: '63'
+                    estado_calendario: pendiente
+                    pendientes:
+                    - P-07
+                    - P-12
+                    items: []
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /indicadores/{indicadorId}/capturas:
+    post:
+      operationId: enviarCaptura
+      summary: Enviar captura completa con PDF
+      description: Primer recorrido propuesto para configuración conciliada de una dependencia. expediente_id null
+        solo solicita ciclo original inexistente; de lo contrario exigir el ciclo abierto explícito del mismo indicador/periodo.
+        Dependencia/autor/estado/número/fechas se obtienen del servidor. PDF real obligatorio y valores completos/únicos.
+        Guardado atómico sin borrador. No habilitar F13.002/F16.002 conflictivos ni consolidación por este contrato;
+        configuración indefinida:409. Sin idempotencia genérica prometida.
+      tags:
+      - Captura
+      x-roles:
+      - captura
+      x-prioridad: P0
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - PROP-BD-003
+      - ASIGNACIONES
+      - P-07
+      - P-12
+      - PDF
+      parameters:
+      - $ref: '#/components/parameters/indicadorId'
+      - $ref: '#/components/parameters/Csrf'
+      responses:
+        '201':
+          description: Enviar captura completa con PDF
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+            Location:
+              description: Recurso de negocio creado.
+              schema:
+                type: string
+                format: uri-reference
+              example: /api/v1/capturas/101
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapturaDetalle'
+              examples:
+                ejemplo:
+                  value:
+                    captura:
+                      id: '101'
+                      expediente_id: '201'
+                      indicador_id: '63'
+                      dependencia_id: '7'
+                      capturista_id: '1'
+                      numero_envio: 1
+                      estado: en_revision
+                      enviada_en: '2026-10-02T15:00:00Z'
+                    descripcion_avance: Reporte municipal completo del periodo de demostración.
+                    observaciones_captura: null
+                    valores:
+                    - variable_id: '11'
+                      codigo: A
+                      unidad_medida: unidades
+                      valor: '80'
+                    - variable_id: '12'
+                      codigo: T
+                      unidad_medida: unidades
+                      valor: '100'
+                    evidencias:
+                    - id: '501'
+                      nombre_original: reporte-demostracion.pdf
+                      mime_type: application/pdf
+                      tamano_bytes: 12000
+                      subida_en: '2026-10-02T15:00:00Z'
+                    observaciones_pendientes_ids: []
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '409':
+          $ref: '#/components/responses/Conflicto'
+        '413':
+          $ref: '#/components/responses/CargaExcesiva'
+        '415':
+          $ref: '#/components/responses/ContenidoNoPermitido'
+        '422':
+          $ref: '#/components/responses/DatosInvalidos'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+        '503':
+          $ref: '#/components/responses/NoDisponible'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                datos:
+                  $ref: '#/components/schemas/DatosCaptura'
+                evidencias:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  minItems: 1
+              required:
+              - datos
+              - evidencias
+              description: Envío completo. Parte datos JSON y uno o varios PDF. Límites de tamaño/cantidad pendientes;
+                no aceptar URLs o storage_key del cliente.
+            encoding:
+              datos:
+                contentType: application/json
+              evidencias:
+                contentType: application/pdf
+  /expedientes:
+    get:
+      operationId: listarExpedientes
+      summary: Consultar bandeja autorizada
+      description: Captura ve solo ciclos de sus indicadores y sus propios envíos; Revisión bandeja global y Administrador
+        supervisión. Orden creado_en DESC,id DESC. No exponer conteos de aportes ajenos.
+      tags:
+      - Revision
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P0
+      x-estado-contrato: propuesto
+      x-pendientes: []
+      parameters:
+      - $ref: '#/components/parameters/Pagina'
+      - $ref: '#/components/parameters/PorPagina'
+      - name: indicador_id
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: estado
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - abierto
+          - validado
+      responses:
+        '200':
+          description: Consultar bandeja autorizada
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaExpedientes'
+              examples:
+                ejemplo:
+                  value:
+                    items:
+                    - id: '201'
+                      indicador_id: '63'
+                      periodo:
+                        inicio: '2026-09-01'
+                        fin: '2026-09-30'
+                      numero_ciclo: 1
+                      expediente_anterior_id: null
+                      estado: abierto
+                      capturas:
+                      - id: '101'
+                        expediente_id: '201'
+                        indicador_id: '63'
+                        dependencia_id: '7'
+                        capturista_id: '1'
+                        numero_envio: 1
+                        estado: en_revision
+                        enviada_en: '2026-10-02T15:00:00Z'
+                      aportes_pendientes: false
+                      publicacion_vigente_id: null
+                    paginacion:
+                      pagina: 1
+                      por_pagina: 20
+                      total: 1
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /expedientes/{expedienteId}:
+    get:
+      operationId: obtenerExpediente
+      summary: Consultar contexto del ciclo
+      description: Filtra capturas por dependencia para Captura. aportes_pendientes es solo un indicador general.
+        publicacion_vigente_id puede apuntar al ciclo validado anterior mientras este está abierto. No devuelve
+        JSONB de configuración/antecedentes.
+      tags:
+      - Revision
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P0
+      x-estado-contrato: propuesto
+      x-pendientes: []
+      parameters:
+      - $ref: '#/components/parameters/expedienteId'
+      responses:
+        '200':
+          description: Consultar contexto del ciclo
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expediente'
+              examples:
+                ejemplo:
+                  value:
+                    id: '201'
+                    indicador_id: '63'
+                    periodo:
+                      inicio: '2026-09-01'
+                      fin: '2026-09-30'
+                    numero_ciclo: 1
+                    expediente_anterior_id: null
+                    estado: abierto
+                    capturas:
+                    - id: '101'
+                      expediente_id: '201'
+                      indicador_id: '63'
+                      dependencia_id: '7'
+                      capturista_id: '1'
+                      numero_envio: 1
+                      estado: en_revision
+                      enviada_en: '2026-10-02T15:00:00Z'
+                    aportes_pendientes: false
+                    publicacion_vigente_id: null
+                validado:
+                  value:
+                    id: '201'
+                    indicador_id: '63'
+                    periodo:
+                      inicio: '2026-09-01'
+                      fin: '2026-09-30'
+                    numero_ciclo: 1
+                    expediente_anterior_id: null
+                    estado: validado
+                    capturas:
+                    - id: '101'
+                      expediente_id: '201'
+                      indicador_id: '63'
+                      dependencia_id: '7'
+                      capturista_id: '1'
+                      numero_envio: 1
+                      estado: revisada
+                      enviada_en: '2026-10-02T15:00:00Z'
+                    aportes_pendientes: false
+                    publicacion_vigente_id: '201'
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /expedientes/{expedienteId}/eventos:
+    get:
+      operationId: listarEventos
+      summary: Consultar hilo de revisión
+      description: Orden creado_en,id ascendente. Captura ve eventos de sus envíos y metadatos de validación/reapertura
+        del ciclo; comentarios ajenos/globales sensibles se suprimen. Respuestas/resoluciones pertenecen al mismo
+        ciclo. No existe escritura libre de eventos.
+      tags:
+      - Revision
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P0
+      x-estado-contrato: propuesto
+      x-pendientes: []
+      parameters:
+      - $ref: '#/components/parameters/expedienteId'
+      - $ref: '#/components/parameters/Pagina'
+      - $ref: '#/components/parameters/PorPagina'
+      responses:
+        '200':
+          description: Consultar hilo de revisión
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaEventos'
+              examples:
+                ejemplo:
+                  value:
+                    items:
+                    - id: '301'
+                      expediente_id: '201'
+                      captura_id: '101'
+                      autor_id: '2'
+                      rol_al_actuar: revision
+                      accion: observar
+                      estado_anterior: en_revision
+                      estado_nuevo: observada
+                      comentario: Aclare el respaldo de la cantidad atendida.
+                      responde_a_id: null
+                      creado_en: '2026-10-02T16:00:00Z'
+                    paginacion:
+                      pagina: 1
+                      por_pagina: 20
+                      total: 1
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /capturas/{capturaId}:
+    get:
+      operationId: obtenerCaptura
+      summary: Consultar valores y evidencias de un envío
+      description: Autorizar por dependencia del envío e indicador antes de devolver valores o archivos. Conocer
+        un ID no concede acceso. Los envíos sustituidos autorizados se conservan como historia.
+      tags:
+      - Captura
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P0
+      x-estado-contrato: propuesto
+      x-pendientes: []
+      parameters:
+      - $ref: '#/components/parameters/capturaId'
+      responses:
+        '200':
+          description: Consultar valores y evidencias de un envío
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapturaDetalle'
+              examples:
+                ejemplo:
+                  value:
+                    captura:
+                      id: '101'
+                      expediente_id: '201'
+                      indicador_id: '63'
+                      dependencia_id: '7'
+                      capturista_id: '1'
+                      numero_envio: 1
+                      estado: en_revision
+                      enviada_en: '2026-10-02T15:00:00Z'
+                    descripcion_avance: Reporte municipal completo del periodo de demostración.
+                    observaciones_captura: null
+                    valores:
+                    - variable_id: '11'
+                      codigo: A
+                      unidad_medida: unidades
+                      valor: '80'
+                    - variable_id: '12'
+                      codigo: T
+                      unidad_medida: unidades
+                      valor: '100'
+                    evidencias:
+                    - id: '501'
+                      nombre_original: reporte-demostracion.pdf
+                      mime_type: application/pdf
+                      tamano_bytes: 12000
+                      subida_en: '2026-10-02T15:00:00Z'
+                    observaciones_pendientes_ids: []
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /capturas/{capturaId}/observaciones:
+    post:
+      operationId: observarCaptura
+      summary: Observar un envío efectivo
+      description: Expediente abierto y captura efectiva en_revision u observada. Registra comentario obligatorio
+        y estado observada; no edita valores. Si el ciclo cerró o el envío fue sustituido:409.
+      tags:
+      - Revision
+      x-roles:
+      - revision
+      x-prioridad: P1
+      x-estado-contrato: propuesto
+      x-pendientes: []
+      parameters:
+      - $ref: '#/components/parameters/capturaId'
+      - $ref: '#/components/parameters/Csrf'
+      responses:
+        '201':
+          description: Observar un envío efectivo
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoRevision'
+              examples:
+                ejemplo:
+                  value:
+                    id: '301'
+                    expediente_id: '201'
+                    captura_id: '101'
+                    autor_id: '2'
+                    rol_al_actuar: revision
+                    accion: observar
+                    estado_anterior: en_revision
+                    estado_nuevo: observada
+                    comentario: Aclare el respaldo de la cantidad atendida.
+                    responde_a_id: null
+                    creado_en: '2026-10-02T16:00:00Z'
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '409':
+          $ref: '#/components/responses/Conflicto'
+        '422':
+          $ref: '#/components/responses/DatosInvalidos'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObservacionEntrada'
+            examples:
+              ejemplo:
+                value:
+                  comentario: Aclare el respaldo de la cantidad atendida.
+  /capturas/{capturaId}/correcciones:
+    post:
+      operationId: corregirCaptura
+      summary: Responder y enviar corrección completa
+      description: Solo envío observado efectivo de su dependencia y ciclo abierto. Nuevos valores/archivos completos,
+        respuestas a observaciones de esa cadena. Sustituir anterior, insertar nuevo y registrar respuesta/reenvío
+        en una transacción. No autocierra observaciones. No recibe un nuevo periodo ni copia autoría ficticia.
+      tags:
+      - Captura
+      x-roles:
+      - captura
+      x-prioridad: P1
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - PROP-BD-003
+      - ASIGNACIONES
+      - PDF
+      parameters:
+      - $ref: '#/components/parameters/capturaId'
+      - $ref: '#/components/parameters/Csrf'
+      responses:
+        '201':
+          description: Responder y enviar corrección completa
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+            Location:
+              description: Recurso de negocio creado.
+              schema:
+                type: string
+                format: uri-reference
+              example: /api/v1/capturas/102
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapturaDetalle'
+              examples:
+                ejemplo:
+                  value:
+                    captura:
+                      id: '102'
+                      expediente_id: '201'
+                      indicador_id: '63'
+                      dependencia_id: '7'
+                      capturista_id: '1'
+                      numero_envio: 2
+                      estado: en_revision
+                      enviada_en: '2026-10-02T15:00:00Z'
+                    descripcion_avance: Reporte municipal completo del periodo de demostración.
+                    observaciones_captura: null
+                    valores:
+                    - variable_id: '11'
+                      codigo: A
+                      unidad_medida: unidades
+                      valor: '80'
+                    - variable_id: '12'
+                      codigo: T
+                      unidad_medida: unidades
+                      valor: '100'
+                    evidencias:
+                    - id: '502'
+                      nombre_original: reporte-demostracion.pdf
+                      mime_type: application/pdf
+                      tamano_bytes: 12000
+                      subida_en: '2026-10-02T15:00:00Z'
+                    observaciones_pendientes_ids:
+                    - '301'
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '409':
+          $ref: '#/components/responses/Conflicto'
+        '413':
+          $ref: '#/components/responses/CargaExcesiva'
+        '415':
+          $ref: '#/components/responses/ContenidoNoPermitido'
+        '422':
+          $ref: '#/components/responses/DatosInvalidos'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+        '503':
+          $ref: '#/components/responses/NoDisponible'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                datos:
+                  $ref: '#/components/schemas/DatosCorreccion'
+                evidencias:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  minItems: 1
+              required:
+              - datos
+              - evidencias
+              description: Envío completo. Parte datos JSON y uno o varios PDF. Límites de tamaño/cantidad pendientes;
+                no aceptar URLs o storage_key del cliente.
+            encoding:
+              datos:
+                contentType: application/json
+              evidencias:
+                contentType: application/pdf
+  /capturas/{capturaId}/revision:
+    post:
+      operationId: revisarCaptura
+      summary: Resolver observaciones aceptadas y marcar revisada
+      description: Solo captura efectiva en_revision de ciclo abierto. observaciones_resueltas_ids referencia observaciones
+        de la misma dependencia/ciclo y cadena, incluso de un envío anterior sustituido. Registrar resolver_observacion
+        y revisar; si quedan pendientes:409. No calcula publicación ni valida el expediente. Un envío ya revisado
+        no se observa de nuevo sin definir esa transición.
+      tags:
+      - Revision
+      x-roles:
+      - revision
+      x-prioridad: P0
+      x-estado-contrato: propuesto
+      x-pendientes: []
+      parameters:
+      - $ref: '#/components/parameters/capturaId'
+      - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          description: Resolver observaciones aceptadas y marcar revisada
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapturaDetalle'
+              examples:
+                ejemplo:
+                  value:
+                    captura:
+                      id: '101'
+                      expediente_id: '201'
+                      indicador_id: '63'
+                      dependencia_id: '7'
+                      capturista_id: '1'
+                      numero_envio: 1
+                      estado: revisada
+                      enviada_en: '2026-10-02T15:00:00Z'
+                    descripcion_avance: Reporte municipal completo del periodo de demostración.
+                    observaciones_captura: null
+                    valores:
+                    - variable_id: '11'
+                      codigo: A
+                      unidad_medida: unidades
+                      valor: '80'
+                    - variable_id: '12'
+                      codigo: T
+                      unidad_medida: unidades
+                      valor: '100'
+                    evidencias:
+                    - id: '501'
+                      nombre_original: reporte-demostracion.pdf
+                      mime_type: application/pdf
+                      tamano_bytes: 12000
+                      subida_en: '2026-10-02T15:00:00Z'
+                    observaciones_pendientes_ids: []
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '409':
+          $ref: '#/components/responses/Conflicto'
+        '422':
+          $ref: '#/components/responses/DatosInvalidos'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevisionEntrada'
+            examples:
+              ejemplo:
+                value:
+                  observaciones_resueltas_ids: []
+  /expedientes/{expedienteId}/validacion:
+    post:
+      operationId: validarExpediente
+      summary: Validar y publicar el conjunto revisado
+      description: Bloquear expediente y exigir conjunto exacto capturas_revisadas_ids=envíos efectivos actuales,
+        todos revisados y completos, con PDF y sin observaciones abiertas. Si cambió un envío:409 ENVIO_VIGENTE_MODIFICADO.
+        Calcular en servidor, conservar configuración/antecedentes y evento, validar y publicar en la misma transacción.
+        DEC-014 permite color null solo con motivo de falta de antecedentes. Denominador cero/regla ambigua no se
+        convierten en cero. Administrador no valida; no hay endpoint de publicación manual.
+      tags:
+      - Validacion
+      x-roles:
+      - revision
+      x-prioridad: P0
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - PROP-BD-003
+      - P-08
+      - REGLAS_INDIVIDUALES
+      parameters:
+      - $ref: '#/components/parameters/expedienteId'
+      - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          description: Validar y publicar el conjunto revisado
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoPublicado'
+              examples:
+                ejemplo:
+                  value:
+                    expediente_id: '201'
+                    indicador_id: '63'
+                    periodo:
+                      inicio: '2026-09-01'
+                      fin: '2026-09-30'
+                    numero_ciclo: 1
+                    valor: '80.00000000'
+                    unidad_medida: '%'
+                    color: amarillo
+                    motivo_sin_color: null
+                    validado_en: '2026-10-03T16:00:00Z'
+                sinAntecedentes:
+                  value:
+                    expediente_id: '201'
+                    indicador_id: '63'
+                    periodo:
+                      inicio: '2026-09-01'
+                      fin: '2026-09-30'
+                    numero_ciclo: 1
+                    valor: '80.00000000'
+                    unidad_medida: '%'
+                    color: null
+                    motivo_sin_color: Sin antecedentes suficientes para evaluar la tendencia.
+                    validado_en: '2026-10-03T16:00:00Z'
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '409':
+          $ref: '#/components/responses/Conflicto'
+        '422':
+          $ref: '#/components/responses/DatosInvalidos'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+        '503':
+          $ref: '#/components/responses/NoDisponible'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidacionEntrada'
+            examples:
+              ejemplo:
+                value:
+                  capturas_revisadas_ids:
+                  - '101'
+  /expedientes/{expedienteId}/reaperturas:
+    post:
+      operationId: reabrirExpediente
+      summary: Abrir otro ciclo conservando la publicación
+      description: Solo publicación vigente validada del intervalo, motivo obligatorio y ningún otro ciclo abierto.
+        Crea nuevo ciclo/evento con referencia al anterior, que sigue validado/publicado. Si no se puede seleccionar
+        configuración o decidir reutilización de aportaciones sin resolver pendientes:409 CONFIGURACION_PENDIENTE.
+        No impone reenvío o copia automática como regla aprobada.
+      tags:
+      - Administracion
+      x-roles:
+      - administrador
+      x-prioridad: P1
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - PROP-BD-003
+      - P-08
+      parameters:
+      - $ref: '#/components/parameters/expedienteId'
+      - $ref: '#/components/parameters/Csrf'
+      responses:
+        '201':
+          description: Abrir otro ciclo conservando la publicación
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+            Location:
+              description: Recurso de negocio creado.
+              schema:
+                type: string
+                format: uri-reference
+              example: /api/v1/expedientes/202
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expediente'
+              examples:
+                ejemplo:
+                  value:
+                    id: '202'
+                    indicador_id: '63'
+                    periodo:
+                      inicio: '2026-09-01'
+                      fin: '2026-09-30'
+                    numero_ciclo: 2
+                    expediente_anterior_id: '201'
+                    estado: abierto
+                    capturas: []
+                    aportes_pendientes: true
+                    publicacion_vigente_id: '201'
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '409':
+          $ref: '#/components/responses/Conflicto'
+        '422':
+          $ref: '#/components/responses/DatosInvalidos'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReaperturaEntrada'
+            examples:
+              ejemplo:
+                value:
+                  motivo: Corregir un dato respaldado con un nuevo reporte municipal.
+  /indicadores/{indicadorId}/resultados:
+    get:
+      operationId: listarResultados
+      summary: Consultar publicaciones actuales por periodo
+      description: 'Un resultado por intervalo: mayor ciclo validado actualmente, incluso durante reapertura. Filtros
+        opcionales sobre periodo.fin, inclusivos y desde<=hasta. Orden periodo.fin DESC,numero_ciclo DESC. Sin datos:200
+        items=[], nunca cero. Captura solo indicadores relacionados; no incluye capturas no validadas.'
+      tags:
+      - Consulta
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P0
+      x-estado-contrato: propuesto
+      x-pendientes: []
+      parameters:
+      - $ref: '#/components/parameters/indicadorId'
+      - $ref: '#/components/parameters/Pagina'
+      - $ref: '#/components/parameters/PorPagina'
+      - name: desde
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: hasta
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Consultar publicaciones actuales por periodo
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaResultados'
+              examples:
+                ejemplo:
+                  value:
+                    items:
+                    - expediente_id: '201'
+                      indicador_id: '63'
+                      periodo:
+                        inicio: '2026-09-01'
+                        fin: '2026-09-30'
+                      numero_ciclo: 1
+                      valor: '80.00000000'
+                      unidad_medida: '%'
+                      color: amarillo
+                      motivo_sin_color: null
+                      validado_en: '2026-10-03T16:00:00Z'
+                    paginacion:
+                      pagina: 1
+                      por_pagina: 20
+                      total: 1
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /evidencias/{evidenciaId}/descarga:
+    get:
+      operationId: descargarEvidencia
+      summary: Descargar PDF autorizado
+      description: Propuesta técnica de streaming autenticado, compatible con proveedor privado por definir. Autorizar
+        el envío y dependencia, también para historia sustituida. Nunca devolver storage_key ni permitir descargar
+        adjuntos ajenos. Sin endpoint de upload independiente ni enlaces públicos.
+      tags:
+      - Evidencias
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P0
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - PDF
+      parameters:
+      - $ref: '#/components/parameters/evidenciaId'
+      responses:
+        '200':
+          description: Descargar PDF autorizado
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+            Content-Disposition:
+              description: attachment; nombre saneado, sin rutas/control chars.
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+        '503':
+          $ref: '#/components/responses/NoDisponible'
+  /agrupaciones/{agrupacionId}/evaluacion:
+    get:
+      operationId: evaluarAgrupacion
+      summary: Consultar fuentes y evaluación del corte mensual
+      description: 'DEC-013/020/021/022. Seleccionar periodo completo/exigible primero y luego su publicación actual.
+        No arrastrar otro periodo ni filtrar por validado_en<=corte. Reapertura mantiene elegible el validado anterior
+        del mismo intervalo. Sin universo temporal definido: índice/cobertura/color null. Con P-10 pendiente no
+        inventar Y ni mostrar color. Captura no tiene acceso global de agrupación; definir visibilidad antes de
+        concederlo.'
+      tags:
+      - Consulta
+      x-roles:
+      - revision
+      - administrador
+      x-prioridad: P1
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - P-07
+      - P-10
+      - P-12
+      - P-13
+      parameters:
+      - $ref: '#/components/parameters/agrupacionId'
+      - name: corte
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^\d{4}-(0[1-9]|1[0-2])$
+      responses:
+        '200':
+          description: Consultar fuentes y evaluación del corte mensual
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluacionTematica'
+              examples:
+                ejemplo:
+                  value:
+                    agrupacion_id: '8'
+                    corte: 2026-09
+                    fecha_corte: '2026-09-30'
+                    indicadores:
+                    - indicador_id: '63'
+                      periodicidad: mensual
+                      periodo_esperado:
+                        inicio: '2026-09-01'
+                        fin: '2026-09-30'
+                      estado: evaluable
+                      resultado:
+                        expediente_id: '201'
+                        indicador_id: '63'
+                        periodo:
+                          inicio: '2026-09-01'
+                          fin: '2026-09-30'
+                        numero_ciclo: 1
+                        valor: '80.00000000'
+                        unidad_medida: '%'
+                        color: amarillo
+                        motivo_sin_color: null
+                        validado_en: '2026-10-03T16:00:00Z'
+                    evaluables: 1
+                    total_configurados: 1
+                    denominador_cobertura: null
+                    cobertura: null
+                    indice: 0.5
+                    color: null
+                    estado_evaluacion: politica_cobertura_pendiente
+                    pendientes:
+                    - P-10
+                corteMixto:
+                  value:
+                    agrupacion_id: '8'
+                    corte: 2026-09
+                    fecha_corte: '2026-09-30'
+                    indicadores:
+                    - indicador_id: '63'
+                      periodicidad: mensual
+                      periodo_esperado:
+                        inicio: '2026-09-01'
+                        fin: '2026-09-30'
+                      estado: evaluable
+                      resultado:
+                        expediente_id: '201'
+                        indicador_id: '63'
+                        periodo:
+                          inicio: '2026-09-01'
+                          fin: '2026-09-30'
+                        numero_ciclo: 1
+                        valor: '80.00000000'
+                        unidad_medida: '%'
+                        color: amarillo
+                        motivo_sin_color: null
+                        validado_en: '2026-10-03T16:00:00Z'
+                    - indicador_id: '64'
+                      periodicidad: trimestral
+                      periodo_esperado:
+                        inicio: '2026-07-01'
+                        fin: '2026-09-30'
+                      estado: evaluable
+                      resultado:
+                        expediente_id: '211'
+                        indicador_id: '64'
+                        periodo:
+                          inicio: '2026-07-01'
+                          fin: '2026-09-30'
+                        numero_ciclo: 1
+                        valor: '90'
+                        unidad_medida: '%'
+                        color: verde
+                        motivo_sin_color: null
+                        validado_en: '2026-10-03T16:00:00Z'
+                    - indicador_id: '65'
+                      periodicidad: semestral
+                      periodo_esperado:
+                        inicio: '2026-01-01'
+                        fin: '2026-06-30'
+                      estado: evaluable
+                      resultado:
+                        expediente_id: '212'
+                        indicador_id: '65'
+                        periodo:
+                          inicio: '2026-01-01'
+                          fin: '2026-06-30'
+                        numero_ciclo: 1
+                        valor: '40'
+                        unidad_medida: '%'
+                        color: rojo
+                        motivo_sin_color: null
+                        validado_en: '2026-10-03T16:00:00Z'
+                    - indicador_id: '66'
+                      periodicidad: anual
+                      periodo_esperado:
+                        inicio: '2025-01-01'
+                        fin: '2025-12-31'
+                      estado: evaluable
+                      resultado:
+                        expediente_id: '213'
+                        indicador_id: '66'
+                        periodo:
+                          inicio: '2025-01-01'
+                          fin: '2025-12-31'
+                        numero_ciclo: 1
+                        valor: '95'
+                        unidad_medida: '%'
+                        color: verde
+                        motivo_sin_color: null
+                        validado_en: '2026-10-03T16:00:00Z'
+                    evaluables: 4
+                    total_configurados: 4
+                    denominador_cobertura: null
+                    cobertura: null
+                    indice: 0.625
+                    color: null
+                    estado_evaluacion: politica_cobertura_pendiente
+                    pendientes:
+                    - P-10
+                sinArrastreNiEvaluables:
+                  value:
+                    agrupacion_id: '8'
+                    corte: 2026-09
+                    fecha_corte: '2026-09-30'
+                    indicadores:
+                    - indicador_id: '63'
+                      periodicidad: mensual
+                      periodo_esperado:
+                        inicio: '2026-09-01'
+                        fin: '2026-09-30'
+                      estado: sin_resultado
+                      resultado: null
+                    evaluables: 0
+                    total_configurados: 1
+                    denominador_cobertura: null
+                    cobertura: null
+                    indice: null
+                    color: null
+                    estado_evaluacion: sin_evaluables
+                    pendientes:
+                    - P-10
+                calendarioPendiente:
+                  value:
+                    agrupacion_id: '8'
+                    corte: 2026-09
+                    fecha_corte: '2026-09-30'
+                    indicadores:
+                    - indicador_id: '63'
+                      periodicidad: mensual
+                      periodo_esperado: null
+                      estado: calendario_pendiente
+                      resultado: null
+                    evaluables: 0
+                    total_configurados: 1
+                    denominador_cobertura: null
+                    cobertura: null
+                    indice: null
+                    color: null
+                    estado_evaluacion: calendario_pendiente
+                    pendientes:
+                    - P-07
+                    - P-10
+                    - P-12
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /notificaciones:
+    get:
+      operationId: listarNotificaciones
+      summary: Consultar avisos propios
+      description: Bandeja interna propuesta; no presupone correo ni canales externos. Solo usuario_id de la sesión,
+        antes de paginar/contar. Orden creada_en DESC,id DESC. Sin avisos:items=[].
+      tags:
+      - Notificaciones
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P1
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - P-14
+      parameters:
+      - $ref: '#/components/parameters/Pagina'
+      - $ref: '#/components/parameters/PorPagina'
+      - name: leida
+        in: query
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: Consultar avisos propios
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaNotificaciones'
+              examples:
+                ejemplo:
+                  value:
+                    items:
+                    - id: '601'
+                      indicador_id: '63'
+                      periodo:
+                        inicio: '2026-09-01'
+                        fin: '2026-09-30'
+                      tipo: observacion
+                      mensaje: Tiene una observación en un envío de su dependencia.
+                      creada_en: '2026-10-02T16:00:00Z'
+                      leida_en: null
+                    paginacion:
+                      pagina: 1
+                      por_pagina: 20
+                      total: 1
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+  /notificaciones/{notificacionId}/lectura:
+    post:
+      operationId: marcarNotificacionLeida
+      summary: Marcar aviso propio como leído
+      description: Solo destinatario actual. No recibe usuario_id ni permite cambiar mensaje/tipo. Repetir devuelve
+        200 con la fecha de primera lectura; no genera otro aviso. Un aviso ajeno devuelve404.
+      tags:
+      - Notificaciones
+      x-roles:
+      - captura
+      - revision
+      - administrador
+      x-prioridad: P1
+      x-estado-contrato: condicionado
+      x-pendientes:
+      - P-14
+      parameters:
+      - $ref: '#/components/parameters/notificacionId'
+      - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          description: Marcar aviso propio como leído
+          headers:
+            Cache-Control:
+              description: No almacenar datos privados ni respuestas autenticadas.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notificacion'
+              examples:
+                ejemplo:
+                  value:
+                    id: '601'
+                    indicador_id: '63'
+                    periodo:
+                      inicio: '2026-09-01'
+                      fin: '2026-09-30'
+                    tipo: observacion
+                    mensaje: Tiene una observación en un envío de su dependencia.
+                    creada_en: '2026-10-02T16:00:00Z'
+                    leida_en: '2026-10-02T17:00:00Z'
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+components:
+  securitySchemes:
+    SesionCookie:
+      type: apiKey
+      in: cookie
+      name: siip_session
+      description: Propuesta de sesión opaca servidor; cookie HttpOnly/Secure/SameSite=Lax. En escrituras validar
+        X-CSRF-Token y Origin. Rol/dependencia se verifican desde cuenta vigente, no por scopes ni campos del cliente.
+  parameters:
+    indicadorId:
+      name: indicadorId
+      in: path
+      required: true
+      description: Identificador del recurso, sujeto a autorización por objeto.
+      schema:
+        $ref: '#/components/schemas/Id'
+    expedienteId:
+      name: expedienteId
+      in: path
+      required: true
+      description: Identificador del recurso, sujeto a autorización por objeto.
+      schema:
+        $ref: '#/components/schemas/Id'
+    capturaId:
+      name: capturaId
+      in: path
+      required: true
+      description: Identificador del recurso, sujeto a autorización por objeto.
+      schema:
+        $ref: '#/components/schemas/Id'
+    evidenciaId:
+      name: evidenciaId
+      in: path
+      required: true
+      description: Identificador del recurso, sujeto a autorización por objeto.
+      schema:
+        $ref: '#/components/schemas/Id'
+    agrupacionId:
+      name: agrupacionId
+      in: path
+      required: true
+      description: Identificador del recurso, sujeto a autorización por objeto.
+      schema:
+        $ref: '#/components/schemas/Id'
+    notificacionId:
+      name: notificacionId
+      in: path
+      required: true
+      description: Identificador del recurso, sujeto a autorización por objeto.
+      schema:
+        $ref: '#/components/schemas/Id'
+    Csrf:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      description: Token de GET /auth/sesion; validar también Origin. Se exige en escrituras, incluido login.
+      schema:
+        type: string
+        minLength: 16
+    Pagina:
+      name: pagina
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PorPagina:
+      name: por_pagina
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  schemas:
+    Id:
+      type: string
+      pattern: ^[1-9][0-9]{0,18}$
+      description: bigint positivo como cadena; backend comprueba máximo 9223372036854775807.
+      examples:
+      - '201'
+    Decimal:
+      type: string
+      pattern: ^-?(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{1,8})?$
+      description: numeric(24,8) como cadena, finito y sin notación exponencial. Rangos/unidad por variable.
+      examples:
+      - '80.00000000'
+    Rol:
+      type: string
+      enum:
+      - captura
+      - revision
+      - administrador
+    Color:
+      type: string
+      enum:
+      - verde
+      - amarillo
+      - rojo
+    Periodo:
+      type: object
+      additionalProperties: false
+      properties:
+        inicio:
+          type: string
+          format: date
+        fin:
+          type: string
+          format: date
+      required:
+      - inicio
+      - fin
+      description: Extremos inclusivos; backend comprueba fin >= inicio y calendario aplicable.
+      examples:
+      - inicio: '2026-09-01'
+        fin: '2026-09-30'
+    Paginacion:
+      type: object
+      additionalProperties: false
+      properties:
+        pagina:
+          type: integer
+          minimum: 1
+        por_pagina:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+      required:
+      - pagina
+      - por_pagina
+      - total
+    Usuario:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        nombre:
+          type: string
+        correo:
+          type: string
+          format: email
+        rol:
+          $ref: '#/components/schemas/Rol'
+        dependencia_id:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+      required:
+      - id
+      - nombre
+      - correo
+      - rol
+      - dependencia_id
+      examples:
+      - id: '1'
+        nombre: Capturista de demostración
+        correo: captura@example.test
+        rol: captura
+        dependencia_id: '7'
+    Sesion:
+      type: object
+      additionalProperties: false
+      properties:
+        usuario:
+          anyOf:
+          - $ref: '#/components/schemas/Usuario'
+          - type: 'null'
+        csrf_token:
+          type: string
+          minLength: 16
+      required:
+      - usuario
+      - csrf_token
+      description: Propuesta de sesión con cookie opaca. CSRF se rota al autenticar; no contiene contraseña ni token
+        Bearer.
+      examples:
+      - usuario: null
+        csrf_token: csrf_sintetico_bootstrap_2026
+    Credenciales:
+      type: object
+      additionalProperties: false
+      properties:
+        correo:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+          writeOnly: true
+      required:
+      - correo
+      - password
+      examples:
+      - correo: captura@example.test
+        password: SoloEjemploDocumental!2026
+    Agrupacion:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        codigo:
+          type: string
+        nombre:
+          type: string
+      required:
+      - id
+      - codigo
+      - nombre
+      examples:
+      - id: '8'
+        codigo: DEMO.08
+        nombre: Agrupación de demostración
+    Familia:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        codigo:
+          type: string
+        nombre:
+          type: string
+        agrupacion:
+          $ref: '#/components/schemas/Agrupacion'
+      required:
+      - id
+      - codigo
+      - nombre
+      - agrupacion
+      examples:
+      - id: '54'
+        codigo: DEMO.F54
+        nombre: Familia de demostración
+        agrupacion:
+          id: '8'
+          codigo: DEMO.08
+          nombre: Agrupación de demostración
+    Indicador:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        codigo:
+          type: string
+        nombre:
+          type: string
+        familia:
+          $ref: '#/components/schemas/Familia'
+        periodicidad:
+          anyOf:
+          - type: string
+            enum:
+            - mensual
+            - trimestral
+            - semestral
+            - anual
+          - type: 'null'
+        primer_periodo_exigible:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+        disponibilidad_captura:
+          type: string
+          enum:
+          - lista
+          - pendiente
+        pendientes:
+          type: array
+          items:
+            type: string
+      required:
+      - id
+      - codigo
+      - nombre
+      - familia
+      - periodicidad
+      - primer_periodo_exigible
+      - disponibilidad_captura
+      - pendientes
+      examples:
+      - id: '63'
+        codigo: DEMO.IND.001
+        nombre: Cobertura de demostración
+        familia:
+          id: '54'
+          codigo: DEMO.F54
+          nombre: Familia de demostración
+          agrupacion:
+            id: '8'
+            codigo: DEMO.08
+            nombre: Agrupación de demostración
+        periodicidad: mensual
+        primer_periodo_exigible: '2026-01-01'
+        disponibilidad_captura: lista
+        pendientes: []
+    VariableVisible:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        codigo:
+          type: string
+        descripcion:
+          type: string
+        unidad_medida:
+          anyOf:
+          - type: string
+          - type: 'null'
+        tipo_dato:
+          anyOf:
+          - type: string
+            enum:
+            - entero
+            - decimal
+          - type: 'null'
+        papel_calculo:
+          anyOf:
+          - type: string
+            enum:
+            - entrada
+            - numerador
+            - denominador
+            - actual
+            - anterior
+            - base
+            - parte
+            - sumando
+          - type: 'null'
+        obligatoria:
+          type: boolean
+        dependencia_id:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+      required:
+      - id
+      - codigo
+      - descripcion
+      - unidad_medida
+      - tipo_dato
+      - papel_calculo
+      - obligatoria
+      - dependencia_id
+      description: Captura recibe solo sus variables. No se expone la copia interna de configuración.
+      examples:
+      - id: '11'
+        codigo: A
+        descripcion: Cantidad atendida de demostración
+        unidad_medida: unidades
+        tipo_dato: entero
+        papel_calculo: numerador
+        obligatoria: true
+        dependencia_id: '7'
+    FichaTecnica:
+      type: object
+      additionalProperties: false
+      properties:
+        definicion:
+          anyOf:
+          - type: string
+          - type: 'null'
+        objetivo:
+          anyOf:
+          - type: string
+          - type: 'null'
+        formula_texto:
+          anyOf:
+          - type: string
+          - type: 'null'
+        unidad_medida:
+          anyOf:
+          - type: string
+          - type: 'null'
+        medio_verificacion:
+          anyOf:
+          - type: string
+          - type: 'null'
+        periodo_linea_base:
+          anyOf:
+          - type: string
+          - type: 'null'
+        regla_semaforo_texto:
+          anyOf:
+          - type: string
+          - type: 'null'
+        criterio_interpretacion:
+          anyOf:
+          - type: string
+          - type: 'null'
+        observaciones_limitaciones:
+          anyOf:
+          - type: string
+          - type: 'null'
+        unidad_responsable_texto:
+          anyOf:
+          - type: string
+          - type: 'null'
+        desagregacion_origen:
+          anyOf:
+          - type: string
+          - type: 'null'
+        ipsm_origen:
+          anyOf:
+          - type: string
+          - type: 'null'
+        nivel_objetivo:
+          anyOf:
+          - type: string
+          - type: 'null'
+        tipo_indicador:
+          anyOf:
+          - type: string
+          - type: 'null'
+        ambito_desempeno:
+          anyOf:
+          - type: string
+          - type: 'null'
+        dimension_desempeno:
+          anyOf:
+          - type: string
+          - type: 'null'
+        transversalidad:
+          anyOf:
+          - type: string
+          - type: 'null'
+        funcion_indicador:
+          anyOf:
+          - type: string
+          - type: 'null'
+        procedencia:
+          anyOf:
+          - type: string
+          - type: 'null'
+        ids_origen:
+          anyOf:
+          - type: string
+          - type: 'null'
+        justificacion:
+          anyOf:
+          - type: string
+          - type: 'null'
+        linea_base:
+          anyOf:
+          - $ref: '#/components/schemas/Decimal'
+          - type: 'null'
+        meta:
+          anyOf:
+          - $ref: '#/components/schemas/Decimal'
+          - type: 'null'
+        anio_meta:
+          anyOf:
+          - type: integer
+            minimum: 1
+            maximum: 9999
+          - type: 'null'
+        sentido:
+          anyOf:
+          - type: string
+            enum:
+            - ascendente
+            - descendente
+            - mantenimiento
+            - constante
+          - type: 'null'
+        acumulable:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+      required:
+      - definicion
+      - objetivo
+      - formula_texto
+      - unidad_medida
+      - medio_verificacion
+      - periodo_linea_base
+      - regla_semaforo_texto
+      - criterio_interpretacion
+      - observaciones_limitaciones
+      - unidad_responsable_texto
+      - desagregacion_origen
+      - ipsm_origen
+      - nivel_objetivo
+      - tipo_indicador
+      - ambito_desempeno
+      - dimension_desempeno
+      - transversalidad
+      - funcion_indicador
+      - procedencia
+      - ids_origen
+      - justificacion
+      - linea_base
+      - meta
+      - anio_meta
+      - sentido
+      - acumulable
+      examples:
+      - definicion: Ejemplo sintético, no ficha oficial.
+        objetivo: Ilustrar el recorrido contractual.
+        formula_texto: A / T * 100
+        unidad_medida: '%'
+        medio_verificacion: Reporte municipal PDF de demostración
+        periodo_linea_base: null
+        regla_semaforo_texto: Ejemplo documental; no sustituye una regla oficial.
+        criterio_interpretacion: null
+        observaciones_limitaciones: null
+        unidad_responsable_texto: null
+        desagregacion_origen: null
+        ipsm_origen: null
+        nivel_objetivo: null
+        tipo_indicador: null
+        ambito_desempeno: null
+        dimension_desempeno: null
+        transversalidad: null
+        funcion_indicador: null
+        procedencia: null
+        ids_origen: null
+        justificacion: null
+        linea_base: null
+        meta: null
+        anio_meta: null
+        sentido: ascendente
+        acumulable: false
+    IndicadorDetalle:
+      type: object
+      additionalProperties: false
+      properties:
+        indicador:
+          $ref: '#/components/schemas/Indicador'
+        ficha:
+          $ref: '#/components/schemas/FichaTecnica'
+        variables_captura:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariableVisible'
+      required:
+      - indicador
+      - ficha
+      - variables_captura
+      examples:
+      - indicador:
+          id: '63'
+          codigo: DEMO.IND.001
+          nombre: Cobertura de demostración
+          familia:
+            id: '54'
+            codigo: DEMO.F54
+            nombre: Familia de demostración
+            agrupacion:
+              id: '8'
+              codigo: DEMO.08
+              nombre: Agrupación de demostración
+          periodicidad: mensual
+          primer_periodo_exigible: '2026-01-01'
+          disponibilidad_captura: lista
+          pendientes: []
+        ficha:
+          definicion: Ejemplo sintético, no ficha oficial.
+          objetivo: Ilustrar el recorrido contractual.
+          formula_texto: A / T * 100
+          unidad_medida: '%'
+          medio_verificacion: Reporte municipal PDF de demostración
+          periodo_linea_base: null
+          regla_semaforo_texto: Ejemplo documental; no sustituye una regla oficial.
+          criterio_interpretacion: null
+          observaciones_limitaciones: null
+          unidad_responsable_texto: null
+          desagregacion_origen: null
+          ipsm_origen: null
+          nivel_objetivo: null
+          tipo_indicador: null
+          ambito_desempeno: null
+          dimension_desempeno: null
+          transversalidad: null
+          funcion_indicador: null
+          procedencia: null
+          ids_origen: null
+          justificacion: null
+          linea_base: null
+          meta: null
+          anio_meta: null
+          sentido: ascendente
+          acumulable: false
+        variables_captura:
+        - id: '11'
+          codigo: A
+          descripcion: Cantidad atendida de demostración
+          unidad_medida: unidades
+          tipo_dato: entero
+          papel_calculo: numerador
+          obligatoria: true
+          dependencia_id: '7'
+        - id: '12'
+          codigo: T
+          descripcion: Total de demostración
+          unidad_medida: unidades
+          tipo_dato: entero
+          papel_calculo: denominador
+          obligatoria: true
+          dependencia_id: '7'
+    PeriodoDisponible:
+      type: object
+      additionalProperties: false
+      properties:
+        periodo:
+          $ref: '#/components/schemas/Periodo'
+        habilitado:
+          type: boolean
+        expediente_abierto_id:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+        publicacion_vigente_id:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+      required:
+      - periodo
+      - habilitado
+      - expediente_abierto_id
+      - publicacion_vigente_id
+    Calendario:
+      type: object
+      additionalProperties: false
+      properties:
+        indicador_id:
+          $ref: '#/components/schemas/Id'
+        estado_calendario:
+          type: string
+          enum:
+          - definido
+          - pendiente
+        pendientes:
+          type: array
+          items:
+            type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PeriodoDisponible'
+      required:
+      - indicador_id
+      - estado_calendario
+      - pendientes
+      - items
+      description: No inventa fechas, atrasos ni apertura; items puede conservar periodos históricos conocidos sin
+        declararlos habilitados.
+      examples:
+      - indicador_id: '63'
+        estado_calendario: pendiente
+        pendientes:
+        - P-07
+        - P-12
+        items: []
+    ValorEntrada:
+      type: object
+      additionalProperties: false
+      properties:
+        variable_id:
+          $ref: '#/components/schemas/Id'
+        valor:
+          $ref: '#/components/schemas/Decimal'
+      required:
+      - variable_id
+      - valor
+      examples:
+      - variable_id: '11'
+        valor: '80'
+    ValorVisible:
+      type: object
+      additionalProperties: false
+      properties:
+        variable_id:
+          $ref: '#/components/schemas/Id'
+        codigo:
+          type: string
+        unidad_medida:
+          type: string
+        valor:
+          $ref: '#/components/schemas/Decimal'
+      required:
+      - variable_id
+      - codigo
+      - unidad_medida
+      - valor
+      examples:
+      - variable_id: '11'
+        codigo: A
+        unidad_medida: unidades
+        valor: '80'
+    Evidencia:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        nombre_original:
+          type: string
+        mime_type:
+          const: application/pdf
+        tamano_bytes:
+          type: integer
+          minimum: 1
+        subida_en:
+          type: string
+          format: date-time
+      required:
+      - id
+      - nombre_original
+      - mime_type
+      - tamano_bytes
+      - subida_en
+      description: Metadatos visibles. No incluye storage_key, credenciales ni URL pública.
+      examples:
+      - id: '501'
+        nombre_original: reporte-demostracion.pdf
+        mime_type: application/pdf
+        tamano_bytes: 12000
+        subida_en: '2026-10-02T15:00:00Z'
+    Captura:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        expediente_id:
+          $ref: '#/components/schemas/Id'
+        indicador_id:
+          $ref: '#/components/schemas/Id'
+        dependencia_id:
+          $ref: '#/components/schemas/Id'
+        capturista_id:
+          $ref: '#/components/schemas/Id'
+        numero_envio:
+          type: integer
+          minimum: 1
+        estado:
+          type: string
+          enum:
+          - en_revision
+          - observada
+          - revisada
+          - sustituida
+        enviada_en:
+          type: string
+          format: date-time
+      required:
+      - id
+      - expediente_id
+      - indicador_id
+      - dependencia_id
+      - capturista_id
+      - numero_envio
+      - estado
+      - enviada_en
+      examples:
+      - id: '101'
+        expediente_id: '201'
+        indicador_id: '63'
+        dependencia_id: '7'
+        capturista_id: '1'
+        numero_envio: 1
+        estado: en_revision
+        enviada_en: '2026-10-02T15:00:00Z'
+    CapturaDetalle:
+      type: object
+      additionalProperties: false
+      properties:
+        captura:
+          $ref: '#/components/schemas/Captura'
+        descripcion_avance:
+          type: string
+        observaciones_captura:
+          anyOf:
+          - type: string
+          - type: 'null'
+        valores:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValorVisible'
+          minItems: 1
+        evidencias:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evidencia'
+          minItems: 1
+        observaciones_pendientes_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/Id'
+          uniqueItems: true
+      required:
+      - captura
+      - descripcion_avance
+      - observaciones_captura
+      - valores
+      - evidencias
+      - observaciones_pendientes_ids
+      examples:
+      - captura:
+          id: '101'
+          expediente_id: '201'
+          indicador_id: '63'
+          dependencia_id: '7'
+          capturista_id: '1'
+          numero_envio: 1
+          estado: en_revision
+          enviada_en: '2026-10-02T15:00:00Z'
+        descripcion_avance: Reporte municipal completo del periodo de demostración.
+        observaciones_captura: null
+        valores:
+        - variable_id: '11'
+          codigo: A
+          unidad_medida: unidades
+          valor: '80'
+        - variable_id: '12'
+          codigo: T
+          unidad_medida: unidades
+          valor: '100'
+        evidencias:
+        - id: '501'
+          nombre_original: reporte-demostracion.pdf
+          mime_type: application/pdf
+          tamano_bytes: 12000
+          subida_en: '2026-10-02T15:00:00Z'
+        observaciones_pendientes_ids: []
+    ResultadoPublicado:
+      type: object
+      additionalProperties: false
+      properties:
+        expediente_id:
+          $ref: '#/components/schemas/Id'
+        indicador_id:
+          $ref: '#/components/schemas/Id'
+        periodo:
+          $ref: '#/components/schemas/Periodo'
+        numero_ciclo:
+          type: integer
+          minimum: 1
+        valor:
+          $ref: '#/components/schemas/Decimal'
+        unidad_medida:
+          type: string
+        color:
+          anyOf:
+          - $ref: '#/components/schemas/Color'
+          - type: 'null'
+        motivo_sin_color:
+          anyOf:
+          - type: string
+            minLength: 1
+          - type: 'null'
+        validado_en:
+          type: string
+          format: date-time
+      required:
+      - expediente_id
+      - indicador_id
+      - periodo
+      - numero_ciclo
+      - valor
+      - unidad_medida
+      - color
+      - motivo_sin_color
+      - validado_en
+      allOf:
+      - if:
+          properties:
+            color:
+              type: 'null'
+          required:
+          - color
+        then:
+          properties:
+            motivo_sin_color:
+              type: string
+              minLength: 1
+        else:
+          properties:
+            motivo_sin_color:
+              type: 'null'
+      description: Mayor ciclo validado actualmente de ese intervalo; no es una tabla adicional. El ejemplo es sintético.
+      examples:
+      - expediente_id: '201'
+        indicador_id: '63'
+        periodo:
+          inicio: '2026-09-01'
+          fin: '2026-09-30'
+        numero_ciclo: 1
+        valor: '80.00000000'
+        unidad_medida: '%'
+        color: amarillo
+        motivo_sin_color: null
+        validado_en: '2026-10-03T16:00:00Z'
+    Expediente:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        indicador_id:
+          $ref: '#/components/schemas/Id'
+        periodo:
+          $ref: '#/components/schemas/Periodo'
+        numero_ciclo:
+          type: integer
+          minimum: 1
+        expediente_anterior_id:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+        estado:
+          type: string
+          enum:
+          - abierto
+          - validado
+        capturas:
+          type: array
+          items:
+            $ref: '#/components/schemas/Captura'
+        aportes_pendientes:
+          type: boolean
+        publicacion_vigente_id:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+      required:
+      - id
+      - indicador_id
+      - periodo
+      - numero_ciclo
+      - expediente_anterior_id
+      - estado
+      - capturas
+      - aportes_pendientes
+      - publicacion_vigente_id
+      description: Capturas y contadores filtrados antes de serializar. Captura no recibe nombres, valores o PDF
+        de otros aportantes. No contiene JSONB internos.
+      examples:
+      - id: '201'
+        indicador_id: '63'
+        periodo:
+          inicio: '2026-09-01'
+          fin: '2026-09-30'
+        numero_ciclo: 1
+        expediente_anterior_id: null
+        estado: abierto
+        capturas:
+        - id: '101'
+          expediente_id: '201'
+          indicador_id: '63'
+          dependencia_id: '7'
+          capturista_id: '1'
+          numero_envio: 1
+          estado: en_revision
+          enviada_en: '2026-10-02T15:00:00Z'
+        aportes_pendientes: false
+        publicacion_vigente_id: null
+    EventoRevision:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        expediente_id:
+          $ref: '#/components/schemas/Id'
+        captura_id:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+        autor_id:
+          $ref: '#/components/schemas/Id'
+        rol_al_actuar:
+          $ref: '#/components/schemas/Rol'
+        accion:
+          type: string
+          enum:
+          - enviar
+          - revisar
+          - observar
+          - responder
+          - reenviar
+          - resolver_observacion
+          - validar
+          - reabrir
+        estado_anterior:
+          anyOf:
+          - type: string
+          - type: 'null'
+        estado_nuevo:
+          anyOf:
+          - type: string
+          - type: 'null'
+        comentario:
+          anyOf:
+          - type: string
+          - type: 'null'
+        responde_a_id:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+        creado_en:
+          type: string
+          format: date-time
+      required:
+      - id
+      - expediente_id
+      - captura_id
+      - autor_id
+      - rol_al_actuar
+      - accion
+      - estado_anterior
+      - estado_nuevo
+      - comentario
+      - responde_a_id
+      - creado_en
+      description: Solo eventos autorizados; comentarios generales ajenos se suprimen para Captura. No endpoint
+        de escritura libre de eventos.
+      examples:
+      - id: '301'
+        expediente_id: '201'
+        captura_id: '101'
+        autor_id: '2'
+        rol_al_actuar: revision
+        accion: observar
+        estado_anterior: en_revision
+        estado_nuevo: observada
+        comentario: Aclare el respaldo de la cantidad atendida.
+        responde_a_id: null
+        creado_en: '2026-10-02T16:00:00Z'
+    DatosCaptura:
+      type: object
+      additionalProperties: false
+      properties:
+        periodo:
+          $ref: '#/components/schemas/Periodo'
+        expediente_id:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+        descripcion_avance:
+          type: string
+          minLength: 1
+          pattern: \S
+        observaciones_captura:
+          anyOf:
+          - type: string
+          - type: 'null'
+        valores:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValorEntrada'
+          minItems: 1
+          uniqueItems: true
+          description: Backend rechaza repetir variable_id incluso con valores distintos y exige el conjunto completo
+            del ámbito.
+      required:
+      - periodo
+      - expediente_id
+      - descripcion_avance
+      - observaciones_captura
+      - valores
+      description: expediente_id null solicita solo el primer ciclo. Si existe ciclo, releerlo y enviar su ID; no
+        incorporarse automáticamente a una reapertura.
+      examples:
+      - periodo:
+          inicio: '2026-09-01'
+          fin: '2026-09-30'
+        expediente_id: null
+        descripcion_avance: Reporte municipal completo del periodo de demostración.
+        observaciones_captura: null
+        valores:
+        - variable_id: '11'
+          valor: '80'
+        - variable_id: '12'
+          valor: '100'
+    RespuestaObservacion:
+      type: object
+      additionalProperties: false
+      properties:
+        observacion_id:
+          $ref: '#/components/schemas/Id'
+        comentario:
+          type: string
+          minLength: 1
+          pattern: \S
+      required:
+      - observacion_id
+      - comentario
+      examples:
+      - observacion_id: '301'
+        comentario: Se corrigió el dato y se adjunta el respaldo completo.
+    DatosCorreccion:
+      type: object
+      additionalProperties: false
+      properties:
+        descripcion_avance:
+          type: string
+          minLength: 1
+          pattern: \S
+        observaciones_captura:
+          anyOf:
+          - type: string
+          - type: 'null'
+        valores:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValorEntrada'
+          minItems: 1
+          uniqueItems: true
+          description: Backend rechaza repetir variable_id incluso con valores distintos y exige el conjunto completo
+            del ámbito.
+        respuestas:
+          type: array
+          items:
+            $ref: '#/components/schemas/RespuestaObservacion'
+          minItems: 1
+          uniqueItems: true
+      required:
+      - descripcion_avance
+      - observaciones_captura
+      - valores
+      - respuestas
+      description: Nuevo envío completo; observaciones referidas al mismo ciclo/dependencia y cadena de envíos.
+        El periodo se hereda de la captura observada.
+      examples:
+      - descripcion_avance: Reporte municipal completo del periodo de demostración.
+        observaciones_captura: null
+        valores:
+        - variable_id: '11'
+          valor: '80'
+        - variable_id: '12'
+          valor: '100'
+        respuestas:
+        - observacion_id: '301'
+          comentario: Se corrigió el dato y se adjunta el respaldo completo.
+    ObservacionEntrada:
+      type: object
+      additionalProperties: false
+      properties:
+        comentario:
+          type: string
+          minLength: 1
+          pattern: \S
+      required:
+      - comentario
+      examples:
+      - comentario: Aclare el respaldo de la cantidad atendida.
+    RevisionEntrada:
+      type: object
+      additionalProperties: false
+      properties:
+        observaciones_resueltas_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/Id'
+          uniqueItems: true
+      required:
+      - observaciones_resueltas_ids
+      description: Revisión acepta explícitamente estas observaciones de la cadena. Se registra resolución y revisión;
+        no publica. Lista vacía en recorrido sin observaciones.
+      examples:
+      - observaciones_resueltas_ids: []
+    ValidacionEntrada:
+      type: object
+      additionalProperties: false
+      properties:
+        capturas_revisadas_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/Id'
+          minItems: 1
+          uniqueItems: true
+      required:
+      - capturas_revisadas_ids
+      description: Debe coincidir exactamente bajo bloqueo con los envíos efectivos y revisados actuales. No recibe
+        resultado, color, rol ni autor.
+      examples:
+      - capturas_revisadas_ids:
+        - '101'
+    ReaperturaEntrada:
+      type: object
+      additionalProperties: false
+      properties:
+        motivo:
+          type: string
+          minLength: 1
+          pattern: \S
+      required:
+      - motivo
+      examples:
+      - motivo: Corregir un dato respaldado con un nuevo reporte municipal.
+    Notificacion:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        indicador_id:
+          $ref: '#/components/schemas/Id'
+        periodo:
+          $ref: '#/components/schemas/Periodo'
+        tipo:
+          type: string
+        mensaje:
+          type: string
+        creada_en:
+          type: string
+          format: date-time
+        leida_en:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+      required:
+      - id
+      - indicador_id
+      - periodo
+      - tipo
+      - mensaje
+      - creada_en
+      - leida_en
+      examples:
+      - id: '601'
+        indicador_id: '63'
+        periodo:
+          inicio: '2026-09-01'
+          fin: '2026-09-30'
+        tipo: observacion
+        mensaje: Tiene una observación en un envío de su dependencia.
+        creada_en: '2026-10-02T16:00:00Z'
+        leida_en: null
+    FuenteCorte:
+      type: object
+      additionalProperties: false
+      properties:
+        indicador_id:
+          $ref: '#/components/schemas/Id'
+        periodicidad:
+          type: string
+          enum:
+          - mensual
+          - trimestral
+          - semestral
+          - anual
+        periodo_esperado:
+          anyOf:
+          - $ref: '#/components/schemas/Periodo'
+          - type: 'null'
+        estado:
+          type: string
+          enum:
+          - evaluable
+          - sin_resultado
+          - sin_color
+          - no_exigible
+          - calendario_pendiente
+        resultado:
+          anyOf:
+          - $ref: '#/components/schemas/ResultadoPublicado'
+          - type: 'null'
+      required:
+      - indicador_id
+      - periodicidad
+      - periodo_esperado
+      - estado
+      - resultado
+      description: Resultado, si existe, corresponde exactamente al periodo esperado; nunca al último publicado
+        de otro periodo.
+    EvaluacionTematica:
+      type: object
+      additionalProperties: false
+      properties:
+        agrupacion_id:
+          $ref: '#/components/schemas/Id'
+        corte:
+          type: string
+          pattern: ^\d{4}-(0[1-9]|1[0-2])$
+        fecha_corte:
+          type: string
+          format: date
+        indicadores:
+          type: array
+          items:
+            $ref: '#/components/schemas/FuenteCorte'
+        evaluables:
+          type: integer
+          minimum: 0
+        total_configurados:
+          type: integer
+          minimum: 0
+        denominador_cobertura:
+          anyOf:
+          - type: integer
+            minimum: 0
+          - type: 'null'
+        cobertura:
+          anyOf:
+          - type: number
+            minimum: 0
+            maximum: 1
+          - type: 'null'
+        indice:
+          anyOf:
+          - type: number
+            minimum: 0
+            maximum: 1
+          - type: 'null'
+        color:
+          anyOf:
+          - $ref: '#/components/schemas/Color'
+          - type: 'null'
+        estado_evaluacion:
+          type: string
+          enum:
+          - completa
+          - sin_evaluables
+          - calendario_pendiente
+          - politica_cobertura_pendiente
+        pendientes:
+          type: array
+          items:
+            type: string
+      required:
+      - agrupacion_id
+      - corte
+      - fecha_corte
+      - indicadores
+      - evaluables
+      - total_configurados
+      - denominador_cobertura
+      - cobertura
+      - indice
+      - color
+      - estado_evaluacion
+      - pendientes
+      allOf:
+      - if:
+          properties:
+            evaluables:
+              const: 0
+          required:
+          - evaluables
+        then:
+          properties:
+            indice:
+              type: 'null'
+            color:
+              type: 'null'
+      - if:
+          properties:
+            estado_evaluacion:
+              enum:
+              - calendario_pendiente
+              - politica_cobertura_pendiente
+          required:
+          - estado_evaluacion
+        then:
+          properties:
+            color:
+              type: 'null'
+            pendientes:
+              minItems: 1
+      description: 'DEC-013/020/021/022. Índice=(V+0.5*A)/N. Verde>=0.80; amarillo>=0.50 y <0.80; rojo<0.50, solo
+        cuando la política de cobertura lo permita. P-10 desconocido: no inventar Y/color. Si falta universo temporal:
+        índice/cobertura/color null. No filtrar por fecha de validación <= corte.'
+      examples:
+      - agrupacion_id: '8'
+        corte: 2026-09
+        fecha_corte: '2026-09-30'
+        indicadores:
+        - indicador_id: '63'
+          periodicidad: mensual
+          periodo_esperado:
+            inicio: '2026-09-01'
+            fin: '2026-09-30'
+          estado: evaluable
+          resultado:
+            expediente_id: '201'
+            indicador_id: '63'
+            periodo:
+              inicio: '2026-09-01'
+              fin: '2026-09-30'
+            numero_ciclo: 1
+            valor: '80.00000000'
+            unidad_medida: '%'
+            color: amarillo
+            motivo_sin_color: null
+            validado_en: '2026-10-03T16:00:00Z'
+        evaluables: 1
+        total_configurados: 1
+        denominador_cobertura: null
+        cobertura: null
+        indice: 0.5
+        color: null
+        estado_evaluacion: politica_cobertura_pendiente
+        pendientes:
+        - P-10
+    ErrorCampo:
+      type: object
+      additionalProperties: false
+      properties:
+        campo:
+          type: string
+          description: JSON Pointer, o nombre de parte multipart.
+        codigo:
+          type: string
+        detalle:
+          type: string
+      required:
+      - campo
+      - codigo
+      - detalle
+    Problema:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        codigo:
+          type: string
+        errores:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorCampo'
+        pendientes:
+          type: array
+          items:
+            type: string
+      required:
+      - type
+      - title
+      - status
+      - detail
+      - instance
+      - codigo
+      - errores
+      - pendientes
+      description: application/problem+json RFC 9457. Sin SQL, trazas, secretos, URL firmada ni datos de otros usuarios.
+    PaginaIndicadores:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Indicador'
+        paginacion:
+          $ref: '#/components/schemas/Paginacion'
+      required:
+      - items
+      - paginacion
+      examples:
+      - items:
+        - id: '63'
+          codigo: DEMO.IND.001
+          nombre: Cobertura de demostración
+          familia:
+            id: '54'
+            codigo: DEMO.F54
+            nombre: Familia de demostración
+            agrupacion:
+              id: '8'
+              codigo: DEMO.08
+              nombre: Agrupación de demostración
+          periodicidad: mensual
+          primer_periodo_exigible: '2026-01-01'
+          disponibilidad_captura: lista
+          pendientes: []
+        paginacion:
+          pagina: 1
+          por_pagina: 20
+          total: 1
+    PaginaExpedientes:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Expediente'
+        paginacion:
+          $ref: '#/components/schemas/Paginacion'
+      required:
+      - items
+      - paginacion
+      examples:
+      - items:
+        - id: '201'
+          indicador_id: '63'
+          periodo:
+            inicio: '2026-09-01'
+            fin: '2026-09-30'
+          numero_ciclo: 1
+          expediente_anterior_id: null
+          estado: abierto
+          capturas:
+          - id: '101'
+            expediente_id: '201'
+            indicador_id: '63'
+            dependencia_id: '7'
+            capturista_id: '1'
+            numero_envio: 1
+            estado: en_revision
+            enviada_en: '2026-10-02T15:00:00Z'
+          aportes_pendientes: false
+          publicacion_vigente_id: null
+        paginacion:
+          pagina: 1
+          por_pagina: 20
+          total: 1
+    PaginaEventos:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventoRevision'
+        paginacion:
+          $ref: '#/components/schemas/Paginacion'
+      required:
+      - items
+      - paginacion
+      examples:
+      - items:
+        - id: '301'
+          expediente_id: '201'
+          captura_id: '101'
+          autor_id: '2'
+          rol_al_actuar: revision
+          accion: observar
+          estado_anterior: en_revision
+          estado_nuevo: observada
+          comentario: Aclare el respaldo de la cantidad atendida.
+          responde_a_id: null
+          creado_en: '2026-10-02T16:00:00Z'
+        paginacion:
+          pagina: 1
+          por_pagina: 20
+          total: 1
+    PaginaResultados:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultadoPublicado'
+        paginacion:
+          $ref: '#/components/schemas/Paginacion'
+      required:
+      - items
+      - paginacion
+      examples:
+      - items:
+        - expediente_id: '201'
+          indicador_id: '63'
+          periodo:
+            inicio: '2026-09-01'
+            fin: '2026-09-30'
+          numero_ciclo: 1
+          valor: '80.00000000'
+          unidad_medida: '%'
+          color: amarillo
+          motivo_sin_color: null
+          validado_en: '2026-10-03T16:00:00Z'
+        paginacion:
+          pagina: 1
+          por_pagina: 20
+          total: 1
+    PaginaNotificaciones:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notificacion'
+        paginacion:
+          $ref: '#/components/schemas/Paginacion'
+      required:
+      - items
+      - paginacion
+      examples:
+      - items:
+        - id: '601'
+          indicador_id: '63'
+          periodo:
+            inicio: '2026-09-01'
+            fin: '2026-09-30'
+          tipo: observacion
+          mensaje: Tiene una observación en un envío de su dependencia.
+          creada_en: '2026-10-02T16:00:00Z'
+          leida_en: null
+        paginacion:
+          pagina: 1
+          por_pagina: 20
+          total: 1
+  responses:
+    SolicitudInvalida:
+      description: La solicitud no tiene el formato esperado.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: SolicitudInvalida
+                status: 400
+                detail: La solicitud no tiene el formato esperado.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: SOLICITUD_MAL_FORMADA
+                errores: []
+                pendientes: []
+    NoAutenticado:
+      description: No se pudo autenticar la solicitud.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: NoAutenticado
+                status: 401
+                detail: No se pudo autenticar la solicitud.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: NO_AUTENTICADO
+                errores: []
+                pendientes: []
+    NoPermitido:
+      description: La acción, el origen o el token CSRF no están autorizados.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: NoPermitido
+                status: 403
+                detail: La acción, el origen o el token CSRF no están autorizados.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: NO_PERMITIDO
+                errores: []
+                pendientes: []
+    NoEncontrado:
+      description: El recurso no está disponible.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: NoEncontrado
+                status: 404
+                detail: El recurso no está disponible.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: NO_ENCONTRADO
+                errores: []
+                pendientes: []
+    Conflicto:
+      description: La operación no corresponde al estado actual.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: Conflicto
+                status: 409
+                detail: La operación no corresponde al estado actual.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: ESTADO_INVALIDO
+                errores: []
+                pendientes: []
+            configuracionPendiente:
+              value:
+                type: about:blank
+                title: Conflicto
+                status: 409
+                detail: No se puede determinar el calendario o la modalidad de envío sin resolver los pendientes.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: CONFIGURACION_PENDIENTE
+                errores: []
+                pendientes:
+                - P-07
+                - PROP-BD-003
+            conjuntoModificado:
+              value:
+                type: about:blank
+                title: Conflicto
+                status: 409
+                detail: Los envíos efectivos ya no coinciden con los que fueron revisados.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: ENVIO_VIGENTE_MODIFICADO
+                errores: []
+                pendientes: []
+    CargaExcesiva:
+      description: La carga supera el límite configurado.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: CargaExcesiva
+                status: 413
+                detail: La carga supera el límite configurado.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: LIMITE_CARGA
+                errores: []
+                pendientes: []
+    ContenidoNoPermitido:
+      description: Se requiere el tipo de contenido indicado y evidencias PDF válidas.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: ContenidoNoPermitido
+                status: 415
+                detail: Se requiere el tipo de contenido indicado y evidencias PDF válidas.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: CONTENIDO_NO_PERMITIDO
+                errores: []
+                pendientes: []
+    DatosInvalidos:
+      description: Los datos no cumplen las condiciones del envío.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: DatosInvalidos
+                status: 422
+                detail: Los datos no cumplen las condiciones del envío.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: DATOS_INVALIDOS
+                errores:
+                - campo: /valores
+                  codigo: VARIABLE_FALTANTE
+                  detalle: Debe incluir todas las entradas obligatorias de su ámbito.
+                pendientes: []
+    DemasiadosIntentos:
+      description: Se excedió la protección de intentos.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: DemasiadosIntentos
+                status: 429
+                detail: Se excedió la protección de intentos.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: DEMASIADOS_INTENTOS
+                errores: []
+                pendientes: []
+    ErrorInterno:
+      description: No se pudo completar la operación.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: ErrorInterno
+                status: 500
+                detail: No se pudo completar la operación.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: ERROR_INTERNO
+                errores: []
+                pendientes: []
+    NoDisponible:
+      description: El almacenamiento no está disponible temporalmente.
+      headers:
+        Cache-Control:
+          description: No almacenar datos privados ni respuestas autenticadas.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            ejemplo:
+              value:
+                type: about:blank
+                title: NoDisponible
+                status: 503
+                detail: El almacenamiento no está disponible temporalmente.
+                instance: /api/v1/indicadores/63/capturas
+                codigo: ALMACENAMIENTO_NO_DISPONIBLE
+                errores: []
+                pendientes: []
