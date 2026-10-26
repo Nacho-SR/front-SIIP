@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIIP Salamanca | Tablero de seguimiento</title>
+
+<style>
+:root{
+  --guinda:#7b1230;
+  --guinda2:#9a2143;
+  --guindaSoft:#f7edf1;
+  --navy:#13284b;
+  --text:#26364c;
+  --muted:#6f7d8f;
+  --border:#dfe4ea;
+  --bg:#f4f6f8;
+  --white:#ffffff;
+
+  --green:#2ca25f;
+  --greenSoft:#e8f5ed;
+  --yellow:#f6c229;
+  --yellowSoft:#fff8dc;
+  --red:#e33f3f;
+  --redSoft:#fdecec;
+  --gray:#b7c0ca;
+  --graySoft:#eef1f4;
+
+  --shadow:0 1px 4px rgba(20,35,55,.08);
+}
+
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  font-family:"Segoe UI",Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+button, select{ font:inherit; }
+
+.header{
+  height:70px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:var(--white);
+  border-bottom:1px solid var(--border);
+  padding:0 24px;
+  position:sticky;
+  top:0;
+  z-index:20;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:18px;
+}
+
+.brand h1{
+  margin:0;
+  color:var(--guinda);
+  font-size:30px;
+  letter-spacing:-1px;
+}
+
+.brand .divider{
+  width:1px;
+  height:34px;
+  background:#cfd5db;
+}
+
+.screen-title{
+  color:var(--navy);
+  font-weight:700;
+  font-size:19px;
+}
+
+.demo{
+  background:var(--guindaSoft);
+  color:var(--guinda);
+  border-radius:20px;
+  padding:5px 10px;
+  font-size:11px;
+  font-weight:700;
+}
+
+.filters{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.filter-label{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:600;
+}
+
+.filters select{
+  border:1px solid var(--border);
+  background:#fff;
+  color:var(--text);
+  padding:8px 30px 8px 10px;
+  border-radius:7px;
+}
+
+.layout{
+  display:grid;
+  grid-template-columns:270px 1fr;
+  min-height:calc(100vh - 70px);
+}
+
+.sidebar{
+  background:#fff;
+  border-right:1px solid var(--border);
+  padding:18px 0;
+}
+
+.sidebar h3{
+  margin:0 20px 12px;
+  font-size:15px;
+  color:var(--navy);
+}
+
+.nav-home,
+.theme-item{
+  width:100%;
+  border:none;
+  background:transparent;
+  text-align:left;
+  cursor:pointer;
+}
+
+.nav-home{
+  padding:13px 20px;
+  color:var(--navy);
+  font-weight:700;
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+
+.nav-home:hover{ background:#f8f9fa; }
+
+.nav-home.active{
+  background:var(--guinda);
+  color:#fff;
+}
+
+.theme-list{ margin-top:10px; }
+
+.theme-item{
+  min-height:60px;
+  padding:10px 16px 10px 20px;
+  display:grid;
+  grid-template-columns:28px 1fr 14px;
+  align-items:center;
+  gap:10px;
+  border-left:4px solid transparent;
+  color:var(--navy);
+}
+
+.theme-item:hover{ background:#f8f9fa; }
+
+.theme-item.active{
+  background:#f9edf1;
+  border-left-color:var(--guinda);
+  color:var(--guinda);
+  font-weight:700;
+}
+
+.theme-icon{
+  font-size:20px;
+  text-align:center;
+}
+
+.theme-name{
+  font-size:13px;
+  line-height:1.25;
+}
+
+.dot{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+}
+.dot.green{background:var(--green)}
+.dot.yellow{background:var(--yellow)}
+.dot.red{background:var(--red)}
+.dot.gray{background:var(--gray)}
+
+.main{
+  padding:18px;
+  overflow:hidden;
+}
+
+.card{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:10px;
+  box-shadow:var(--shadow);
+}
+
+.section{ margin-bottom:14px; }
+
+.section-title{
+  color:var(--navy);
+  margin:0 0 10px;
+  font-size:19px;
+}
+
+.section-subtitle{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:-4px;
+  margin-bottom:12px;
+}
+
+.summary-grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:12px;
+}
+
+.summary-card{
+  padding:15px;
+  display:flex;
+  gap:14px;
+  align-items:center;
+  min-height:95px;
+}
+
+.summary-circle{
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  flex:0 0 auto;
+}
+
+.summary-card .number{
+  font-size:28px;
+  line-height:1;
+  font-weight:750;
+  color:var(--navy);
+}
+
+.summary-card .caption{
+  font-size:12px;
+  color:var(--text);
+  margin-top:4px;
+}
+
+.summary-card .pct{
+  font-size:12px;
+  font-weight:700;
+  margin-top:4px;
+}
+
+.trend-icon{
+  font-size:40px;
+  color:var(--green);
+}
+
+.trend-title{
+  font-size:23px;
+  font-weight:750;
+  color:var(--green);
+}
+
+.grid-2{
+  display:grid;
+  grid-template-columns:1.25fr .95fr;
+  gap:14px;
+}
+
+.panel{ padding:15px; }
+
+.panel h3{
+  margin:0;
+  color:var(--navy);
+  font-size:17px;
+}
+
+.panel-note{
+  color:var(--muted);
+  font-size:12px;
+  margin:3px 0 10px;
+}
+
+.chart-wrap{
+  width:100%;
+  height:330px;
+}
+
+svg{
+  width:100%;
+  height:100%;
+}
+
+.band-label{
+  font-size:11px;
+  font-weight:700;
+}
+
+.chart-legend{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:5px 14px;
+  margin-top:8px;
+  font-size:11px;
+}
+
+.legend-item{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+
+.legend-line{
+  width:22px;
+  height:3px;
+  border-radius:3px;
+}
+
+.bar-table{ margin-top:9px; }
+
+.bar-row{
+  display:grid;
+  grid-template-columns:210px 1fr 45px;
+  gap:10px;
+  align-items:center;
+  min-height:38px;
+}
+
+.bar-name{
+  font-size:12px;
+  color:var(--navy);
+}
+
+.bar-total{
+  font-weight:700;
+  text-align:right;
+  font-size:12px;
+}
+
+.stack{
+  height:22px;
+  display:flex;
+  border-radius:4px;
+  overflow:hidden;
+  background:#eee;
+}
+
+.segment{
+  color:#fff;
+  font-size:11px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+}
+
+.segment.green{background:var(--green)}
+.segment.yellow{
+  background:var(--yellow);
+  color:#403400;
+}
+.segment.red{background:var(--red)}
+.segment.gray{
+  background:var(--gray);
+  color:#324052;
+}
+
+.bar-header{
+  display:flex;
+  justify-content:flex-end;
+  gap:15px;
+  margin:8px 0;
+  font-size:10px;
+}
+
+.legend-box{
+  width:9px;
+  height:9px;
+  border-radius:2px;
+  display:inline-block;
+  margin-right:4px;
+}
+
+.lower-grid{
+  display:grid;
+  grid-template-columns:1.15fr .85fr;
+  gap:14px;
+  margin-top:14px;
+}
+
+.scope-row{
+  display:grid;
+  grid-template-columns:110px 1fr 38px;
+  align-items:center;
+  gap:10px;
+  margin:10px 0;
+}
+
+.scope-name{
+  font-size:12px;
+  font-weight:600;
+  color:var(--navy);
+}
+
+.axis-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:9px;
+  margin-top:10px;
+}
+
+.axis-card{
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:12px 8px;
+  text-align:center;
+  min-height:145px;
+}
+
+.axis-icon{
+  font-size:28px;
+  margin-bottom:6px;
+  color:var(--navy);
+}
+
+.axis-title{
+  font-size:11px;
+  color:var(--navy);
+  min-height:43px;
+}
+
+.axis-status{
+  margin-top:7px;
+  font-size:12px;
+  font-weight:700;
+}
+
+.axis-meta{
+  font-size:10px;
+  color:var(--muted);
+  margin-top:4px;
+}
+
+.bottom-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-top:14px;
+}
+
+.info-grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
+  margin-top:10px;
+}
+
+.info-item{
+  border-right:1px solid var(--border);
+  padding:5px 9px;
+}
+
+.info-item:last-child{ border-right:none; }
+
+.info-number{
+  font-size:21px;
+  font-weight:750;
+  color:var(--navy);
+}
+
+.info-label{
+  font-size:10px;
+  color:var(--muted);
+}
+
+.alert-list{ margin-top:8px; }
+
+.alert-row{
+  display:grid;
+  grid-template-columns:25px 1fr 18px;
+  gap:8px;
+  border-top:1px solid var(--border);
+  padding:8px 0;
+  align-items:start;
+}
+
+.alert-row:first-child{ border-top:none; }
+
+.alert-num{
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  color:#fff;
+  font-size:11px;
+  font-weight:700;
+  background:var(--guinda);
+}
+
+.alert-text{
+  font-size:11px;
+  line-height:1.35;
+}
+
+.arrow{
+  color:var(--muted);
+  font-size:18px;
+}
+
+.hidden{ display:none !important; }
+
+.breadcrumb{
+  color:var(--muted);
+  font-size:12px;
+  margin-bottom:10px;
+}
+
+.detail-summary{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:9px;
+}
+
+.detail-summary .summary-card{
+  min-height:85px;
+  padding:12px;
+}
+
+.detail-grid{
+  display:grid;
+  grid-template-columns:1.25fr .75fr;
+  gap:14px;
+  margin-top:14px;
+}
+
+.status-box{
+  border:1px solid #f0df9b;
+  background:#fff9df;
+  border-radius:8px;
+  text-align:center;
+  padding:20px 10px;
+}
+
+.status-box .big{
+  font-size:39px;
+  color:var(--navy);
+  font-weight:800;
+}
+
+.status-box .change{
+  color:var(--green);
+  font-size:20px;
+  font-weight:700;
+  margin-top:13px;
+}
+
+.indicator-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:11px;
+  margin-top:10px;
+}
+
+.indicator-table th{
+  background:#f3f5f7;
+  text-align:left;
+  color:var(--navy);
+  padding:8px;
+  border-bottom:1px solid var(--border);
+}
+
+.indicator-table td{
+  padding:8px;
+  border-bottom:1px solid var(--border);
+  vertical-align:middle;
+}
+
+.mini-trend{
+  font-size:17px;
+  font-weight:700;
+}
+
+.mini-trend.up{color:var(--green)}
+.mini-trend.down{color:var(--red)}
+.mini-trend.stable{color:var(--muted)}
+
+.sem{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  display:inline-block;
+}
+.sem.green{background:var(--green)}
+.sem.yellow{background:var(--yellow)}
+.sem.red{background:var(--red)}
+.sem.gray{background:var(--gray)}
+
+.back-button{
+  border:1px solid var(--border);
+  background:#fff;
+  color:var(--guinda);
+  border-radius:7px;
+  padding:8px 12px;
+  font-weight:700;
+  cursor:pointer;
+  margin-bottom:10px;
+}
+
+@media(max-width:1200px){
+  .layout{ grid-template-columns:225px 1fr; }
+  .summary-grid{ grid-template-columns:repeat(3,1fr); }
+  .grid-2,.lower-grid,.bottom-grid,.detail-grid{ grid-template-columns:1fr; }
+  .detail-summary{ grid-template-columns:repeat(3,1fr); }
+}
+
+@media(max-width:820px){
+  .layout{ grid-template-columns:1fr; }
+  .sidebar{ display:none; }
+  .header{
+    height:auto;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:10px;
+    padding:12px;
+  }
+  .summary-grid,.detail-summary{ grid-template-columns:repeat(2,1fr); }
+  .axis-grid{ grid-template-columns:repeat(2,1fr); }
+  .bar-row{ grid-template-columns:130px 1fr 30px; }
+  .info-grid{ grid-template-columns:repeat(2,1fr); }
+}
+
+/* ---- Ajustes de la versión corregida ---- */
+.pct.muted{ color:var(--muted); font-weight:600; }
+.trend-icon.neg, .trend-title.neg{ color:var(--red); }
+.trend-icon.flat, .trend-title.flat{ color:var(--muted); }
+.mini-trend.fav{ color:var(--green); }
+.mini-trend.unfav{ color:var(--red); }
+.mini-trend.neutral{ color:var(--muted); }
+.legend-item{ cursor:default; border-radius:4px; padding:2px 4px; }
+.legend-item:hover{ background:#f3f5f7; }
+.legend-value{ margin-left:auto; font-weight:700; color:var(--navy); }
+.method-note{
+  font-size:11px; color:var(--muted); line-height:1.45;
+  border-top:1px solid var(--border); margin-top:10px; padding-top:8px;
+}
+.status-box.green{ border-color:#bfe3cc; background:var(--greenSoft); }
+.status-box.yellow{ border-color:#f0df9b; background:var(--yellowSoft); }
+.status-box.red{ border-color:#f3c2c2; background:var(--redSoft); }
+.status-box .coverage{ font-size:12px; color:var(--muted); margin-top:6px; }
+.status-box .change.neg{ color:var(--red); }
+.status-box .change.flat{ color:var(--muted); }
+.theme-item:focus-visible, .nav-home:focus-visible, .back-button:focus-visible{
+  outline:2px solid var(--guinda); outline-offset:-2px;
+}
+</style>
+</head>
+
+<body>
+
+<header class="header">
+  <div class="brand">
+    <h1>SIIP Salamanca</h1>
+    <div class="divider"></div>
+    <div class="screen-title" id="headerTitle">Pantalla principal</div>
+    <span class="demo">DATOS DE MUESTRA</span>
+  </div>
+
+  <div class="filters">
+    <label class="filter-label" for="periodSelect">Periodo</label>
+    <select id="periodSelect">
+      <option>T2 (Abr–Jun) 2026</option>
+    </select>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <button class="nav-home active" id="homeButton">
+      <span>⌂</span>
+      <span>Pantalla principal</span>
+    </button>
+    <h3>Agrupaciones temáticas</h3>
+    <div class="theme-list" id="themeList"></div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ================= PANTALLA PRINCIPAL ================= -->
+    <div id="mainDashboard">
+
+      <section class="section card panel">
+        <h2 class="section-title">Panorama general del municipio</h2>
+        <div class="summary-grid" id="mainSummary"></div>
+      </section>
+
+      <div class="grid-2 section">
+        <section class="card panel">
+          <h3>Evolución por agrupación temática</h3>
+          <div class="panel-note">Índice de valoración agregada (0–100). Pasa el cursor sobre la leyenda para resaltar una agrupación.</div>
+          <div class="chart-wrap"><svg id="mainEvolution" viewBox="0 0 760 320"></svg></div>
+          <div class="chart-legend" id="mainLegend"></div>
+        </section>
+
+        <section class="card panel">
+          <h3>Corte actual por agrupación temática</h3>
+          <div class="panel-note">Distribución de indicadores por condición semafórica. Periodo T2 2026.</div>
+          <div class="bar-header">
+            <span><i class="legend-box" style="background:var(--green)"></i>Verde</span>
+            <span><i class="legend-box" style="background:var(--yellow)"></i>Amarillo</span>
+            <span><i class="legend-box" style="background:var(--red)"></i>Rojo</span>
+            <span><i class="legend-box" style="background:var(--gray)"></i>Sin valoración</span>
+          </div>
+          <div class="bar-table" id="themeBars"></div>
+          <div class="method-note">
+            Índice = (100 × verdes + 50 × amarillos) ÷ indicadores valorados. Verde ≥ 75; amarillo de 35 a 74; rojo &lt; 35.
+            "Sin valoración" agrupa indicadores desfasados o sin dato, que no entran en el cálculo.
+          </div>
+        </section>
+      </div>
+
+      <div class="lower-grid">
+        <section class="card panel">
+          <h3>Desempeño por ámbito de desempeño</h3>
+          <div class="panel-note" id="scopeNote"></div>
+          <div id="scopeBars"></div>
+        </section>
+
+        <section class="card panel">
+          <h3>Ejes transversales técnicos</h3>
+          <div class="panel-note">Cada indicador se asocia a un eje predominante. Misma regla de valoración que las agrupaciones.</div>
+          <div class="axis-grid" id="mainAxes"></div>
+        </section>
+      </div>
+
+      <div class="bottom-grid">
+        <section class="card panel">
+          <h3>Estado de la información</h3>
+          <div class="info-grid" id="mainInfo"></div>
+        </section>
+
+        <section class="card panel">
+          <h3>⚠ Situaciones que requieren atención</h3>
+          <div class="alert-list" id="mainAlerts"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ================= SEGUNDO NIVEL ================= -->
+    <div id="themeDashboard" class="hidden">
+
+      <button class="back-button" id="backButton">← Volver a pantalla principal</button>
+      <div class="breadcrumb">Pantalla principal › <span id="breadcrumbTheme"></span></div>
+
+      <section class="card panel">
+        <h2 class="section-title">Panorama de la agrupación</h2>
+        <div class="detail-summary" id="detailSummary"></div>
+      </section>
+
+      <div class="detail-grid">
+        <section class="card panel">
+          <h3>Evolución agregada de la agrupación</h3>
+          <div class="panel-note">Índice de valoración agregada hasta el periodo T2 2026.</div>
+          <div class="chart-wrap"><svg id="detailEvolution" viewBox="0 0 720 320"></svg></div>
+        </section>
+
+        <section class="status-box" id="statusBox">
+          <div style="font-size:13px;font-weight:700;color:var(--navy)">Semáforo de la agrupación</div>
+          <div id="detailStatusDot" style="width:38px;height:38px;border-radius:50%;margin:18px auto 8px"></div>
+          <div id="detailStatusText" style="font-size:18px;font-weight:750;color:var(--navy)"></div>
+          <div class="big" id="detailScore"></div>
+          <div style="font-size:13px">Índice de valoración, T2 2026</div>
+          <div class="coverage" id="detailCoverage"></div>
+          <div class="change" id="detailChange"></div>
+        </section>
+      </div>
+
+      <div class="lower-grid">
+        <section class="card panel">
+          <h3>Corte actual por ámbito de desempeño</h3>
+          <div class="panel-note" id="scopeDetailLabel"></div>
+          <div id="detailScopeBars"></div>
+        </section>
+
+        <section class="card panel">
+          <h3>Ejes transversales técnicos</h3>
+          <div class="panel-note">Indicadores de la agrupación según su eje predominante.</div>
+          <div class="axis-grid" id="detailAxes"></div>
+        </section>
+      </div>
+
+      <div class="bottom-grid">
+        <section class="card panel">
+          <h3>Indicadores prioritarios de la agrupación</h3>
+          <table class="indicator-table">
+            <thead>
+              <tr><th>Indicador</th><th>Último valor</th><th>Semáforo</th><th>Tendencia</th><th>Comentario</th></tr>
+            </thead>
+            <tbody id="indicatorRows"></tbody>
+          </table>
+          <div class="method-note">El color de la tendencia indica si el cambio es favorable según el sentido esperado del indicador, no la dirección de la flecha.</div>
+        </section>
+
+        <div>
+          <section class="card panel" style="margin-bottom:14px">
+            <h3>Estado de la información</h3>
+            <div class="info-grid" style="grid-template-columns:repeat(4,1fr)" id="detailInfo"></div>
+          </section>
+
+          <section class="card panel">
+            <h3>⚠ Situaciones que requieren atención</h3>
+            <div id="detailAlerts" class="alert-list"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* =========================================================
+   REGLAS DE VALORACIÓN (coherentes con el apartado 1.3)
+   ========================================================= */
+const UMBRAL_VERDE = 75;
+const UMBRAL_ROJO  = 35;
+const PERIODOS = ["T3 2025","T4 2025","T1 2026","T2 2026"];
+
+function indice(c){
+  const valorados = c.green + c.yellow + c.red;
+  if(!valorados) return null;
+  return Math.round((100*c.green + 50*c.yellow) / valorados);
+}
+function estado(v){
+  if(v===null) return "gray";
+  if(v >= UMBRAL_VERDE) return "green";
+  if(v >= UMBRAL_ROJO)  return "yellow";
+  return "red";
+}
+const TXT_ESTADO = {green:"En verde", yellow:"En amarillo", red:"En rojo", gray:"Sin valoración"};
+const COL_ESTADO = {green:"var(--green)", yellow:"var(--yellow)", red:"var(--red)", gray:"var(--gray)"};
+const COL_TEXTO  = {green:"var(--green)", yellow:"#b48a00", red:"var(--red)", gray:"var(--muted)"};
+
+/* =========================================================
+   DATOS DE MUESTRA
+   counts: verdes / amarillos / rojos (valorados)
+   info:   pendientes (valorados con último dato válido),
+           desfasados y sin dato (no valorados)
+   hist:   índice de los tres periodos anteriores
+   ========================================================= */
+const themes = [
+  { id:1, icon:"◈", name:"Seguridad, justicia cívica y protección civil",
+    counts:{green:7, yellow:5, red:2}, info:{pending:1, outdated:1, nodata:1}, hist:[38,54,62] },
+  { id:2, icon:"♙", name:"Bienestar y desarrollo social",
+    counts:{green:10, yellow:5, red:0}, info:{pending:1, outdated:0, nodata:2}, hist:[58,64,75] },
+  { id:3, icon:"▥", name:"Economía y empleo",
+    counts:{green:2, yellow:5, red:7}, info:{pending:2, outdated:1, nodata:0}, hist:[49,43,37] },
+  { id:4, icon:"▦", name:"Territorio y ordenamiento urbano",
+    counts:{green:10, yellow:5, red:1}, info:{pending:1, outdated:1, nodata:1}, hist:[52,60,70] },
+  { id:5, icon:"⚙", name:"Infraestructura y servicios públicos",
+    counts:{green:8, yellow:6, red:4}, info:{pending:1, outdated:1, nodata:1}, hist:[44,52,60] },
+  { id:6, icon:"▰", name:"Movilidad y seguridad vial",
+    counts:{green:5, yellow:5, red:3}, info:{pending:0, outdated:0, nodata:1}, hist:[35,48,56] },
+  { id:7, icon:"♜", name:"Gobierno y administración pública",
+    counts:{green:11, yellow:3, red:1}, info:{pending:1, outdated:1, nodata:1}, hist:[55,67,77] },
+  { id:8, icon:"⌂", name:"Cultura, turismo y patrimonio",
+    counts:{green:8, yellow:4, red:1}, info:{pending:0, outdated:0, nodata:1}, hist:[45,58,68] }
+];
+
+/* Indicadores prioritarios (subconjunto de cada agrupación; sus semáforos
+   forman parte de los conteos). dir: dirección del cambio; fav: si el cambio
+   es favorable según el sentido esperado (null = sin cambio). */
+const prioritarios = {
+  1:[
+    ["% de comités vecinales de seguridad activos","56%","red","down",false,"Retroceso respecto del periodo anterior."],
+    ["Tiempo promedio de respuesta ante emergencias (min)","8.5","yellow","down",true,"Mejora: el tiempo disminuye, aunque aún supera el parámetro."],
+    ["Policías municipales por cada mil habitantes","1.8","yellow","up",true,"Avance moderado; aún por debajo del valor esperado."],
+    ["% de zonas prioritarias con vigilancia y monitoreo","76%","yellow","stable",null,"Sin cambio; inferior al parámetro establecido."],
+    ["% de policías que completan formación anual","82%","green","up",true,"Resultado favorable y mejora respecto del periodo anterior."]
+  ],
+  2:[
+    ["Cobertura de apoyos alimentarios en población objetivo","68%","yellow","up",true,"Avance; aún por debajo del parámetro."],
+    ["% de centros comunitarios en operación","71%","yellow","stable",null,"Sin cambio respecto del periodo anterior."],
+    ["Población atendida por programas de salud municipal","64%","yellow","up",true,"Mejora gradual; requiere seguimiento."],
+    ["Tasa de cobertura educativa","91%","green","up",true,"Resultado favorable."],
+    ["% de becas entregadas en tiempo","88%","green","stable",null,"Se mantiene en condición favorable."]
+  ],
+  3:[
+    ["Tasa de desocupación municipal","5.9%","red","up",false,"La desocupación aumenta por tercer periodo."],
+    ["Variación de empleos formales registrados","−2.1%","red","down",false,"Caída respecto del periodo anterior."],
+    ["% de proyectos productivos apoyados en operación","47%","red","down",false,"Retroceso respecto del periodo anterior."],
+    ["% de trámites empresariales resueltos en plazo","72%","yellow","stable",null,"Sin cambio; por debajo del parámetro."],
+    ["Variación de unidades económicas registradas","+0.8%","yellow","up",true,"Crecimiento limitado."]
+  ],
+  4:[
+    ["% de licencias de construcción resueltas en plazo","52%","red","down",false,"Retroceso respecto del periodo anterior."],
+    ["% de asentamientos con uso de suelo regularizado","63%","yellow","up",true,"Avance moderado."],
+    ["Superficie de área verde por habitante (m²)","7.4","yellow","stable",null,"Sin cambio; por debajo del parámetro."],
+    ["% de acciones del programa de ordenamiento en ejecución","84%","green","up",true,"Mejora respecto del periodo anterior."],
+    ["% de reservas territoriales con uso definido","90%","green","stable",null,"Se mantiene en condición favorable."]
+  ],
+  5:[
+    ["% de vialidades pavimentadas en buen estado","48%","red","down",false,"Deterioro respecto del periodo anterior."],
+    ["Cobertura de alumbrado público funcional","61%","red","down",false,"Retroceso por fallas no atendidas."],
+    ["% de viviendas con drenaje","89%","yellow","stable",null,"Sin cambio; por debajo de la meta."],
+    ["Cobertura de recolección de residuos","86%","yellow","up",true,"Avance moderado."],
+    ["% de viviendas con agua potable","97%","green","up",true,"Resultado favorable."]
+  ],
+  6:[
+    ["Víctimas fatales por hechos de tránsito (por 100 mil hab.)","11.2","red","up",false,"Aumento respecto del periodo anterior."],
+    ["Intervalo promedio del transporte público (min)","24","red","up",false,"El intervalo aumenta; empeora el servicio."],
+    ["% de cruces escolares con señalamiento","58%","yellow","up",true,"Avance moderado."],
+    ["Kilómetros de infraestructura ciclista","14.6","yellow","stable",null,"Sin cambio respecto del periodo anterior."],
+    ["% de población a 500 m de una ruta de transporte","82%","green","up",true,"Resultado favorable."]
+  ],
+  7:[
+    ["Tiempo promedio de atención ciudadana (días)","12","red","up",false,"El tiempo aumenta; empeora la atención."],
+    ["Autonomía financiera municipal","31%","yellow","up",true,"Mejora gradual."],
+    ["% de trámites disponibles en línea","58%","yellow","up",true,"Avance moderado."],
+    ["% de solicitudes de transparencia respondidas en plazo","96%","green","stable",null,"Se mantiene en condición favorable."],
+    ["% del presupuesto ejercido conforme a lo programado","92%","green","up",true,"Mejora respecto del periodo anterior."]
+  ],
+  8:[
+    ["% de inmuebles patrimoniales en buen estado","44%","red","down",false,"Deterioro respecto del periodo anterior."],
+    ["Ocupación hotelera promedio","52%","yellow","up",true,"Avance moderado."],
+    ["Talleres culturales impartidos","38","yellow","stable",null,"Sin cambio respecto del periodo anterior."],
+    ["Asistencia a eventos culturales municipales","18,400","green","up",true,"Mejora respecto del periodo anterior."],
+    ["Visitantes a sitios turísticos municipales","26,900","green","up",true,"Mejora respecto del periodo anterior."]
+  ]
+};
+
+const AMBITOS = ["Insumos","Procesos","Productos","Resultados","Impacto"];
+const PESOS_AMBITO = [.18,.24,.27,.20,.11];
+const EJES = [
+  {icon:"⌘", name:"Infraestructura, equipamiento y activos físicos"},
+  {icon:"⌖", name:"Cobertura territorial y accesibilidad espacial"},
+  {icon:"▤", name:"Tecnología, datos y sistemas de información"},
+  {icon:"♙", name:"Capacidad operativa y sostenibilidad de recursos"}
+];
+
+/* Paleta de líneas sin verdes, amarillos ni rojos, para no confundir con el semáforo */
+const lineColors = ["#7b1230","#13284b","#4f7cac","#8e6bb8","#c0708a","#5b6770","#2b8cc4","#9a7a5a"];
+
+/* =========================================================
+   CONSTRUCCIÓN DE LA BASE DE INDICADORES
+   Todo conteo del tablero se obtiene de esta lista, de modo que
+   agrupaciones, ámbitos, ejes y estado de la información cuadran.
+   ========================================================= */
+function reparto(total, pesos){
+  const exactos = pesos.map(p=>p*total);
+  const base = exactos.map(Math.floor);
+  let resto = total - base.reduce((a,b)=>a+b,0);
+  exactos.map((e,i)=>[e-base[i],i]).sort((a,b)=>b[0]-a[0])
+         .forEach(([,i])=>{ if(resto>0){ base[i]++; resto--; } });
+  return base;
+}
+
+const indicadores = [];
+themes.forEach(t=>{
+  const c = t.counts, inf = t.info;
+  const noVal = inf.outdated + inf.nodata;
+  t.total = c.green + c.yellow + c.red + noVal;
+
+  // Orden de reparto: cada condición se distribuye a lo largo de la cadena de
+  // resultados; los rojos y los no valorados tienden a los ámbitos finales.
+  const sesgo = {green:0, yellow:0, red:0.35, gray:0.45};
+  const orden = [];
+  ["green","yellow","red","gray"].forEach(k=>{
+    const m = k==="gray" ? noVal : c[k];
+    for(let j=0;j<m;j++) orden.push({k, key: sesgo[k] + (1-sesgo[k])*(j+0.5)/m});
+  });
+  orden.sort((a,b)=>a.key-b.key);
+  const ciclo = {green:[2,1,0,2,3], yellow:[1,3,0,2], red:[3,0,3,1], gray:[1,3,0]};
+  const usados = {green:0,yellow:0,red:0,gray:0};
+
+  const tamanos = reparto(t.total, PESOS_AMBITO);
+  let pend = inf.pending, desf = inf.outdated;
+  let pos = 0;
+  tamanos.forEach((n,a)=>{
+    for(let k=0;k<n;k++){
+      const sem = orden[pos].k;
+      const eje = ciclo[sem][(usados[sem]++ + t.id) % ciclo[sem].length];
+      let info = "vigente";
+      if(sem==="gray"){ info = desf>0 ? (desf--, "desfasado") : "sindato"; }
+      else if(pend>0 && pos%3===1){ info="pendiente"; pend--; }
+      indicadores.push({ tema:t.id, sem, info, ambito:a, eje });
+      pos++;
+    }
+  });
+  // Pendientes que no alcanzaron a asignarse
+  indicadores.filter(x=>x.tema===t.id && x.sem!=="gray" && x.info==="vigente")
+             .slice(0,pend).forEach(x=>x.info="pendiente");
+});
+
+function contar(lista){
+  const c = {green:0,yellow:0,red:0,gray:0};
+  lista.forEach(x=>c[x.sem]++);
+  return c;
+}
+function contarInfo(lista){
+  const c = {vigente:0,pendiente:0,desfasado:0,sindato:0};
+  lista.forEach(x=>c[x.info]++);
+  return c;
+}
+
+themes.forEach(t=>{
+  t.score  = indice(t.counts);
+  t.status = estado(t.score);
+  t.trend  = [...t.hist, t.score];
+  t.change = t.score - t.hist[2];
+});
+
+/* =========================================================
+   COMPONENTES
+   ========================================================= */
+function stackHTML(c,total){
+  return `<div class="stack">${
+    [["green",c.green],["yellow",c.yellow],["red",c.red],["gray",c.gray]].map(([cls,val])=>
+      val>0 ? `<div class="segment ${cls}" style="width:${val/total*100}%" title="${val}">${val}</div>` : ""
+    ).join("")}</div>`;
+}
+
+function barRow(name,c,cls="bar-row",nameCls="bar-name"){
+  const total = c.green+c.yellow+c.red+c.gray;
+  return `<div class="${cls}"><div class="${nameCls}">${name}</div>${stackHTML(c,total)}<div class="bar-total">${total}</div></div>`;
+}
+
+function axesHTML(lista){
+  return EJES.map((e,i)=>{
+    const sub = lista.filter(x=>x.eje===i);
+    const c = contar(sub);
+    const v = indice(c), s = estado(v);
+    return `<div class="axis-card">
+      <div class="axis-icon">${e.icon}</div>
+      <div class="axis-title">${e.name}</div>
+      <div class="dot ${s}" style="margin:5px auto"></div>
+      <div class="axis-status" style="color:${COL_TEXTO[s]}">${TXT_ESTADO[s]}${v!==null?` · ${v}`:""}</div>
+      <div class="axis-meta">${sub.length} indicadores</div>
+    </div>`;
+  }).join("");
+}
+
+function infoHTML(ci,total,extra=""){
+  const pct = n => Math.round(n/total*100) + "%";
+  const items = [
+    ["Vigente",ci.vigente,"var(--green)"],
+    ["Pendiente",ci.pendiente,"#b48a00"],
+    ["Desfasado",ci.desfasado,"var(--red)"],
+    ["Sin dato",ci.sindato,"#75808c"]
+  ];
+  return items.map(([l,n,col])=>`
+    <div class="info-item">
+      <div class="info-number">${n}</div>
+      <div class="info-label">${l}</div>
+      <strong style="color:${col}">${pct(n)}</strong>
+    </div>`).join("") + extra;
+}
+
+function alertsHTML(lista){
+  return lista.map((a,i)=>`
+    <div class="alert-row">
+      <div class="alert-num">${i+1}</div>
+      <div class="alert-text">${a}</div>
+      <div class="arrow">›</div>
+    </div>`).join("");
+}
+
+function tendenciaTexto(cambio){
+  if(cambio>1)  return {icon:"↗", cls:"",     txt:"Favorable"};
+  if(cambio<-1) return {icon:"↘", cls:"neg",  txt:"Desfavorable"};
+  return               {icon:"→", cls:"flat", txt:"Estable"};
+}
+
+function periodosSeguidosALaBaja(serie){
+  let n=0;
+  for(let i=serie.length-1;i>0;i--){ if(serie[i]<serie[i-1]) n++; else break; }
+  return n;
+}
+const ordinal = ["","primer","segundo","tercer","cuarto"];
+
+/* =========================================================
+   GRÁFICA DE EVOLUCIÓN
+   ========================================================= */
+function drawEvolution(svgId,series,detail=false){
+  const svg = document.getElementById(svgId);
+  const W = detail ? 720 : 760, H = 320;
+  const left = 55, right = detail ? 45 : 30, top = 25, bottom = 55;
+  const plotW = W-left-right, plotH = H-top-bottom;
+  const x = i => left + (plotW/(PERIODOS.length-1))*i;
+  const y = v => top + plotH - (v/100)*plotH;
+
+  let html = "";
+  [
+    {from:UMBRAL_VERDE,to:100,color:"#e7f5e9",label:`Verde (≥ ${UMBRAL_VERDE})`,txt:"#247e4a"},
+    {from:UMBRAL_ROJO,to:UMBRAL_VERDE,color:"#fff6d8",label:`Amarillo (${UMBRAL_ROJO}–${UMBRAL_VERDE-1})`,txt:"#8a6a00"},
+    {from:0,to:UMBRAL_ROJO,color:"#fdeaea",label:`Rojo (< ${UMBRAL_ROJO})`,txt:"#b22035"}
+  ].forEach(b=>{
+    const yy=y(b.to), hh=y(b.from)-y(b.to);
+    html += `<rect x="${left}" y="${yy}" width="${plotW}" height="${hh}" fill="${b.color}"></rect>
+             <text x="${left+plotW-6}" y="${yy+hh/2+4}" text-anchor="end" class="band-label" fill="${b.txt}">${b.label}</text>`;
+  });
+
+  [0,25,50,75,100].forEach(v=>{
+    html += `<line x1="${left}" y1="${y(v)}" x2="${left+plotW}" y2="${y(v)}" stroke="#cbd2d9" stroke-dasharray="${v===0?'0':'4 4'}"></line>
+             <text x="${left-10}" y="${y(v)+4}" font-size="10" fill="#617083" text-anchor="end">${v}</text>`;
+  });
+
+  PERIODOS.forEach((p,i)=>{
+    html += `<line x1="${x(i)}" y1="${top}" x2="${x(i)}" y2="${top+plotH}" stroke="#dde2e7" stroke-dasharray="4 4"></line>
+             <text x="${x(i)}" y="${H-28}" font-size="11" fill="#33465f" text-anchor="middle">${p}</text>`;
+  });
+
+  series.forEach((s,idx)=>{
+    const pts = s.values.map((v,i)=>`${x(i)},${y(v)}`).join(" ");
+    html += `<g class="serie" data-idx="${idx}">
+      <polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="${detail?3:2.4}"></polyline>
+      ${s.values.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="${detail?5:4}" fill="${s.color}"></circle>` +
+        (detail?`<text x="${x(i)}" y="${y(v)-12}" font-size="11" font-weight="700" text-anchor="middle" fill="#26364c">${v}</text>`:"")
+      ).join("")}
+    </g>`;
+  });
+
+  svg.innerHTML = html;
+}
+
+function resaltar(idx){
+  document.querySelectorAll("#mainEvolution .serie").forEach(g=>{
+    g.style.opacity = (idx===null || +g.dataset.idx===idx) ? 1 : 0.15;
+  });
+}
+
+/* =========================================================
+   PANTALLA PRINCIPAL
+   ========================================================= */
+function renderMain(){
+  const total = indicadores.length;
+  const n = s => themes.filter(t=>t.status===s).length;
+  const mejoran = themes.filter(t=>t.change>1).length;
+  const cambioMedio = themes.reduce((a,t)=>a+t.change,0)/themes.length;
+  const tg = tendenciaTexto(cambioMedio);
+
+  document.getElementById("mainSummary").innerHTML = `
+    <div class="summary-card card">
+      <div class="summary-circle" style="background:var(--navy)"></div>
+      <div><div class="number">${total}</div><div class="caption">Total de indicadores</div></div>
+    </div>
+    ${["green","yellow","red"].map(s=>`
+    <div class="summary-card card">
+      <div class="summary-circle" style="background:${COL_ESTADO[s]}"></div>
+      <div>
+        <div class="number">${n(s)}</div>
+        <div class="caption">${n(s)===1?"Agrupación":"Agrupaciones"} ${TXT_ESTADO[s].toLowerCase()}</div>
+        <div class="pct muted">de ${themes.length}</div>
+      </div>
+    </div>`).join("")}
+    <div class="summary-card card">
+      <div class="trend-icon ${tg.cls}">${tg.icon}</div>
+      <div>
+        <div class="caption">Tendencia general</div>
+        <div class="trend-title ${tg.cls}">${tg.txt}</div>
+        <div class="caption">${mejoran} de ${themes.length} agrupaciones mejoran respecto de T1 2026</div>
+      </div>
+    </div>`;
+
+  drawEvolution("mainEvolution", themes.map((t,i)=>({values:t.trend, color:lineColors[i]})));
+
+  const legend = document.getElementById("mainLegend");
+  legend.innerHTML = themes.map((t,i)=>`
+    <div class="legend-item" data-idx="${i}">
+      <span class="legend-line" style="background:${lineColors[i]}"></span>
+      <span>${t.name}</span>
+      <span class="dot ${t.status}" style="width:9px;height:9px"></span>
+      <span class="legend-value">${t.score}</span>
+    </div>`).join("");
+  legend.querySelectorAll(".legend-item").forEach(el=>{
+    el.addEventListener("mouseenter",()=>resaltar(+el.dataset.idx));
+    el.addEventListener("mouseleave",()=>resaltar(null));
+  });
+
+  document.getElementById("themeBars").innerHTML =
+    themes.map(t=>barRow(t.name, contar(indicadores.filter(x=>x.tema===t.id)))).join("");
+
+  document.getElementById("scopeNote").textContent =
+    `Lectura transversal de los ${total} indicadores según la cadena de resultados.`;
+  document.getElementById("scopeBars").innerHTML = AMBITOS.map((a,i)=>{
+    const c = contar(indicadores.filter(x=>x.ambito===i));
+    const v = indice(c), s = estado(v);
+    return barRow(`${a} <span class="dot ${s}" style="display:inline-block;width:8px;height:8px;margin-left:4px"></span>`,
+                  c,"scope-row","scope-name");
+  }).join("");
+
+  document.getElementById("mainAxes").innerHTML = axesHTML(indicadores);
+
+  document.getElementById("mainInfo").innerHTML = infoHTML(contarInfo(indicadores), total, `
+    <div class="info-item">
+      <div class="info-number" style="font-size:16px">15 jul 2026</div>
+      <div class="info-label">Última actualización</div>
+      <strong>Periodo T2 2026</strong>
+    </div>`);
+
+  // Situaciones: rojo primero; después amarillos con menor avance
+  const peso = {red:0, yellow:1, green:2};
+  const criticas = [...themes].filter(t=>t.status!=="green")
+    .sort((a,b)=> peso[a.status]-peso[b.status] || a.change-b.change).slice(0,3);
+  document.getElementById("mainAlerts").innerHTML = alertsHTML(criticas.map(t=>{
+    const val = t.counts.green+t.counts.yellow+t.counts.red;
+    const baja = periodosSeguidosALaBaja(t.trend);
+    let tend;
+    if(baja>0) tend = `baja por ${ordinal[baja]} periodo consecutivo (${t.change} pts)`;
+    else if(t.change<=1) tend = `prácticamente sin cambio (${t.change>=0?"+":""}${t.change} pts)`;
+    else tend = `mejora ${t.change} pts, aún por debajo de ${UMBRAL_VERDE}`;
+    return `<strong>${t.name}.</strong> ${TXT_ESTADO[t.status]} (índice ${t.score}); ${tend}. ${t.counts.red} de ${val} indicadores valorados en rojo.`;
+  }));
+}
+
+/* =========================================================
+   SEGUNDO NIVEL: AGRUPACIÓN TEMÁTICA
+   ========================================================= */
+function renderThemeDetail(theme){
+  const lista = indicadores.filter(x=>x.tema===theme.id);
+  const c = contar(lista);
+  const valorados = c.green+c.yellow+c.red;
+  const tg = tendenciaTexto(theme.change);
+
+  const tarjeta = (col,num,txt)=>`
+    <div class="summary-card card">
+      ${col?`<div class="summary-circle" style="background:${col}"></div>`:""}
+      <div><div class="number">${num}</div><div class="caption">${txt}</div></div>
+    </div>`;
+
+  document.getElementById("detailSummary").innerHTML =
+    tarjeta(null, theme.total, "Total de indicadores") +
+    tarjeta("var(--green)", c.green, "En verde") +
+    tarjeta("var(--yellow)", c.yellow, "En amarillo") +
+    tarjeta("var(--red)", c.red, "En rojo") +
+    tarjeta("var(--gray)", c.gray, "Sin valoración") + `
+    <div class="summary-card card">
+      <div class="trend-icon ${tg.cls}">${tg.icon}</div>
+      <div><div class="caption">Tendencia</div>
+        <div class="trend-title ${tg.cls}" style="font-size:20px">${tg.txt}</div></div>
+    </div>`;
+
+  drawEvolution("detailEvolution",[{values:theme.trend, color:"#7b1230"}],true);
+
+  document.getElementById("statusBox").className = `status-box ${theme.status}`;
+  document.getElementById("detailStatusDot").style.background = COL_ESTADO[theme.status];
+  document.getElementById("detailStatusText").textContent = TXT_ESTADO[theme.status];
+  document.getElementById("detailScore").textContent = theme.score;
+  document.getElementById("detailCoverage").textContent = `${valorados} de ${theme.total} indicadores valorados`;
+  const ch = document.getElementById("detailChange");
+  ch.className = `change ${tg.cls}`;
+  ch.textContent = `${theme.change>=0?"+":""}${theme.change} pts respecto de T1 2026`;
+
+  document.getElementById("scopeDetailLabel").textContent = theme.name;
+  document.getElementById("detailScopeBars").innerHTML = AMBITOS.map((a,i)=>{
+    const sub = lista.filter(x=>x.ambito===i);
+    return sub.length ? barRow(a, contar(sub), "scope-row", "scope-name") : "";
+  }).join("");
+
+  document.getElementById("detailAxes").innerHTML = axesHTML(lista);
+
+  const filas = prioritarios[theme.id];
+  document.getElementById("indicatorRows").innerHTML = filas.map(([nombre,valor,sem,dir,fav,com])=>{
+    const sym = {up:"↗",down:"↘",stable:"→"}[dir];
+    const cls = fav===null ? "neutral" : (fav ? "fav" : "unfav");
+    const tt  = fav===null ? "Sin cambio" : (fav ? "Cambio favorable" : "Cambio desfavorable");
+    return `<tr>
+      <td>${nombre}</td>
+      <td><strong>${valor}</strong></td>
+      <td><span class="sem ${sem}" title="${TXT_ESTADO[sem]}"></span></td>
+      <td><span class="mini-trend ${cls}" title="${tt}">${sym}</span></td>
+      <td>${com}</td>
+    </tr>`;
+  }).join("");
+
+  document.getElementById("detailInfo").innerHTML = infoHTML(contarInfo(lista), theme.total);
+
+  // Situaciones derivadas de los datos de la agrupación
+  const alertas = [];
+  const rojos = filas.filter(f=>f[2]==="red");
+  const amarillos = filas.filter(f=>f[2]==="yellow");
+  if(c.red>0){
+    alertas.push(`${c.red} ${c.red===1?"indicador":"indicadores"} en rojo, entre ellos «${rojos[0][0]}» (${rojos[0][1]}).`);
+  } else if(amarillos.length){
+    alertas.push(`Sin indicadores en rojo; «${amarillos[0][0]}» (${amarillos[0][1]}) en amarillo requiere seguimiento.`);
+  }
+  const baja = periodosSeguidosALaBaja(theme.trend);
+  if(baja>0) alertas.push(`El índice de la agrupación baja por ${ordinal[baja]} periodo consecutivo (${theme.change} pts respecto de T1 2026).`);
+  else if(theme.change<=1) alertas.push(`El índice prácticamente no cambia respecto de T1 2026 (${theme.change>=0?"+":""}${theme.change} pts).`);
+  else if(theme.status!=="green") alertas.push(`El índice mejora ${theme.change} pts, pero se mantiene por debajo de ${UMBRAL_VERDE}.`);
+  const ci = contarInfo(lista);
+  if(ci.desfasado+ci.sindato>0){
+    const partes = [];
+    if(ci.desfasado) partes.push(`${ci.desfasado} desfasado${ci.desfasado===1?"":"s"}`);
+    if(ci.sindato)   partes.push(`${ci.sindato} sin dato`);
+    const n = ci.desfasado+ci.sindato;
+    alertas.push(`${n} ${n===1?"indicador no entra":"indicadores no entran"} en la valoración (${partes.join(", ")}).`);
+  }
+  document.getElementById("detailAlerts").innerHTML = alertsHTML(alertas.slice(0,3));
+}
+
+/* =========================================================
+   NAVEGACIÓN
+   ========================================================= */
+const themeList = document.getElementById("themeList");
+themes.forEach(theme=>{
+  const btn = document.createElement("button");
+  btn.className = "theme-item";
+  btn.innerHTML = `<div class="theme-icon">${theme.icon}</div>
+                   <div class="theme-name">${theme.name}</div>
+                   <div class="dot ${theme.status}" title="${TXT_ESTADO[theme.status]}"></div>`;
+  btn.addEventListener("click",()=>openTheme(theme.id,btn));
+  themeList.appendChild(btn);
+});
+
+function showHome(){
+  document.getElementById("mainDashboard").classList.remove("hidden");
+  document.getElementById("themeDashboard").classList.add("hidden");
+  document.getElementById("headerTitle").textContent = "Pantalla principal";
+  document.getElementById("homeButton").classList.add("active");
+  document.querySelectorAll(".theme-item").forEach(el=>el.classList.remove("active"));
+}
+
+function openTheme(id,button){
+  const theme = themes.find(t=>t.id===id);
+  document.getElementById("mainDashboard").classList.add("hidden");
+  document.getElementById("themeDashboard").classList.remove("hidden");
+  document.getElementById("headerTitle").textContent = theme.name;
+  document.getElementById("breadcrumbTheme").textContent = theme.name;
+  document.getElementById("homeButton").classList.remove("active");
+  document.querySelectorAll(".theme-item").forEach(el=>el.classList.remove("active"));
+  button.classList.add("active");
+  renderThemeDetail(theme);
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+document.getElementById("homeButton").addEventListener("click",showHome);
+document.getElementById("backButton").addEventListener("click",showHome);
+
+renderMain();
+showHome();
+</script>
+
+</body>
+</html>
