@@ -1,6 +1,6 @@
 # Contexto de trabajo — SIIP Salamanca
 
-**Corte de contexto:** 23 de octubre de 2026.
+**Corte de contexto:** 27 de octubre de 2026.
 **Origen:** conversación de requisitos entre equipo desarrollador y ChatGPT, Word del consultor, Excel de fichas técnicas, diagrama ERD de draw.io.  
 **Naturaleza:** resumen de trabajo; **no es transcripción literal completa de la conversación** ni evidencia de aprobación formal por parte del cliente.
 
@@ -15,6 +15,7 @@ Buscar dentro del repositorio (los archivos pueden estar en distintas subcarpeta
 - `SIIP_01_Alcance_MVP_borrador_v0_2.docx` y `SIIP_Registro_de_Decisiones_v0_2.docx` — versiones actualizadas de acuerdos y pendientes (copias incorporadas en este paquete).
 - `alcance-mvp.md` — actualización de trabajo v0.3 del 23/10/2026, con acuerdos posteriores al Word y bitácora de diferencias para revisión.
 - `modelo-datos-mvp-borrador.md` — propuesta PostgreSQL v0.1 con 13 entidades, tipos, relaciones y restricciones; todavía no aprobada.
+- `arquitectura-tecnologica.md` — referencia técnica del 27/10/2026: stack vigente, entornos, credenciales, migraciones futuras, respaldos, portabilidad y criterios de hosting. Distingue acuerdos de propuestas.
 
 Usa datos y fórmulas reales del Excel al diseñar el esquema. No conviertas automáticamente en MVP todas las capacidades imaginadas en el Word.
 
@@ -70,7 +71,10 @@ Confirmado por el equipo el 22/10/2026: verdes=1, amarillos=0.5, rojos=0; índic
 - Preparar el primer periodo exigible sin asignar fechas ficticias ni generar atrasos derivados de ellas.
 
 ## 7. Lineamientos técnicos
-- PostgreSQL confirmado. El resto del stack debe verificarse en los archivos/repo; NO asumir React/Vite u otras tecnologías sin comprobarlas para ESTE repositorio.
+- Stack confirmado por el equipo: frontend Vue + TypeScript y backend Node.js + TypeScript (DEC-027), sustituyendo Laravel de DEC-026. El backend actual sigue como estructura PHP vacía; no se ha inicializado Node.js. El frontend ya contiene Vue/TypeScript/Vite/Pinia. Framework, acceso a datos y herramienta de migración siguen pendientes.
+- PostgreSQL se mantiene como motor propuesto (DEC-028); el esquema de 13 tablas no está aprobado. El equipo propone Neon Free para desarrollo remoto, sin crear recursos todavía y conservando salida a otro proveedor PostgreSQL para producción.
+- Solo la API necesita credenciales de BD durante la operación; migraciones y respaldos usan accesos técnicos separados. Hostinger Web Premium sin VPS está confirmado: no aloja PostgreSQL y no figura entre las opciones actuales de API Node.js de Hostinger. Hosting definitivo pendiente.
+- [Arquitectura tecnológica](arquitectura-tecnologica.md): propone tres entornos, bases separadas, desarrollo remoto como modalidad de desarrollo, secretos protegidos, migraciones tras aprobación y recuperación comprobada. Detalles operativos, RPO/RTO y proveedor son propuestas, no decisiones funcionales del cliente.
 - Modelo de datos mínimo: preferir ENUM simples frente a catálogos separados cuando no se necesite operar sobre registros de catálogo.
 - Separar entidades indispensables de funciones accesorias. Incluye integridad, historial operacional, publicación y auditoría sin sobreingeniería.
 - Las tablas que existían en el borrador al revisarlo: `usuarios`, `agrupacion_tematica`, `familias`, `indicadores`, `capturas`, `variables_indicadores`, `catalogo_variables`, `dependencia`, `indicador_dependencia`, `valores_variables_captura`. **Verificar contra la última versión local del ERD.**

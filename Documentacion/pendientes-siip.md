@@ -21,7 +21,10 @@ Otras verificaciones pendientes:
 - Comprobar para cada uno de los 63 indicadores operaciones, variables, reglas y evidencia de respaldo requeridas.
 - Evidencias exclusivamente PDF (DEC-024): definir tamaño máximo, cantidad por envío, servicio de almacenamiento, retención y permisos de descarga. Almacenamiento privado externo y referencias estables son recomendaciones, todavía no decisión de proveedor.
 - Variables fijas aún por definir (DEC-025): conservar el valor utilizado; preparar soporte futuro de valores de referencia con vigencia. No asumir variables concretas ni reutilización automática.
-- Definir stack real en el repositorio, hosting, autenticación, permisos finos, plan de backups y pruebas.
+- DEC-027 confirma Vue + TypeScript y Node.js + TypeScript, sustituyendo Laravel (DEC-026). Falta autorizar/inicializar el backend Node.js y elegir framework HTTP, versiones soportadas, acceso a datos, herramienta de migraciones y almacén de sesión. No implementar todavía ni agregar tablas técnicas sin justificar.
+- PostgreSQL continúa como motor propuesto y el esquema sigue pendiente de aprobación (DEC-028). Neon Free es propuesta del equipo para desarrollo remoto; no crear servicios ni bases remotas todavía. Hostinger Web Premium sin VPS ya identificado: no aloja PostgreSQL ni figura como opción actual de API Node.js. Elegir hosting definitivo de API/BD y región con los criterios de arquitectura.
+- Revisar PROP-TEC-002..006 de [arquitectura-tecnologica.md](arquitectura-tecnologica.md): bases/secretos independientes para desarrollo, staging y producción; conexión TLS, mínimo privilegio, respaldos y salida de proveedor. Presupuesto, retención y objetivos propuestos RPO <= 1 h/RTO <= 4 h requieren acuerdo y prueba antes de producción. Comprobar cupos y funciones reales del plan seleccionado.
+- Antes de guardar credenciales al implementar: establecer exclusiones Git del backend, variables protegidas y usuarios separados para ejecución, migraciones y respaldos. Revisar Node del workflow actual y almacenamiento de sesiones; no confundir GitHub Pages con un despliegue integral de API.
 - Determinar qué configuraciones puede modificar el administrador desde UI y cuáles requieren intervención técnica.
 
 ## Próxima actividad que no depende de todas las respuestas

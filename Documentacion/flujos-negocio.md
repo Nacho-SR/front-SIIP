@@ -2,6 +2,8 @@
 
 Versión 0.1 · 26/10/2026 · Borrador para revisión. No autoriza implementación, migraciones ni aprobación del modelo.
 
+Nota técnica del 27/10/2026: DEC-027 confirma Node.js + TypeScript para la API; véase [arquitectura-tecnologica.md](arquitectura-tecnologica.md). Este ajuste no cambia estados, transiciones ni reglas funcionales.
+
 ## 1. Fuentes, contradicciones y estado de los acuerdos
 
 Se leyeron AGENTS.md y los archivos actuales decisiones-siip.md, alcance-mvp.md, pendientes-siip.md y modelo-datos-mvp-borrador.md. La documentación se encuentra ahora en `SIIP-code/Documentacion`, dentro del repositorio Git. Se conserva esa carpeta; no se crea otra paralela con diferente capitalización.
@@ -16,7 +18,7 @@ Se leyeron AGENTS.md y los archivos actuales decisiones-siip.md, alcance-mvp.md,
 | C-06 | DEC-022 elige publicaciones actuales para cortes históricos; P-08 sigue abierto. | No filtrar validado_en por fecha del corte. Conservar color/configuración de cada publicación; no aplicar una regla nueva a historia sin decisión. |
 | C-07 | El modelo recomienda enlaces temporales para PDF; proveedor y modalidad no están aprobados. | API propone descarga autenticada por streaming, sin exponer storage_key. Es una alternativa técnica documentada en impacto, no un cambio silencioso del modelo. |
 | C-08 | El frontend usa seguimiento y consulta como roles, permite captura/revisión al administrador y simula sesión; Axios trata 403 como cierre de sesión. | Contrato usa solo captura/revision/administrador. 401 es falta de autenticación y 403 falta de permiso/CSRF. No modificar frontend en esta tarea. |
-| C-09 | No hay backend ni autenticación elegidos; las 13 tablas no incluyen sesiones. | Sesión opaca con cookie y CSRF es propuesta técnica; persistencia estándar del framework separada del dominio, pendiente de elegir backend/hosting. No prometer logout revocable con un JWT sin estado. |
+| C-09 | Backend Node.js + TypeScript confirmado en DEC-027; framework y autenticación/almacén aún sin elegir. Las 13 tablas no incluyen sesiones. | Sesión opaca con cookie y CSRF es propuesta técnica; persistencia separada del dominio, pendiente de framework/hosting. No prometer logout revocable con un JWT sin estado. |
 | C-10 | Derivar participantes de variables actuales puede reinterpretar ciclos anteriores. | Autorización a indicador según vínculo vigente; envíos según dependencia del actor y asignaciones aplicadas al ciclo. Reasignaciones e historia pendientes de detalle; no dar acceso a insumos ajenos por leer un expediente compartido. |
 
 **Confirmado por equipo:** DEC-001..025, tres roles, captura completa municipal, revisión distinta de validación, publicación automática, reapertura conservando la publicación, mezcla de frecuencias según DEC-013 y exclusión de no evaluables.

@@ -1,6 +1,6 @@
 # Registro operativo de decisiones SIIP (copia para Codex)
 
-**Actualizado al 23/10/2026.** Basado en `SIIP_Registro_de_Decisiones_v0_2.docx` y los acuerdos posteriores del equipo. Las decisiones DEC-001..025 se consideran **confirmadas por el equipo**; la aprobación formal del cliente puede seguir pendiente. Las propuestas PROP-BD de este archivo NO están aprobadas. Si existe discrepancia futura entre acuerdos confirmados, solicitar conciliación antes de cambiar su interpretación.
+**Actualizado al 27/10/2026.** Basado en `SIIP_Registro_de_Decisiones_v0_2.docx` y los acuerdos posteriores del equipo. DEC-001..025 conservan sus acuerdos funcionales. DEC-026 queda sustituida por DEC-027; DEC-028 registra PostgreSQL como motor propuesto, sin aprobación del esquema. La aprobación formal del cliente puede seguir pendiente. Las propuestas PROP-BD y PROP-TEC NO se convierten en decisiones aprobadas por documentarlas. Si existe discrepancia futura entre acuerdos confirmados, solicitar conciliación antes de cambiar su interpretación.
 
 | ID | Estado | Decisión |
 |---|---|---|
@@ -29,6 +29,36 @@
 | DEC-023 | Equipo: confirmada 22/10/2026 | No habrá importación. Sustituye las menciones previas a importación dentro del MVP y de las facultades del administrador. Reportes y notificaciones continúan en alcance. |
 | DEC-024 | Equipo: confirmada 22/10/2026 | Las evidencias serán PDF. Almacenamiento externo planteado por el equipo; proveedor, privacidad y mecanismo de descarga todavía son recomendaciones por revisar. |
 | DEC-025 | Equipo: confirmada 22/10/2026 | Conservar el valor utilizado y la configuración aplicada para auditoría. Las variables fijas aún no están definidas; preparar su soporte por vigencia sin asumir valores, reutilización automática ni política de recálculo aprobados. |
+| DEC-026 | Histórica; sustituida por DEC-027 el 27/10/2026 | El 26/10 se eligió Laravel y se confirmó PHP/Composer operativos. Se conserva el antecedente; ya no define el backend vigente. No hubo aplicación Laravel instalada ni aprobación del esquema por este acuerdo. |
+| DEC-027 | Equipo: confirmada 27/10/2026 | Frontend Vue + TypeScript y backend Node.js + TypeScript. Sustituye Laravel de DEC-026. No selecciona framework HTTP, ORM, driver, almacén de sesión ni herramienta de migraciones. No cambia las decisiones funcionales del MVP. |
+| DEC-028 | Dirección tecnológica indicada por el equipo 27/10/2026; motor propuesto | Mantener PostgreSQL como motor propuesto y la posibilidad de cambiar de proveedor para producción. No aprueba el borrador de 13 tablas ni autoriza generar migraciones. Las menciones anteriores a PostgreSQL confirmado no deben interpretarse como aprobación definitiva del esquema. |
+
+## Infraestructura vigente — actualización del 27/10/2026
+
+- Solo el backend Node.js necesita conexión directa a PostgreSQL durante la operación; los usuarios de la aplicación acceden mediante la API, sin credenciales de BD en el frontend. Migraciones y respaldos son accesos técnicos separados.
+- El equipo confirma Hostinger Web Premium y ningún VPS activo. Ese hosting no aloja PostgreSQL según la documentación oficial de Hostinger; la BD necesita otro servicio o un VPS. No se ha contratado, instalado ni expuesto una BD remota.
+- El equipo propone Neon Free para desarrollo remoto; producción puede utilizar otro proveedor PostgreSQL compatible. No se contratan servicios ni se crean bases remotas todavía.
+- El hosting de la API Node.js sigue pendiente: Premium no figura entre las opciones actuales de aplicaciones Node.js documentadas por Hostinger. Ver fuentes y criterios en [arquitectura-tecnologica.md](arquitectura-tecnologica.md).
+
+## Propuestas tecnológicas del 27/10/2026
+
+El stack de DEC-027 sí está indicado por el equipo; los detalles operativos siguientes son propuestas para revisión. Su desarrollo y comprobación documental están en [arquitectura-tecnologica.md](arquitectura-tecnologica.md).
+
+| ID | Estado | Propuesta |
+|---|---|---|
+| PROP-TEC-001 | Propuesta del equipo; sin provisionar | Neon Free para desarrollo remoto usando PostgreSQL convencional. No adoptar servicios propietarios ni elegir automáticamente Neon para producción. |
+| PROP-TEC-002 | Recomendación técnica | Desarrollo local por integrante y modalidad remota compartida; staging y producción con bases, usuarios, secretos y almacenamiento independientes. Producción en proyecto/instancia separada recomendado. |
+| PROP-TEC-003 | Recomendación técnica | Conexiones parametrizadas, TLS verificado, pool pequeño y credenciales de ejecución/migraciones/respaldo separadas. Secretos fuera de Git y frontend. Driver `pg` como opción por revisar; no instalado. |
+| PROP-TEC-004 | Recomendación técnica; bloqueada por aprobación del esquema | Migraciones versionadas con una herramienta única, promoción local → staging → producción, un ejecutor y conexión directa. No generarlas ni ejecutarlas ahora. |
+| PROP-TEC-005 | Recomendación técnica; objetivos por acordar | Respaldos independientes cifrados y pruebas de restauración; producción con PITR y exportación lógica. RPO <= 1 h, RTO <= 4 h y retención de 30 días son objetivos propuestos, no SLA aprobados. |
+| PROP-TEC-006 | Recomendación técnica | Comparar costo total, disponibilidad, respaldos, seguridad, ubicación y recuperación antes de elegir hosting. Framework, versiones, presupuesto, región, proveedor y objetivos operativos siguen pendientes. |
+
+### Cambios y revisión de esta actualización
+
+- Sustituye explícitamente la elección tecnológica Laravel; no modifica DEC-001..025 ni convierte propuestas de modelo/API en requisitos aprobados.
+- Añade arquitectura técnica Markdown y sincroniza contexto, pendientes y las referencias al backend en flujos/impacto API. Los Word del consultor se conservan como antecedentes.
+- La revisión documental de las 13 tablas no detecta funciones exclusivas de proveedor ni extensiones obligatorias. La futura exclusión de vigencias podría requerir `btree_gist`; sigue condicional, con alternativa transaccional ya prevista.
+- Sin cambios en el esquema original, OpenAPI, backend/frontend, dependencias, CI o secretos. No se crean recursos remotos ni migraciones.
 
 ## Aclaraciones del equipo del 22/10/2026
 - Preparar el campo de primer periodo exigible; no generar atrasos a partir de fechas inventadas.

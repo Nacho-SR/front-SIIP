@@ -2,6 +2,8 @@
 
 Versión 0.1 · 26/10/2026 · Evaluación documental. El modelo de 13 tablas, las decisiones y el alcance originales NO se modifican en esta tarea. Ninguna recomendación se convierte en aprobación.
 
+Actualización técnica del 27/10/2026: DEC-027 confirma Node.js + TypeScript; [arquitectura-tecnologica.md](arquitectura-tecnologica.md) define el stack vigente y las propuestas de operación. Se corrigen referencias al backend sin alterar el modelo ni los contratos OpenAPI.
+
 ## 1. Conclusión
 
 El recorrido de dominio propuesto cabe en las 13 tablas sin nuevas entidades de negocio: autenticación usa usuarios y un mecanismo técnico de sesión; envío/revisión/validación usan expedientes, capturas, valores, evidencias y eventos. Los resultados son una proyección del mayor ciclo validado por periodo. La API no se implementa ni el esquema se ejecuta para comprobarlo.
@@ -43,7 +45,7 @@ No se añade una tabla de validaciones, publicaciones, revisiones, sesiones de n
 
 ### Autenticación técnica
 
-Se propone sesión opaca revocable y cookie segura con CSRF. La tabla usuarios no basta para almacenar sesiones revocables: se requiere el almacén estándar del framework. Para un despliegue de una instancia puede ser almacenamiento de archivos protegido; backend/hosting deben confirmarlo. Si el framework exige tabla técnica de sesiones, se registra y justifica aparte; no se oculta dentro de las 13 entidades ni se fuerza un JWT sin revocación. No se elige Laravel solo porque el frontend lo mencione en comentarios.
+Se propone sesión opaca revocable y cookie segura con CSRF. La tabla usuarios no basta para almacenar sesiones revocables: se requiere un almacén persistente compatible con el framework Node.js que se elija. No se presupone un almacén de archivos estándar ni memoria de proceso en producción. Si se propone tabla técnica de sesiones, se registra y justifica aparte; no se oculta dentro de las 13 entidades ni se fuerza un JWT sin revocación. Node.js + TypeScript está confirmado en DEC-027; autenticación, framework y almacén siguen por revisar.
 
 ### Escritura y multidependencia
 
@@ -72,7 +74,7 @@ El modelo guarda referencias PDF, pero proveedor, máximos, retención y políti
 ## 6. Revisión necesaria antes de implementar
 
 1. Aprobar el primer recorrido y representación de captura/expediente, junto con las asignaciones del indicador elegido.
-2. Elegir backend, autenticación/almacén de sesión y configuración HTTPS/orígenes.
+2. Con Node.js + TypeScript confirmado, elegir framework, autenticación/almacén de sesión y configuración HTTPS/orígenes. Seguir la estrategia propuesta de entornos de arquitectura.
 3. Cerrar calendario y regla individual para ese indicador; fijar límites y servicio PDF.
 4. Implementar en orden P0 del [catálogo](catalogo-endpoints.md), con pruebas de acceso por objeto y transacciones; después observaciones/corrección y reapertura.
 5. Confirmar multidependencia, cobertura y vigencias antes de habilitar lo condicionado. El YAML validado técnicamente no concede aprobación de negocio.
