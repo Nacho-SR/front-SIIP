@@ -6,6 +6,8 @@ Actualización técnica del 27/10/2026: DEC-027 confirma Node.js + TypeScript; [
 
 ## 1. Conclusión
 
+**Actualización de requisitos — 30/10/2026, DEC-031..034:** se confirman regla conservada en revisión y regla del periodo para atrasos/reaperturas, envío por dependencia, validación conjunta y corrección solo de la aportación necesaria. El diseño anterior que exige envíos nuevos de todas las dependencias en cada ciclo debe revisarse: se propone referenciar versiones revisadas anteriores para entradas sin cambios. Es análisis de impacto, no un ajuste ya aprobado del esquema ni del OpenAPI. DEC-033 confirma periodos naturales, captura desde registro con asignación, zona America/Mexico_City y validación/publicación al cierre o después. No se añade bimestral. Quedan pendientes la cobertura inicial de altas intermedias y periodos anteriores al alta; Supabase Storage es la dirección elegida para evidencias. Convertir aportaciones de una misma variable en variables distintas sigue siendo una propuesta por evaluar, sin aprobar agregación automática.
+
 El recorrido de dominio propuesto cabe en las 13 tablas sin nuevas entidades de negocio: autenticación usa usuarios y un mecanismo técnico de sesión; envío/revisión/validación usan expedientes, capturas, valores, evidencias y eventos. Los resultados son una proyección del mayor ciclo validado por periodo. La API no se implementa ni el esquema se ejecuta para comprobarlo.
 
 La conclusión es condicional: el modelo no resuelve por sí solo la unidad multidependencia, calendario, reasignaciones, variables fijas o vigencias. La autenticación necesita elegir un almacén técnico de sesiones; no se declara existente una tabla que el borrador no tiene.

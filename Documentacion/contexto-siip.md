@@ -37,15 +37,16 @@ Usa datos y fórmulas reales del Excel al diseñar el esquema. No conviertas aut
 
 ### Capturas, revisión, histórico
 - No existen borradores: se registra una captura únicamente cuando todos los campos obligatorios están completos y son válidos.
-- Los periodos se habilitan automáticamente conforme a la periodicidad; no hay límite bloqueante para capturar o validar.
-- Señalización preventiva siete días antes del fin del periodo y señalización cuando acaba y queda pendiente. Primer periodo exigible por indicador: por decidir.
+- DEC-032 (30/10/2026): cada dependencia envía sus variables y Revisión valida el conjunto cuando todas las aportaciones requeridas estén revisadas. En reapertura solo se reenvía la parte necesaria; el mecanismo de referencias a lo no modificado es propuesta técnica pendiente de adaptar/aprobar en el modelo.
+- DEC-033: periodos calendario naturales, captura desde registro con dependencia asignada y validación/publicación solo al cierre o después. No hay plazo máximo que bloquee atrasos.
+- Señalización preventiva siete días antes del fin del periodo y señalización cuando acaba y queda pendiente. Zona America/Mexico_City. Alta trimestral el 10 de febrero: primer corte el 31 de marzo. Se mantienen mensual, trimestral, semestral y anual; bimestral fue solo ejemplo. Falta definir cobertura de datos del primer periodo de alta intermedia y autorización de periodos previos.
 - El hilo de observaciones por indicador + periodo + ciclo se cierra al validar, pero se conserva con autor, rol, fecha, acción y comentario. Reapertura crea otro ciclo; no borra anteriores.
 - Resultado validado se publica automáticamente. El último publicado continúa visible cuando el administrador lo reabre; al validarse la corrección, se reemplaza la versión publicada y se conserva la anterior para auditoría.
 - Vista Consulta siempre autenticada y filtrada por permisos.
 
 ### Reglas y metas
 - Fórmula original del indicador persistida como dato de ficha técnica, no necesariamente ejecutada como texto arbitrario. Backend solo necesita operaciones comprobadas contra casos reales.
-- Las reglas individuales de semaforización pueden modificarse; la política de vigencia y afectación de históricos está pendiente.
+- DEC-030/031: cambiar una regla no recalcula resultados/colores publicados; una captura en revisión conserva su regla y atrasos/reaperturas usan la del periodo. Falta precisar vigencia de cambios a mitad de periodo y alcance sobre agregados temáticos bajo demanda. Deben poder recuperarse reglas históricas aunque no haya captura previa.
 - Metas porcentuales del Excel pueden aparecer como `1` en su valor interno aunque Excel renderice `100 %`. Interpretar **formato y unidad** del dato; NO aplicar una conversión global ingenua `si <=1 multiplicar por 100` sin comprobar la ficha.
 
 ## 5. Decisión DEC-013: mezcla de periodos por corte mensual
@@ -54,7 +55,7 @@ Usa datos y fórmulas reales del Excel al diseñar el esquema. No conviertas aut
 - Solo contribuye al semáforo temático la **versión validada/publicada** de ese periodo esperado que tenga color calculable.
 - Si falta ese periodo, aunque uno previo esté publicado, **no** se arrastra el anterior.
 - Máximo 1 resultado por indicador por corte; no se suman, interpolan ni promedian valores para forzar igualdad entre frecuencias.
-- Ejemplo corte 30/sept/2026 (si esos periodos son exigibles): mensual sep/2026, trimestral jul–sep/2026, semestral ene–jun/2026, anual ene–dic/2025.
+- DEC-033 confirma periodos naturales: para corte 30/sept/2026 y periodos exigibles, mensual sep/2026, trimestral jul–sep/2026, semestral ene–jun/2026 y anual ene–dic/2025. El alta determina desde cuándo se captura y el primer corte exigible; no desplaza los trimestres o años naturales.
 - No evaluables: sin captura, pendiente, observados, sin valor validado o sin semáforo por falta de antecedente. No se tratan como rojos ni como cero.
 - Mostrar cobertura (evaluables / universo aplicable) y periodo fuente individual. **Denominador exacto y umbral mínimo de cobertura no aprobados**.
 
@@ -64,14 +65,14 @@ Confirmado por el equipo el 22/10/2026: verdes=1, amarillos=0.5, rojos=0; índic
 ### Acuerdos posteriores a la revisión inicial
 - DEC-022: los cortes históricos consultan las publicaciones actuales de los periodos esperados, sin reconstrucción de lo conocido entonces y sin arrastre de otros periodos.
 - DEC-023: no habrá importación; reportes y notificaciones siguen en alcance.
-- DEC-024: evidencias en PDF; proveedor externo y mecanismo de descarga aún por definir.
-- DEC-025: conservar valores utilizados y configuración aplicada. Variables fijas y sus vigencias aún por definir; no asumir reutilización automática ni política de recálculo.
+- DEC-024/034: evidencias en PDF, con Supabase Storage como dirección de implementación. Límites, conservación y mecanismo final de descarga siguen por definir; se recomienda bucket privado y acceso por API SIIP.
+- DEC-025: conservar valores utilizados y configuración aplicada. Variables fijas y sus vigencias aún por definir; no asumir reutilización automática. DEC-030 descarta recalcular publicaciones por cambios de regla, sin resolver la selección de vigencias de variables fijas.
 - El cliente entregará responsables por variable. Se puede modelar la estructura antes de contar con esas asignaciones.
-- Conflicto pendiente con DEC-002: el Excel auxiliar consolida las mismas variables entre dependencias en `SIIP.02.F13.002` y `SIIP.02.F16.002`. Mantener la decisión vigente y dejar sin aprobar la unidad de envío/validación hasta conciliar con el cliente.
-- Preparar el primer periodo exigible sin asignar fechas ficticias ni generar atrasos derivados de ellas.
+- Conflicto pendiente con DEC-002: el auxiliar consolida las mismas variables entre dependencias en `SIIP.02.F13.002` y `SIIP.02.F16.002`. DEC-032 confirma envío por dependencia/validación conjunta; descomponer aportaciones como variables distintas sigue como propuesta y exige verificar solapamientos y universos. No habilitar sumas automáticas sin esa definición.
+- Preparar calendario conforme a DEC-033, sin fijar fechas de alta ficticias ni decidir unilateralmente las precisiones abiertas.
 
 ## 7. Lineamientos técnicos
-- Stack confirmado por el equipo: frontend Vue + TypeScript y backend Node.js + TypeScript (DEC-027), sustituyendo Laravel de DEC-026. El backend actual sigue como estructura PHP vacía; no se ha inicializado Node.js. El frontend ya contiene Vue/TypeScript/Vite/Pinia. Framework, acceso a datos y herramienta de migración siguen pendientes.
+- Stack confirmado por el equipo: frontend Vue + TypeScript y backend Node.js + TypeScript (DEC-027), sustituyendo Laravel de DEC-026. Actualización del 30/10/2026, DEC-029: el backend ya tiene base Node.js 22/Fastify 5, `pg`/Drizzle instalados, validación de entorno y ruta de salud. DEC-035 añade módulos y código de autenticación Argon2id con cookie/CSRF y adaptador de sesiones PostgreSQL. El SQL mínimo de autenticación está propuesto y no ejecutado; el equipo aún no tiene BD. Se verificó con dobles sintéticos, no con PostgreSQL real. No se ha conectado la BD ni aprobado o migrado el esquema. El frontend ya contiene Vue/TypeScript/Vite/Pinia.
 - PostgreSQL se mantiene como motor propuesto (DEC-028); el esquema de 13 tablas no está aprobado. El equipo propone Neon Free para desarrollo remoto, sin crear recursos todavía y conservando salida a otro proveedor PostgreSQL para producción.
 - Solo la API necesita credenciales de BD durante la operación; migraciones y respaldos usan accesos técnicos separados. Hostinger Web Premium sin VPS está confirmado: no aloja PostgreSQL y no figura entre las opciones actuales de API Node.js de Hostinger. Hosting definitivo pendiente.
 - [Arquitectura tecnológica](arquitectura-tecnologica.md): propone tres entornos, bases separadas, desarrollo remoto como modalidad de desarrollo, secretos protegidos, migraciones tras aprobación y recuperación comprobada. Detalles operativos, RPO/RTO y proveedor son propuestas, no decisiones funcionales del cliente.

@@ -21,13 +21,13 @@ Gestionar fichas e indicadores municipales de Salamanca, capturar variables y PD
 - Un rol por cuenta: Captura, Revisión o Administrador. Revisar y validar son acciones distintas del mismo rol Revisión.
 - Una cuenta de Captura por dependencia prevista para la operación inicial; el cliente entregará asignaciones oficiales por variable.
 - Guardar solo capturas completas y válidas, sin borradores.
-- Periodos habilitados automáticamente, sin fecha límite que bloquee captura o validación. Aviso preventivo siete días antes del fin y señalización de pendiente después, con primer periodo exigible aún por definir.
+- DEC-033: periodos naturales, captura desde registro con asignación y validación/publicación al cierre o después, sin plazo máximo que bloquee atrasos. Aviso preventivo siete días antes del fin y señalización de pendiente después. Primer corte: fin del periodo natural del alta; cobertura inicial y periodos previos siguen pendientes.
 - Observaciones y respuestas por indicador/periodo/ciclo, cerradas al validar y conservadas para auditoría; no chat.
 - Publicación automática tras validación. Solo Consulta autenticada y autorizada.
 - Reapertura justificada por Administrador, nuevo ciclo y nueva validación. Última versión validada sigue publicada hasta reemplazo validado del mismo periodo.
 - Valores validados sin historial suficiente pueden publicarse sin color; no participan en el índice temático.
 - PDF como formato de evidencia. Proveedor, almacenamiento privado y descarga temporal son una recomendación técnica todavía por revisar.
-- Conservar valores utilizados y configuración aplicada para auditoría. Política histórica de cambios de reglas aún pendiente.
+- Conservar valores utilizados y configuración aplicada para auditoría. DEC-030/031: cambios de regla no alteran publicaciones; en revisión se conserva la regla, y atrasos/reaperturas usan la correspondiente al periodo. Falta precisar la vigencia de cambios a mitad de periodo.
 - Reportes y notificaciones forman parte del MVP; formatos, canales y detalles permanecen pendientes.
 - **No habrá importación** (DEC-023).
 
@@ -73,15 +73,15 @@ No se requiere resolver todos los datos iniciales para diseñar las relaciones. 
 
 | Asunto | Estado e impacto |
 |---|---|
-| Primer periodo exigible y calendario | Preparar campo sin inventar fechas; no generar atrasos ni elegibilidad supuesta. |
+| Primer periodo exigible y calendario | DEC-033 confirma periodos naturales, captura desde alta con asignación y validación/publicación al cierre o después, zona America/Mexico_City. Se mantienen las cuatro frecuencias actuales; no se añade bimestral. Falta definir cobertura del primer periodo con alta intermedia y periodos anteriores al alta. |
 | Asignaciones por variable | El cliente entregará dependencia/usuario. Se propone asignación a dependencia y autor real en cada envío; restricción personal adicional aún por confirmar. |
 | SIIP.02.F13.002 | Conciliar PA/PO de Desarrollo Económico y DIF: el auxiliar suma aportes a las mismas variables, contrario a DEC-002. |
 | SIIP.02.F16.002 | Conciliar IE/IP de Obras Públicas y CMAPAS por el mismo conflicto. |
-| Unidad de envío/validación y reapertura | Confirmar envío por dependencia, validación conjunta y reutilización o reenvío de aportaciones sin cambios. |
-| Semáforo individual e historia | Vigencia y recálculo; parametrización de cada ficha y tratamiento de cambios metodológicos con historia. |
+| Unidad de envío/validación y reapertura | DEC-032 confirma envío por dependencia, validación conjunta y reenvío solo de lo necesario. Adaptar/aprobar referencias a versiones revisadas sin cambios; no aprobar por ello sumas entre dependencias. |
+| Semáforo individual e historia | DEC-030/031 resuelven conservación y uso de regla del periodo. Falta precisar vigencia de cambios a mitad de periodo y conciliar la parametrización de cada ficha antes de operarla. |
 | Variables fijas | Aún no identificadas; definir fuente, selección de vigencia y reutilización antes de automatizar. |
 | Cobertura temática | Denominador, mínimo y condiciones de N pequeño. |
-| PDF | Proveedor, límite de tamaño/cantidad, permisos, retención y respaldo. |
+| PDF | Supabase Storage elegido como dirección de implementación (DEC-034). Faltan tamaño/cantidad, permisos, retención, respaldo y modalidad final de descarga. |
 | Reportes y notificaciones | Formatos, destinatarios, canales y disparadores específicos. |
 
 ## 7. Exclusiones del MVP

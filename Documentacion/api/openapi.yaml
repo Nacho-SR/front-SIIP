@@ -32,8 +32,8 @@ paths:
       operationId: consultarSesion
       summary: Consultar sesión y obtener CSRF
       description: Bootstrap público técnico, también antes del login. Retorna usuario=null si no hay sesión autenticada;
-        no concede acceso a otros recursos. Propuesta de cookie opaca con persistencia servidor y CSRF; framework/hosting
-        y duración aún por definir.
+        no concede acceso a otros recursos. Código Fastify con cookie opaca, almacén PostgreSQL y CSRF; vencimiento
+        absoluto inicial de 30 minutos. SQL preparado sin ejecutar y sin prueba de PostgreSQL real (DEC-035).
       tags:
       - Autenticacion
       x-roles: []
@@ -81,6 +81,8 @@ paths:
           $ref: '#/components/responses/NoPermitido'
         '404':
           $ref: '#/components/responses/NoEncontrado'
+        '503':
+          $ref: '#/components/responses/AutenticacionNoConfigurada'
         '500':
           $ref: '#/components/responses/ErrorInterno'
       security: []
@@ -134,10 +136,14 @@ paths:
           $ref: '#/components/responses/NoPermitido'
         '404':
           $ref: '#/components/responses/NoEncontrado'
+        '413':
+          $ref: '#/components/responses/CargaExcesiva'
         '422':
           $ref: '#/components/responses/DatosInvalidos'
         '429':
           $ref: '#/components/responses/DemasiadosIntentos'
+        '503':
+          $ref: '#/components/responses/AutenticacionNoConfigurada'
         '500':
           $ref: '#/components/responses/ErrorInterno'
       security: []
@@ -186,6 +192,8 @@ paths:
           $ref: '#/components/responses/NoPermitido'
         '404':
           $ref: '#/components/responses/NoEncontrado'
+        '503':
+          $ref: '#/components/responses/AutenticacionNoConfigurada'
         '500':
           $ref: '#/components/responses/ErrorInterno'
   /indicadores:
@@ -1916,9 +1924,12 @@ components:
         correo:
           type: string
           format: email
+          maxLength: 255
+          description: Se eliminan espacios en extremos y se normaliza a minúsculas.
         password:
           type: string
           minLength: 1
+          maxLength: 1024
           writeOnly: true
       required:
       - correo
@@ -3578,6 +3589,26 @@ components:
                 codigo: DEMASIADOS_INTENTOS
                 errores: []
                 pendientes: []
+    AutenticacionNoConfigurada:
+      description: PostgreSQL de autenticación aún no está configurado; no se usa un almacén en memoria.
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: about:blank
+            title: AUTENTICACION_NO_CONFIGURADA
+            status: 503
+            detail: Falta configurar PostgreSQL para autenticación.
+            instance: /api/v1/auth/sesion
+            codigo: AUTENTICACION_NO_CONFIGURADA
+            errores: []
+            pendientes: [AUTENTICACION]
     ErrorInterno:
       description: No se pudo completar la operación.
       headers:

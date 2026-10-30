@@ -6,6 +6,8 @@ Nota técnica del 27/10/2026: DEC-027 confirma Node.js + TypeScript para la API;
 
 ## 1. Fuentes, contradicciones y estado de los acuerdos
 
+**Acuerdos posteriores — 30/10/2026, DEC-030..034:** no se recalculan publicaciones por cambios de regla; una captura en revisión conserva su regla y atrasos/reaperturas usan la del periodo. Se confirman envío por dependencia, validación conjunta y reenvío solo de la aportación necesaria en reapertura. Las referencias a versiones anteriores sin cambios son propuesta técnica; el modelo/contratos aún requieren adaptación y aprobación. DEC-033 precisa periodos calendario naturales, captura desde alta con asignación, zona America/Mexico_City y validación/publicación al cierre o después. Un trimestral dado de alta el 10 de febrero corta el 31 de marzo. No se añade bimestral; falta definir cobertura del primer periodo con alta intermedia y periodos anteriores al alta. Supabase Storage queda elegido como dirección para PDF; límites y descarga final pendientes. Estas decisiones actualizan los pendientes de las secciones anteriores en fecha; no aprueban automáticamente campos, sumas de variables ni el YAML.
+
 Se leyeron AGENTS.md y los archivos actuales decisiones-siip.md, alcance-mvp.md, pendientes-siip.md y modelo-datos-mvp-borrador.md. La documentación se encuentra ahora en `SIIP-code/Documentacion`, dentro del repositorio Git. Se conserva esa carpeta; no se crea otra paralela con diferente capitalización.
 
 | ID | Hallazgo | Tratamiento en estos contratos |
@@ -90,6 +92,8 @@ Captura responde mediante POST /capturas/{id}/correcciones con un nuevo conjunto
 Revisión usa POST /capturas/{id}/revision con la lista explícita de observaciones que acepta como resueltas, incluso si estaban ancladas a un envío sustituido de la misma cadena. Cada resolución se registra como evento y luego se marca revisada. Si quedan observaciones de la dependencia/ciclo sin resolver, responder 409. Captura no puede autocerrar observaciones. No se borran comentarios.
 
 ### F-05 Validación y publicación
+
+DEC-033: no validar ni publicar antes del cierre del periodo natural en America/Mexico_City, aunque ya exista captura revisada. Capturar desde el alta con asignación y permitir atrasos no elimina esta condición temporal. No se agrega frecuencia bimestral.
 
 POST /expedientes/{id}/validacion recibe `capturas_revisadas_ids`, el conjunto de envíos que el revisor efectivamente consultó. Bajo bloqueo del expediente, exigir coincidencia exacta con el conjunto efectivo actual y estados revisada. Si cambió un envío desde la lectura, 409 ENVIO_VIGENTE_MODIFICADO; no validar datos nuevos sin revisión.
 
