@@ -69,8 +69,8 @@ El modelo guarda referencias PDF, pero proveedor, máximos, retención y políti
 
 ## 5. Contradicciones de integración fuera del esquema
 
-- auth.store.ts declara seguimiento y consulta; contrato exige revision y tres roles. router/index.ts concede acciones de Captura/Revisión a Administrador: debe corregirse después de aprobar contratos.
-- core/api.ts envía Bearer y cierra sesión tanto con 401 como con 403. Cookie/CSRF requerirá adaptar transporte; 403 no es sesión expirada. No se modifica ese código ahora.
+- Resuelto técnicamente el 04/11/2026: auth.store.ts usa los tres roles del backend y router/index.ts restringe Captura/Revisión a sus roles exclusivos. `/seguimiento` y Consulta siguen siendo rutas/vistas, no roles.
+- Resuelto técnicamente el 04/11/2026: core/api.ts envía cookies y CSRF en lugar de Bearer. Se recupera la sesión del servidor; 401 por sesión inválida limpia la identidad y 403 conserva la sesión. Las credenciales incorrectas se muestran en el formulario sin invalidar el CSRF anónimo.
 - Modelo y catálogo propuestos no son DDL ni backend existente. Los archivos se movieron a SIIP-code/Documentacion y hay un ERD v02 adicional; no se presume que ese artefacto apruebe el modelo Markdown ni cambios de negocio.
 
 ## 6. Revisión necesaria antes de implementar

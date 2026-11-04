@@ -49,12 +49,21 @@ Cookie opaca HttpOnly/Secure/SameSite y token CSRF son la alternativa propuesta.
 | GET | /notificaciones | Avisos del destinatario autenticado. | Tres roles | P1 | C: bandeja interna y P-14 |
 | POST | /notificaciones/{notificacionId}/lectura | Marcar como leída una notificación propia. | Tres roles | P1 | C: P-14; repetición devuelve el mismo estado |
 
+## Altas administrativas iniciales — 04/11/2026, DEC-036
+
+| Método | Ruta | Propósito | Acceso | Estado |
+|---|---|---|---|---|
+| POST | /administracion/usuarios | Crear Captura con dependencia activa o Revisión sin dependencia; contraseña Argon2id y alta auditada. | Administrador con sesión, Origin y CSRF | Implementado en código; aplicar SQL 001/002 y configurar BD. |
+| POST | /administracion/dependencias | Registrar dependencia necesaria para asignar Captura. | Administrador con sesión, Origin y CSRF | Implementado en código; alta y auditoría atómicas. |
+
+El primer administrador se crea por `npm run admin:create`, nunca por endpoint público. El script no modifica cuentas existentes. Colección importable en `../siip-backend/docs/SIIP-auth.postman_collection.json`.
+
 ## Candidatos P2 aún sin contrato OpenAPI
 
 | Método / ruta candidata | Propósito de negocio | Roles | Pendiente que impide cerrarlo |
 |---|---|---|---|
-| GET, POST /administracion/usuarios; PATCH /administracion/usuarios/{id} | Dar altas, actualizar rol/dependencia y desactivar cuentas. | Administrador | Alta inicial, entrega de credenciales, campos editables y protección de acceso administrativo. Sin DELETE de historia. |
-| GET, POST /administracion/dependencias; PATCH /administracion/dependencias/{id} | Mantener el catálogo responsable depurado. | Administrador | Denominaciones y tratamiento de cambios con asignaciones. |
+| GET /administracion/usuarios; PATCH /administracion/usuarios/{id} | Dar altas, actualizar rol/dependencia y desactivar cuentas. | Administrador | Alta inicial, entrega de credenciales, campos editables y protección de acceso administrativo. Sin DELETE de historia. |
+| GET /administracion/dependencias; PATCH /administracion/dependencias/{id} | Mantener el catálogo responsable depurado. | Administrador | Denominaciones y tratamiento de cambios con asignaciones. |
 | GET /administracion/indicadores/{id}/configuracion; PATCH sobre el mismo recurso | Configurar ficha, operaciones soportadas y reglas delimitadas. | Administrador | P-08, catálogos editables y validación de cada regla. Sin expresiones arbitrarias. |
 | PUT /administracion/indicadores/{id}/asignaciones | Asignar dependencias a las entradas del indicador de forma atómica. | Administrador | Asignaciones del cliente y efecto temporal. No crea una entidad asignacion por existir la ruta. |
 | GET /administracion/auditoria | Consultar cambios administrativos. | Administrador | Filtros y retención; excluir secretos. |

@@ -1,0 +1,535 @@
+{
+  "info": {
+    "name": "SIIP - Alta inicial y autenticacion",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Ejecutar en orden, solo contra desarrollo. Requiere administrador creado por CLI y contrasenas locales. La dependencia DEMO y las cuentas son datos sinteticos. Usa el cookie jar de Postman, actualiza CSRF automaticamente y detiene el flujo ante errores. No sobrescribe usuarios existentes."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "origin",
+      "value": "http://localhost:5173",
+      "type": "string"
+    },
+    {
+      "key": "adminCorreo",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "capturaCorreo",
+      "value": "captura.demo@example.test",
+      "type": "string"
+    },
+    {
+      "key": "capturaPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "revisionCorreo",
+      "value": "revision.demo@example.test",
+      "type": "string"
+    },
+    {
+      "key": "revisionPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dependenciaClave",
+      "value": "DEMO_AUTH",
+      "type": "string"
+    },
+    {
+      "key": "dependenciaNombre",
+      "value": "Dependencia sintetica para pruebas de auth",
+      "type": "string"
+    },
+    {
+      "key": "dependenciaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "csrfToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Bootstrap CSRF",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/auth/sesion"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code !== 200) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('csrfToken', data.csrf_token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Login administrador",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{origin}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/sesion",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"correo\": \"{{adminCorreo}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code !== 200) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('csrfToken', data.csrf_token);",
+              "  pm.test('Rol administrador', function () { pm.expect(data.usuario.rol).to.eql('administrador'); });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Crear dependencia de prueba",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{origin}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/administracion/dependencias",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clave\": \"{{dependenciaClave}}\",\n  \"nombre\": \"{{dependenciaNombre}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "if (pm.response.code !== 201) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('dependenciaId', data.id);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Crear usuario Captura",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{origin}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/administracion/usuarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Captura de prueba\",\n  \"correo\": \"{{capturaCorreo}}\",\n  \"password\": \"{{capturaPassword}}\",\n  \"rol\": \"captura\",\n  \"dependencia_id\": \"{{dependenciaId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "if (pm.response.code !== 201) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json();",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Crear usuario Revision",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{origin}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/administracion/usuarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Revision de prueba\",\n  \"correo\": \"{{revisionCorreo}}\",\n  \"password\": \"{{revisionPassword}}\",\n  \"rol\": \"revision\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "if (pm.response.code !== 201) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 201) {",
+              "  const data = pm.response.json();",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Logout administrador",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{origin}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/sesion"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });",
+              "if (pm.response.code !== 204) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 204) pm.collectionVariables.unset('csrfToken');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Bootstrap Captura",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/auth/sesion"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code !== 200) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('csrfToken', data.csrf_token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Login Captura",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{origin}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/sesion",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"correo\": \"{{capturaCorreo}}\",\n  \"password\": \"{{capturaPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code !== 200) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('csrfToken', data.csrf_token);",
+              "  pm.test('Rol captura', function () { pm.expect(data.usuario.rol).to.eql('captura'); });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Logout Captura",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{origin}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/sesion"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });",
+              "if (pm.response.code !== 204) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 204) pm.collectionVariables.unset('csrfToken');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Bootstrap Revision",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/auth/sesion"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code !== 200) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('csrfToken', data.csrf_token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Login Revision",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{origin}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/sesion",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"correo\": \"{{revisionCorreo}}\",\n  \"password\": \"{{revisionPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code !== 200) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('csrfToken', data.csrf_token);",
+              "  pm.test('Rol revision', function () { pm.expect(data.usuario.rol).to.eql('revision'); });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 - Consultar sesion Revision",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/auth/sesion"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code !== 200) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 200) {",
+              "  const data = pm.response.json();",
+              "  pm.collectionVariables.set('csrfToken', data.csrf_token);",
+              "  pm.test('Rol revision', function () { pm.expect(data.usuario.rol).to.eql('revision'); });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 - Logout Revision",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Origin",
+            "value": "{{origin}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/sesion"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });",
+              "if (pm.response.code !== 204) { pm.execution.setNextRequest(null); }",
+              "if (pm.response.code === 204) pm.collectionVariables.unset('csrfToken');"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

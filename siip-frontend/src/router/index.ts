@@ -34,12 +34,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'captura',
         name: 'Captura',
         component: () => import('../modules/capture/CaptureView.vue'),
-        // Protegemos la ruta: solo capturistas y administradores pueden entrar
-        meta: { requiredRoles: ['captura', 'administrador'] }
+        meta: { requiredRoles: ['captura'] }
       },
       {
         path: 'seguimiento',
-        meta: { requiredRoles: ['seguimiento', 'administrador'] },
+        meta: { requiredRoles: ['revision'] },
         children: [
           {
             path: '',
@@ -71,29 +70,31 @@ const router = createRouter({
   routes
 });
 
-// GUARDIÁN DE NAVEGACIÓN (Navigation Guard)
-// Este código se ejecuta SIEMPRE antes de cambiar de pantalla
-// TODO: Quitar el "any" y tipar correctamente el "to" y "from"
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore();
-  
-  // 1. Verificamos si la ruta requiere autenticación y el usuario no tiene token
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return next({ name: 'Login' }); // Lo pateamos al login
-  }
 
-  // 2. Verificamos permisos basados en roles (Control de Acceso)
-  if (to.meta.requiredRoles) {
-    const roles = to.meta.requiredRoles as string[];
-    // Si el usuario existe pero su rol no está en la lista de permitidos
-    if (authStore.user && !roles.includes(authStore.user.role)) {
-      console.warn(`Acceso denegado. Rol actual: ${authStore.user.role}. Requerido: ${roles.join(' o ')}`);
-      return next({ name: 'Consulta' }); // Lo regresamos al dashboard público
+  if (!authStore.initialized) {
+    try {
+      await authStore.initAuth();
+    } catch {
+      return to.name === 'Login' ? true : { name: 'Login' };
     }
   }
 
-  // 3. Si pasa todas las validaciones, lo dejamos pasar
-  next(); 
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return { name: 'Login' };
+  }
+
+  if (to.name === 'Login' && authStore.isAuthenticated) {
+    return { name: 'Consulta' };
+  }
+
+  if (to.meta.requiredRoles) {
+    const roles = to.meta.requiredRoles as string[];
+    if (!authStore.user || !roles.includes(authStore.user.rol)) {
+      return { name: 'Consulta' };
+    }
+  }
 });
 
 export default router;

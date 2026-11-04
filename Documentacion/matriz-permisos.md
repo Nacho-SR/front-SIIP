@@ -42,6 +42,6 @@ Leyenda: **Sí** = facultad confirmada; **No** = no autorizada por el alcance; *
 
 ## Compatibilidad y pendientes
 
-El frontend actual usa `seguimiento`, `consulta` y permisos ampliados al administrador; esto contradice el contrato. Se señala en [impacto-api-modelo-datos.md](impacto-api-modelo-datos.md), sin editar código. No se requiere una tabla genérica de roles/permisos para tres roles exclusivos.
+Actualización técnica del 04/11/2026: el frontend usa `captura`, `revision` y `administrador`, con guards y navegación sin herencia de captura/revisión al administrador. `/seguimiento` se conserva como ruta del rol `revision` y Consulta como vista, no como roles. La autorización de cada operación y objeto corresponde al backend. No se requiere una tabla genérica de roles/permisos para tres roles exclusivos.
 
 Pendientes: asignaciones concretas del cliente, restricciones personales adicionales, reasignaciones e historia, visibilidad temática de Captura, reportes del administrador y canales de avisos. Las respuestas sintéticas de [api/openapi.yaml](api/openapi.yaml) no aprueban estos permisos.

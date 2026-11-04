@@ -7,7 +7,9 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "start": "node dist/server.js",
-    "test": "node --import tsx --test"
+    "test": "node --import tsx --test",
+    "admin:create": "tsx src/scripts/create-admin.ts",
+    "test:integration": "node --import tsx --test test/usuarios.integration.test.mjs"
   },
   "keywords": [],
   "author": "",

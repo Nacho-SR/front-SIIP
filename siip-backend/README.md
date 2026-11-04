@@ -52,10 +52,14 @@ src/
       repositories/       consultas de usuarios y almacén PostgreSQL de sesiones
       schemas/            validación, tipos y respuestas públicas
       guards/             permisos por rol
+    administracion/       altas auditadas de usuarios y dependencias
     indicadores/          responsabilidad documentada; implementación pendiente
     operacion/            responsabilidad documentada; implementación pendiente
     evaluacion/           responsabilidad documentada; implementación pendiente
 sql/001_auth_propuesta.sql SQL de autenticación preparado, NO ejecutado
+sql/002_auditoria_configuracion.sql bitácora transaccional de altas
+src/scripts/create-admin.ts bootstrap del primer administrador
+docs/SIIP-auth.postman_collection.json recorrido importable en Postman
 ```
 
 Los módulos nuevos se registran dentro del ámbito `/api/v1` en `app.ts`, después
@@ -106,25 +110,110 @@ sin TLS. No mezclar opciones SSL adicionales en la URL; `sslmode` se retira para
 aplicar la política TLS del backend. Una CA privada requeriría configurar su
 certificado explícitamente antes de usar ese proveedor.
 
-Por instrucción del equipo todavía no se dispone de BD y **no se ejecutó SQL**.
-`sql/001_auth_propuesta.sql` contiene únicamente dependencias, usuarios y sesiones
-para revisión. La tabla técnica de sesiones guarda JSON, generación para actualización
+Al 04/11/2026 el equipo dispone de una base PostgreSQL vacía; todavía falta configurar
+la conexión local. **No se ejecutó SQL desde este chat**. Aplicar explícitamente y en
+orden `sql/001_auth_propuesta.sql` y `sql/002_auditoria_configuracion.sql` en la base
+de desarrollo autorizada (por ejemplo, desde el editor SQL de PostgreSQL).
+El primero crea dependencias, usuarios y sesiones; el segundo, auditoría administrativa.
+La tabla técnica de sesiones guarda JSON, generación para actualización
 atómica y vencimiento; evita recrear sesiones revocadas desde solicitudes obsoletas.
 Las consultas iniciales usan `pg` parametrizado, incluido el compare-and-set; Drizzle
 queda instalado para el esquema que se apruebe. No hay sincronización automática,
 migración al arrancar, registros o contraseñas predeterminadas.
 
-Para una prueba real: revisar/aprobar el SQL, preparar una BD de desarrollo vacía,
-aplicarlo con credenciales de migración y crear la cuenta inicial con hash Argon2id.
-Después configurar `.env`. El usuario de ejecución necesita SELECT en usuarios y
-dependencias, y SELECT/INSERT/UPDATE/DELETE en sesiones; no necesita crear esquema.
+Después configurar `DATABASE_URL` en `.env` y crear la cuenta inicial con el script
+de abajo. Aplicar SQL con credenciales de migración; el usuario de ejecución necesita
+SELECT/INSERT en usuarios y dependencias, SELECT/INSERT/UPDATE/DELETE en sesiones,
+INSERT en auditoria_configuracion y USAGE en las secuencias de altas. No necesita
+crear esquema. El bootstrap usa un bloqueo asesor transaccional para serializar
+intentos simultáneos mientras comprueba que no existe otro administrador.
 No usar credenciales de producción ni las del propietario como usuario diario.
 
 shortcut: la limpieza de filas expiradas está documentada en el SQL pero aún no
 programada; configurar la tarea antes de un despliegue persistente. Las sesiones
 expiradas se rechazan aunque su fila todavía no se haya eliminado.
 
-Las pruebas usan cuentas y almacén en memoria solo como dobles de prueba. Cubren
+Las pruebas habituales usan cuentas y almacén en memoria solo como dobles de prueba. Cubren
 HTTP, CSRF, rotación/revocación, expiración, permisos, validación, errores y contrato
 del adaptador de persistencia. No verifican ejecución SQL ni conectividad PostgreSQL
-real. No se implementaron subida PDF, registro público o recuperación de contraseña.
+real salvo que se configure explícitamente la prueba de integración de abajo.
+No se implementaron subida PDF, registro público o recuperación de contraseña.
+
+## Primer administrador
+
+`npm run admin:create` crea únicamente el primer Administrador, sin dependencia,
+con Argon2id y auditoría en la misma transacción. Si ya hay cualquier cuenta de
+Administrador (incluso inactiva), falla sin cambiarla. No es un reset de contraseña.
+
+Desde PowerShell, en `siip-backend`, con `.env` configurado y ambos SQL aplicados:
+
+```powershell
+$env:ADMIN_NOMBRE = Read-Host 'Nombre del administrador'
+$env:ADMIN_CORREO = Read-Host 'Correo del administrador'
+$siipPassword = Read-Host 'Contraseña (mínimo 15 caracteres)' -AsSecureString
+try {
+    $env:ADMIN_PASSWORD = [System.Net.NetworkCredential]::new('', $siipPassword).Password
+    npm run admin:create
+} finally {
+    Remove-Item Env:ADMIN_PASSWORD -ErrorAction SilentlyContinue
+    Remove-Item Env:ADMIN_NOMBRE -ErrorAction SilentlyContinue
+    Remove-Item Env:ADMIN_CORREO -ErrorAction SilentlyContinue
+    Remove-Variable siipPassword -ErrorAction SilentlyContinue
+}
+```
+
+La contraseña se pide sin mostrarla y no queda escrita en el comando. El script
+solo imprime el ID creado o un error sanitizado; no aplica SQL ni sobrescribe cuentas.
+
+## Altas desde la API
+
+Tras GET de bootstrap y POST de login del administrador, conservar cookie y usar
+el CSRF NUEVO del login. Todas las altas exigen Origin autorizado, cookie, CSRF y
+rol administrador vigente. Devuelven 201 con datos públicos, sin contraseña/hash.
+
+`POST /api/v1/administracion/dependencias`:
+
+```json
+{ "clave": "CLAVE_REAL", "nombre": "Nombre de la dependencia" }
+```
+
+`POST /api/v1/administracion/usuarios` para Captura:
+
+```json
+{
+  "nombre": "Nombre del capturista",
+  "correo": "captura@example.test",
+  "password": "ReemplazarPorUnaClavePrivada!",
+  "rol": "captura",
+  "dependencia_id": "ID_DEVUELTO_POR_EL_ALTA"
+}
+```
+
+Para Revisión se usa el mismo endpoint, `rol: "revision"`, y se omite
+`dependencia_id` o se envía `null`. La cuenta de Captura requiere dependencia activa
+y solo puede existir una cuenta de Captura activa por dependencia. Los correos se
+normalizan a minúsculas; duplicados responden 409. La contraseña inicial requiere
+15–1024 caracteres; no se exige composición arbitraria. No se admite crear un
+Administrador por HTTP ni imponer campos como `activo`, `creado_por` o hashes.
+
+El alta y su evento en `auditoria_configuracion` son atómicos. Si falla la bitácora,
+se revierte el alta. El bootstrap se registra con el ID del nuevo administrador
+como actor inicial. Los valores de auditoría no incluyen contraseñas o hashes.
+
+## Probar el recorrido
+
+Importa `docs/SIIP-auth.postman_collection.json`. Completa las variables locales
+`adminCorreo`, `adminPassword`, `capturaPassword` y `revisionPassword`; ajusta
+`baseUrl`/`origin` al entorno. Las contraseñas están vacías en el archivo del repo.
+Con la API arrancada, ejecuta las 13 solicitudes en orden: bootstrap, login admin,
+alta de dependencia, altas de Captura/Revisión y login/logout de los tres roles.
+El cookie jar debe estar habilitado; la colección conserva CSRF y el ID de dependencia.
+La dependencia DEMO es sintética y solo sirve para desarrollo. Para repetir el alta,
+usa claves/correos nuevos; las cuentas existentes nunca se sobrescriben.
+
+Para verificar también SQL y persistencia real, configura `TEST_DATABASE_URL` para
+una base de pruebas separada y ejecuta `npm run test:integration`. La prueba crea
+un esquema temporal con prefijo `siip_test_`, verifica su aislamiento, aplica ambos
+SQL, recorre las altas y auth, comprueba auditoría y elimina únicamente ese esquema.
+Necesita permisos técnicos de crear esquemas en esa base. Sin `TEST_DATABASE_URL`
+se omite; nunca reutiliza automáticamente `DATABASE_URL` para escribir pruebas.

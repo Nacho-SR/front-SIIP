@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../store/auth.store';
 
@@ -8,10 +9,23 @@ const authStore = useAuthStore();
 
 // Estado reactivo para controlar si el menú está abierto o cerrado
 const isMenuOpen = ref(false);
+const isLoggingOut = ref(false);
+const logoutError = ref('');
 
-const handleLogout = () => {
-  authStore.logout();
-  router.push('/login');
+const handleLogout = async () => {
+  if (isLoggingOut.value) return;
+  isLoggingOut.value = true;
+  logoutError.value = '';
+  try {
+    await authStore.logout();
+    await router.replace('/login');
+  } catch (error) {
+    logoutError.value = axios.isAxiosError(error)
+      ? error.response?.data?.detail || 'No se pudo cerrar la sesión. Intenta de nuevo.'
+      : 'No se pudo cerrar la sesión. Intenta de nuevo.';
+  } finally {
+    isLoggingOut.value = false;
+  }
 };
 </script>
 
@@ -44,7 +58,7 @@ const handleLogout = () => {
               class="flex items-center gap-3 border border-wine text-wine px-4 py-1.5 rounded hover:bg-wine/5 transition-colors focus:outline-none"
             >
               <!-- Solo el nombre -->
-              <span class="text-sm font-bold">{{ authStore.user?.name || 'Usuario' }}</span>
+              <span class="text-sm font-bold">{{ authStore.user?.nombre || 'Usuario' }}</span>
               
               <!-- Línea divisoria interna -->
               <div class="h-4 w-px bg-wine opacity-40"></div>
@@ -75,9 +89,10 @@ const handleLogout = () => {
               
               <button 
                 @click="handleLogout" 
+                :disabled="isLoggingOut"
                 class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-semibold"
               >
-                Cerrar Sesión
+                {{ isLoggingOut ? 'Cerrando sesión…' : 'Cerrar Sesión' }}
               </button>
             </div>
 
@@ -96,14 +111,15 @@ const handleLogout = () => {
       <nav class="flex gap-2">
         <router-link to="/estadisticas" class="nav-link" exact-active-class="active-tab">Estadísticas</router-link>
         <router-link to="/" class="nav-link" exact-active-class="active-tab">Consulta</router-link>
-        <router-link v-if="authStore.isCapturista || authStore.isAdmin" to="/captura" class="nav-link" exact-active-class="active-tab">Captura</router-link>
-        <router-link v-if="authStore.isRevisor || authStore.isAdmin" to="/seguimiento" class="nav-link" exact-active-class="active-tab">Seguimiento</router-link>
+        <router-link v-if="authStore.isCapturista" to="/captura" class="nav-link" exact-active-class="active-tab">Captura</router-link>
+        <router-link v-if="authStore.isRevisor" to="/seguimiento" class="nav-link" exact-active-class="active-tab">Seguimiento</router-link>
         <router-link v-if="authStore.isAdmin" to="/administrador" class="nav-link" exact-active-class="active-tab">Administrador</router-link>
       </nav>
     </header>
 
     <!-- Área inyectable -->
     <main class="p-8 flex-1 overflow-y-auto">
+      <p v-if="logoutError" role="alert" class="mb-4 text-red-600">{{ logoutError }}</p>
       <router-view></router-view>
     </main>
 

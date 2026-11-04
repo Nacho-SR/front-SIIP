@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 
 // ==========================================
 // 1. ESTADO DE LOS FILTROS
@@ -185,7 +185,7 @@ const getSemaforoClass = (color: string) => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(ind, index) in grupo.indicadores" :key="ind.clave" class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+              <tr v-for="ind in grupo.indicadores" :key="ind.clave" class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                 <td class="py-3 px-4 text-gray-500">{{ ind.clave }}</td>
                 <td class="py-3 px-4 font-medium text-ink whitespace-normal min-w-[300px]">{{ ind.nombre }}</td>
                 <td class="py-3 px-4">{{ ind.tipologia }}</td>

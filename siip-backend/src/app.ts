@@ -9,8 +9,10 @@ import type { Env } from './env.js';
 import { registerAuth } from './modules/auth/auth.routes.js';
 import type { AuthDependencies } from './modules/auth/auth.routes.js';
 import { HttpError } from './shared/http-error.js';
+import { usersRoutes } from './modules/administracion/usuarios.routes.js';
+import type { UsersRepository } from './modules/administracion/repositories/usuarios.repository.js';
 
-export async function buildApp(env: Env, auth?: AuthDependencies) {
+export async function buildApp(env: Env, auth?: AuthDependencies & { users?: UsersRepository }) {
   const app = Fastify({
     logger: {
       redact: ['req.headers.authorization', 'req.headers.cookie', 'req.body.password', 'res.headers["set-cookie"]'],
@@ -53,7 +55,7 @@ export async function buildApp(env: Env, auth?: AuthDependencies) {
 
   await app.register(async (api) => {
     await registerAuth(api, { env, dependencies: auth });
-    // Registrar aquí los demás módulos para compartir sesión y api.requireSession.
+    await api.register(usersRoutes, { prefix: '/administracion', repository: auth?.users });
   }, { prefix: '/api/v1' });
 
   app.get('/api/v1/salud', {

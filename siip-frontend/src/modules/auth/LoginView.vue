@@ -1,27 +1,31 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth.store';
 
-// Instanciamos el router y nuestro store
 const router = useRouter();
 const authStore = useAuthStore();
 
-// Estados locales para el formulario
 const email = ref('');
 const password = ref('');
 const errorMsg = ref('');
+const isLoading = ref(false);
 
 const handleLogin = async () => {
+  if (isLoading.value) return;
+  isLoading.value = true;
   try {
     errorMsg.value = '';
-    // Disparamos la acción de Pinia (que por ahora asigna el rol de 'administrador')
     await authStore.login(email.value, password.value);
-    
-    // Si la promesa se resuelve correctamente, redirigimos a la ruta base '/'
-    router.push('/');
+    password.value = '';
+    await router.replace('/');
   } catch (error) {
-    errorMsg.value = 'Ocurrió un error al intentar acceder.';
+    errorMsg.value = axios.isAxiosError(error)
+      ? error.response?.data?.detail || 'No se pudo conectar con el servidor. Intenta de nuevo.'
+      : 'Ocurrió un error al intentar acceder.';
+  } finally {
+    isLoading.value = false;
   }
 };
 </script>
@@ -34,10 +38,13 @@ const handleLogin = async () => {
       
       <form @submit.prevent="handleLogin" class="space-y-4">
         <div>
-          <label class="block text-ink text-sm font-bold mb-1">Correo Electrónico</label>
+          <label for="correo" class="block text-ink text-sm font-bold mb-1">Correo Electrónico</label>
           <input 
+            id="correo"
             v-model="email" 
             type="email" 
+            autocomplete="username"
+            maxlength="255"
             required 
             class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-wine" 
             placeholder="usuario@salamanca.tecnm.mx" 
@@ -45,24 +52,28 @@ const handleLogin = async () => {
         </div>
         
         <div>
-          <label class="block text-ink text-sm font-bold mb-1">Contraseña</label>
+          <label for="password" class="block text-ink text-sm font-bold mb-1">Contraseña</label>
           <input 
+            id="password"
             v-model="password" 
             type="password" 
+            autocomplete="current-password"
+            maxlength="1024"
             required 
             class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-wine" 
             placeholder="••••••••" 
           />
         </div>
         
-        <div v-if="errorMsg" class="text-red-500 text-sm font-semibold">
+        <div v-if="errorMsg" role="alert" class="text-red-500 text-sm font-semibold">
           {{ errorMsg }}
         </div>
         
         <button 
           type="submit" 
+          :disabled="isLoading"
           class="w-full bg-wine text-white font-bold py-2 px-4 rounded hover:bg-wine2 transition-colors">
-          Ingresar
+          {{ isLoading ? 'Ingresando…' : 'Ingresar' }}
         </button>
       </form>
     </div>
