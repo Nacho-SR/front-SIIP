@@ -127,6 +127,17 @@ SELECT/INSERT en usuarios y dependencias, SELECT/INSERT/UPDATE/DELETE en sesione
 INSERT en auditoria_configuracion y USAGE en las secuencias de altas. No necesita
 crear esquema. El bootstrap usa un bloqueo asesor transaccional para serializar
 intentos simultáneos mientras comprueba que no existe otro administrador.
+
+El formato de `DATABASE_URL` es una URI PostgreSQL, por ejemplo:
+
+```dotenv
+DATABASE_URL="postgresql://USUARIO:CONTRASENA@localhost:5432/NOMBRE_BD"
+```
+
+Reemplaza los valores por el usuario de PostgreSQL, su contraseña y el nombre real
+de la base; no son las credenciales del administrador de SIIP. No uses la dirección
+HTTP de pgAdmin, Supabase o la API. Si la contraseña contiene caracteres reservados,
+codifícalos dentro de la URI: por ejemplo `@` como `%40` y `#` como `%23`.
 No usar credenciales de producción ni las del propietario como usuario diario.
 
 shortcut: la limpieza de filas expiradas está documentada en el SQL pero aún no

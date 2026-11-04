@@ -65,3 +65,24 @@ test('producción exige BD, secreto suficiente y origen HTTPS', () => {
   assert.equal(envSchema.safeParse({ ...production, FRONTEND_ORIGIN: 'http://siip.example.test' }).success, false);
   assert.equal(envSchema.safeParse({ ...production, DATABASE_URL: production.DATABASE_URL + '?ssl=no-verify' }).success, false);
 });
+
+test('DATABASE_URL distingue PostgreSQL de HTTP y explica el formato sin revelar credenciales', () => {
+  const base = {
+    FRONTEND_ORIGIN: 'http://localhost:5173',
+    SESSION_SECRET: 'synthetic-long-secret-for-tests-only',
+  };
+  for (const protocol of ['postgresql', 'postgres']) {
+    assert.equal(envSchema.safeParse({
+      ...base, DATABASE_URL: `${protocol}://synthetic:synthetic@localhost:5432/siip`,
+    }).success, true);
+  }
+  for (const DATABASE_URL of [
+    'http://localhost:5432', 'https://private-user:private-password@db.example.test/siip',
+  ]) {
+    const result = envSchema.safeParse({ ...base, DATABASE_URL });
+    assert.equal(result.success, false);
+    const messages = result.error.issues.map((issue) => issue.message).join('\n');
+    assert.match(messages, /postgresql:\/\//);
+    assert.doesNotMatch(messages, /private-user|private-password|db\.example\.test/);
+  }
+});

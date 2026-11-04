@@ -8,7 +8,10 @@ export const envSchema = z.object({
     (value) => URL.canParse(value) && new URL(value).origin === value,
     'Usa un origen HTTP(S) sin ruta, credenciales ni barra final.',
   ),
-  DATABASE_URL: z.union([z.literal(''), z.url({ protocol: /^postgres(ql)?$/ })]).default(''),
+  DATABASE_URL: z.union([z.literal(''), z.url({
+    protocol: /^postgres(ql)?$/,
+    error: 'Usa postgresql://USUARIO:CONTRASENA@HOST:PUERTO/NOMBRE_BD; no una dirección http:// o https://.',
+  })]).default(''),
   SESSION_SECRET: z.string().default(''),
 }).superRefine((env, context) => {
   if (env.DATABASE_URL && env.SESSION_SECRET.length < 32) {

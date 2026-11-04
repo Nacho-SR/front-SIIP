@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { ZodError } from 'zod';
 import { envSchema } from '../env.js';
-import { createPool } from '../database/pool.js';
+import { createPool, databaseErrorMessage } from '../database/pool.js';
 import { HttpError } from '../shared/http-error.js';
 import { createUsersRepository } from '../modules/administracion/repositories/usuarios.repository.js';
 import { createUsersService } from '../modules/administracion/services/usuarios.service.js';
@@ -27,7 +27,7 @@ try {
   } else if (!pool) {
     console.error('Configura DATABASE_URL, SESSION_SECRET y los datos ADMIN_NOMBRE, ADMIN_CORREO, ADMIN_PASSWORD.');
   } else {
-    console.error('No se pudo crear el administrador. Revisa la conexión y que estén aplicados los SQL 001 y 002.');
+    console.error(databaseErrorMessage(error));
   }
   process.exitCode = 1;
 } finally {

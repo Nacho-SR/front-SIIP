@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
+import { databaseErrorMessage } from '../src/database/pool.ts';
 
 test('el CLI falla sin conexión configurada sin imprimir la contraseña', () => {
   const password = 'synthetic-private-cli-password-marker';
@@ -17,4 +18,22 @@ test('el CLI falla sin conexión configurada sin imprimir la contraseña', () =>
   assert.match(child.stderr, /DATABASE_URL/);
   assert.equal((child.stdout + child.stderr).includes(password), false);
   assert.equal(child.stdout.includes('Administrador inicial creado'), false);
+});
+
+test('el diagnóstico distingue fallos PostgreSQL sin imprimir mensajes o credenciales privadas', () => {
+  for (const [code, pattern] of [
+    ['28P01', /credenciales.*28P01/], ['3D000', /no existe.*3D000/],
+    ['42P01', /tablas.*42P01/], ['42501', /permisos.*42501/],
+    ['ECONNREFUSED', /conexión.*ECONNREFUSED/],
+    ['ENOTFOUND', /contactar/], ['ETIMEDOUT', /contactar/], ['UNKNOWN', /No se pudo crear/],
+  ]) {
+    const error = Object.assign(new Error('postgres://private-user:private-password@private-host/db'), { code });
+    const message = databaseErrorMessage(error);
+    assert.match(message, pattern);
+    assert.doesNotMatch(message, /private-user|private-password|private-host|postgres:\/\//);
+  }
+  assert.match(databaseErrorMessage(new AggregateError([
+    Object.assign(new Error('private details'), { code: 'ECONNREFUSED' }),
+  ])), /ECONNREFUSED/);
+  assert.match(databaseErrorMessage(null), /No se pudo crear/);
 });
