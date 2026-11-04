@@ -8,6 +8,8 @@ node_modules/
 # Variables de Entorno y Secretos
 # ==========================================
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 *.pem
