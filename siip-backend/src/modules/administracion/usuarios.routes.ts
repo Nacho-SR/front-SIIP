@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { HttpError } from '../../shared/http-error.js';
 import { requireRoles } from '../auth/guards/auth.guard.js';
 import { userSchema } from '../auth/schemas/auth.schema.js';
@@ -17,12 +18,15 @@ export async function usersRoutes(app: FastifyInstance, options: { repository?: 
       handler: async () => { throw new HttpError(503, 'ADMINISTRACION_NO_CONFIGURADA', 'Falta configurar PostgreSQL para las altas.'); },
     });
     app.route({
-      method: 'POST', url: '/dependencias',
+      method: ['GET', 'POST'], url: '/dependencias',
       handler: async () => { throw new HttpError(503, 'ADMINISTRACION_NO_CONFIGURADA', 'Falta configurar PostgreSQL para las altas.'); },
     });
     return;
   }
   const controller = createUsersController(createUsersService(options.repository));
+  app.get('/dependencias', {
+    schema: { response: { 200: z.array(dependencySchema) } },
+  }, controller.listDependencies);
   app.post<{ Body: CreateUser }>('/usuarios', {
     bodyLimit: 8192,
     schema: { body: createUserSchema, response: { 201: userSchema } },

@@ -33,16 +33,16 @@ const handleLogout = async () => {
   <div class="min-h-screen flex flex-col bg-gray-50 text-ink">
     
     <!-- Header Híbrido Superior -->
-    <header class="bg-white pt-6 pb-4 px-8 flex flex-col gap-6 shadow-sm">
+    <header class="bg-white pt-6 pb-4 px-4 sm:px-8 flex flex-col gap-6 shadow-sm">
       
       <!-- Fila 1: Branding institucional y Usuario -->
-      <div class="flex justify-between items-center">
+      <div class="flex flex-col items-start gap-4 lg:flex-row lg:justify-between lg:items-center">
         <!-- Lado Izquierdo: Logos y Títulos -->
-        <div class="flex items-center gap-5">
-          <h1 class="text-3xl font-extrabold text-wine tracking-tight">SIIP Salamanca</h1>
-          <div class="h-10 w-px bg-wine opacity-40"></div>
-          <div class="flex flex-col">
-            <h2 class="text-xl font-bold text-wine">Sistema Integrado de Indicadores de Planeación</h2>
+        <div class="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-5">
+          <p class="shrink-0 text-2xl sm:text-3xl font-extrabold text-wine tracking-tight">SIIP Salamanca</p>
+          <div class="hidden sm:block h-10 w-px shrink-0 bg-wine opacity-40"></div>
+          <div class="flex min-w-0 flex-col">
+            <p class="text-sm sm:text-xl font-bold text-wine">Sistema Integrado de Indicadores de Planeación</p>
           </div>
         </div>
 
@@ -50,7 +50,7 @@ const handleLogout = async () => {
         <div class="flex items-center gap-6">
           
           <!-- Contenedor relativo para el Dropdown -->
-          <div class="relative border-l border-gray-300 pl-6">
+          <div class="relative lg:border-l border-gray-300 lg:pl-6">
             
             <!-- Botón Outlined -->
             <button 
@@ -58,7 +58,7 @@ const handleLogout = async () => {
               class="flex items-center gap-3 border border-wine text-wine px-4 py-1.5 rounded hover:bg-wine/5 transition-colors focus:outline-none"
             >
               <!-- Solo el nombre -->
-              <span class="text-sm font-bold">{{ authStore.user?.nombre || 'Usuario' }}</span>
+              <span class="max-w-56 truncate text-sm font-bold">{{ authStore.user?.nombre || 'Usuario' }}</span>
               
               <!-- Línea divisoria interna -->
               <div class="h-4 w-px bg-wine opacity-40"></div>
@@ -108,7 +108,7 @@ const handleLogout = async () => {
       </div>
 
       <!-- Fila 2: Navegación Horizontal -->
-      <nav class="flex gap-2">
+      <nav class="flex flex-wrap gap-2">
         <router-link to="/estadisticas" class="nav-link" exact-active-class="active-tab">Estadísticas</router-link>
         <router-link to="/" class="nav-link" exact-active-class="active-tab">Consulta</router-link>
         <router-link v-if="authStore.isCapturista" to="/captura" class="nav-link" exact-active-class="active-tab">Captura</router-link>
@@ -118,7 +118,7 @@ const handleLogout = async () => {
     </header>
 
     <!-- Área inyectable -->
-    <main class="p-8 flex-1 overflow-y-auto">
+    <main class="min-w-0 p-4 sm:p-8 flex-1 overflow-y-auto">
       <p v-if="logoutError" role="alert" class="mb-4 text-red-600">{{ logoutError }}</p>
       <router-view></router-view>
     </main>

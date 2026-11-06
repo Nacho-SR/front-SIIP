@@ -4,6 +4,8 @@ Versión 0.1 · 26/10/2026 · Contrato técnico propuesto sobre DEC-005/010/019;
 
 Roles exclusivos: `captura`, `revision`, `administrador`. No existe rol consulta ni validador adicional. Una cuenta Administrador no hereda permisos de Captura/Revisión. Identidad, rol y dependencia proceden de la sesión y cuenta vigente, no de campos enviados por cliente.
 
+DEC-037 (04/11/2026): Captura y Revisión requieren dependencia activa; si esta se desactiva, la cuenta no puede autenticar ni conservar su sesión. La pertenencia de Revisión no reduce la consulta global ya acordada. Solo Administrador consulta el catálogo para las altas y crea usuarios/dependencias.
+
 Leyenda: **Sí** = facultad confirmada; **No** = no autorizada por el alcance; **Propuesto** = precisión técnica por revisar; **Pendiente** = no conceder antes de definirla. Toda acción depende también de objeto, estado y alcance. No basta ocultar botones.
 
 | Acción de negocio | Captura | Revisión | Administrador | Ámbito / condiciones |
@@ -24,7 +26,7 @@ Leyenda: **Sí** = facultad confirmada; **No** = no autorizada por el alcance; *
 | Editar/borrar valores enviados o auditoría | No | No | No | Corrección por nuevo envío; no CRUD de historia. |
 | Consultar hilo de revisión | Sí | Sí | Sí | Captura: eventos de sus envíos y metadatos de validación/reapertura; sin comentarios de otras dependencias. |
 | Consultar evaluación temática completa | Pendiente | Sí | Sí | No se concede a Captura una vista que revele indicadores ajenos; no se calcula un índice parcial silencioso. |
-| Administrar cuentas/dependencias/configuración/asignaciones | No | No | Sí | API de administración diferida; edición metodológica con historia depende de P-08. |
+| Administrar cuentas/dependencias/configuración/asignaciones | No | No | Sí | Altas de Captura/Revisión y dependencias implementadas con consulta del catálogo activo; otras operaciones administrativas diferidas. Edición metodológica con historia depende de P-08. |
 | Consultar auditoría administrativa | No | No | Sí | Solo lectura y sin secretos; contrato diferido. |
 | Generar reportes globales | No | Sí | Pendiente | Revisión confirmado; formatos y eventual permiso de Administrador por definir. Supervisión no implica permiso adicional automático. |
 | Consultar/marcar avisos propios | Propuesto | Propuesto | Propuesto | Solo usuario destinatario. Bandeja interna no está aprobada como canal definitivo. |

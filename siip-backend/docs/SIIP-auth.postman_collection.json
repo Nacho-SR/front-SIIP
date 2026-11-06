@@ -250,7 +250,7 @@
         "url": "{{baseUrl}}/administracion/usuarios",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"nombre\": \"Revision de prueba\",\n  \"correo\": \"{{revisionCorreo}}\",\n  \"password\": \"{{revisionPassword}}\",\n  \"rol\": \"revision\"\n}",
+          "raw": "{\n  \"nombre\": \"Revision de prueba\",\n  \"correo\": \"{{revisionCorreo}}\",\n  \"password\": \"{{revisionPassword}}\",\n  \"rol\": \"revision\",\n  \"dependencia_id\": \"{{dependenciaId}}\"\n}",
           "options": {
             "raw": {
               "language": "json"

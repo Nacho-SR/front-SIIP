@@ -28,7 +28,7 @@ test('PostgreSQL real: bootstrap, altas auditadas y auth de los tres roles', {
     connection.searchParams.set('options', `-c search_path=${schema}`);
     pool = createPool(connection.toString());
     assert.equal((await pool.query('SELECT current_schema() AS schema')).rows[0].schema, schema);
-    for (const file of ['001_auth_propuesta.sql', '002_auditoria_configuracion.sql']) {
+    for (const file of ['001_auth_propuesta.sql', '002_auditoria_configuracion.sql', '003_dependencia_revision.sql']) {
       await pool.query(await readFile(new URL(`../sql/${file}`, import.meta.url), 'utf8'));
     }
     const users = createUsersRepository(pool);
@@ -36,6 +36,11 @@ test('PostgreSQL real: bootstrap, altas auditadas y auth de los tres roles', {
     const initial = { nombre: 'Admin sintético', correo: 'admin@example.test', password };
     const service = createUsersService(users);
     const admin = await service.createInitialAdmin(initial);
+    await assert.rejects(pool.query(`
+      INSERT INTO usuarios (nombre, correo, password_hash, rol, dependencia_id)
+      SELECT 'Sin dependencia', 'invalid@example.test', password_hash, 'revision', NULL
+      FROM usuarios WHERE id = $1
+    `, [admin.id]), { code: '23514', constraint: 'usuarios_dependencia_por_rol' });
     await assert.rejects(service.createInitialAdmin(initial), { codigo: 'ADMIN_YA_EXISTE' });
     const origin = 'http://localhost:5173';
     app = await buildApp(envSchema.parse({ FRONTEND_ORIGIN: origin, SESSION_SECRET: randomUUID() }), {
@@ -63,7 +68,7 @@ test('PostgreSQL real: bootstrap, altas auditadas y auth de los tres roles', {
     assert.equal(dependency.statusCode, 201, dependency.body);
     for (const rol of ['captura', 'revision']) {
       const payload = { nombre: `Cuenta ${rol}`, correo: `${rol}@example.test`, password, rol,
-        ...(rol === 'captura' ? { dependencia_id: dependency.json().id } : {}) };
+        dependencia_id: dependency.json().id };
       const response = await app.inject({ method: 'POST', url: userUrl, headers, payload });
       assert.equal(response.statusCode, 201, response.body);
       assert.equal((await app.inject({ method: 'POST', url: userUrl, headers, payload })).statusCode, 409);
@@ -73,6 +78,7 @@ test('PostgreSQL real: bootstrap, altas auditadas y auth de los tres roles', {
       const userHeaders = await login(`${rol}@example.test`);
       const current = await app.inject({ url: sessionUrl, headers: { cookie: userHeaders.cookie } });
       assert.equal(current.json().usuario.rol, rol);
+      assert.equal(current.json().usuario.dependencia_id, dependency.json().id);
       assert.equal((await app.inject({ method: 'POST', url: userUrl, headers: userHeaders,
         payload: { nombre: 'No autorizado', correo: 'forbidden@example.test', password, rol: 'revision' } })).statusCode, 403);
       assert.equal((await app.inject({ method: 'DELETE', url: sessionUrl, headers: userHeaders })).statusCode, 204);

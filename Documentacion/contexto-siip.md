@@ -32,7 +32,7 @@ Usa datos y fórmulas reales del Excel al diseñar el esquema. No conviertas aut
 ## 4. Operación confirmada
 ### Roles
 - **Captura:** un capturista por dependencia previsto para MVP; ingresa datos completos y válidos, responde observaciones y consulta resultados e históricos exclusivamente de indicadores relacionados con su dependencia.
-- **Revisión:** revisa, emite observaciones, valida; puede consultar todos los indicadores y generar reportes. Revisar y validar son acciones distintas, aunque del mismo rol.
+- **Revisión:** pertenece a una dependencia obligatoria y activa (DEC-037, 04/11/2026); revisa, emite observaciones, valida y puede consultar todos los indicadores y generar reportes. La pertenencia no limita su consulta global. Revisar y validar son acciones distintas, aunque del mismo rol.
 - **Administrador:** gestiona cuentas, dependencias, familias, indicadores, variables, asignaciones, catálogos delimitados, reaperturas justificadas, historial y supervisión. No reemplaza el flujo ordinario de revisión/validación. No habrá importación (DEC-023).
 
 ### Capturas, revisión, histórico

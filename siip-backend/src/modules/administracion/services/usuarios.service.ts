@@ -6,6 +6,7 @@ import {
 
 export function createUsersService(repository: UsersRepository) {
   return {
+    listDependencies: () => repository.listDependencies(),
     async createUser(data: unknown, actorId: string) {
       const { password, ...account } = createUserSchema.parse(data);
       const password_hash = await hash(password, { type: argon2id });

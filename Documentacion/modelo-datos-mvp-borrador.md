@@ -92,7 +92,7 @@ Cuenta autenticada con un solo rol. La pertenencia actual no sustituye la depend
 | Campo | Tipo | Nulabilidad / regla | Significado |
 |---|---|---|---|
 | `id` | `bigint identity` | PK, NN | Identificador interno. |
-| `dependencia_id` | `bigint` | NULL; FK → dependencias.id | Obligatoria para rol Captura mediante CHECK. |
+| `dependencia_id` | `bigint` | NULL solo para Administrador; FK → dependencias.id | Obligatoria para Captura y Revisión mediante CHECK (DEC-037). El backend exige dependencia activa. |
 | `nombre` | `text` | NN, no vacío | Nombre mostrado. |
 | `correo` | `varchar(255)` | NN, no vacío | Unicidad sobre `lower(trim(correo))`. |
 | `password_hash` | `text` | NN | Hash creado por el mecanismo de autenticación; nunca contraseña original. |
@@ -101,6 +101,8 @@ Cuenta autenticada con un solo rol. La pertenencia actual no sustituye la depend
 | `creado_en` | `timestamptz` | NN, DEFAULT now() | Alta de cuenta. |
 
 Índice único parcial propuesto sobre `dependencia_id` donde `rol='captura' AND activo`. Una FK a usuario no garantiza por sí sola su rol: las acciones autorizadas se verifican en backend. Desactivar una cuenta no vuelve inválida una captura anterior.
+
+Actualización confirmada del 04/11/2026, DEC-037: Revisión también pertenece a una dependencia; no se extiende a este rol la unicidad de capturista ni se restringe su consulta global. `siip-backend/sql/003_dependencia_revision.sql` prepara la restricción sobre usuarios sin modificar los SQL anteriores ni reasignar datos. No se ha aplicado desde este chat.
 
 ### 3.5 indicadores
 

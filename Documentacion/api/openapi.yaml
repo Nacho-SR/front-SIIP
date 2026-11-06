@@ -200,7 +200,7 @@ paths:
     post:
       operationId: crearUsuario
       summary: Crear una cuenta de Captura o Revisión
-      description: Requiere administrador vigente, Origin autorizado, cookie y CSRF. Alta y auditoría en una transacción, sin contraseñas o hashes en la respuesta ni bitácora. Requiere SQL 001/002 aplicado.
+      description: Requiere administrador vigente, Origin autorizado, cookie y CSRF. Captura y Revisión requieren dependencia activa (DEC-037). Alta y auditoría en una transacción, sin contraseñas o hashes en la respuesta ni bitácora. Requiere SQL 001/002/003 aplicado.
       tags: [Administracion]
       x-roles: [administrador]
       x-prioridad: P0
@@ -243,9 +243,38 @@ paths:
         '503':
           $ref: '#/components/responses/AutenticacionNoConfigurada'
   /administracion/dependencias:
+    get:
+      operationId: listarDependenciasActivas
+      summary: Consultar dependencias activas para altas
+      description: Catálogo completo como array sin paginación, ordenado por nombre e ID. Solo Administrador con sesión vigente; no requiere CSRF al ser lectura. No incluye dependencias inactivas.
+      tags: [Administracion]
+      x-roles: [administrador]
+      x-prioridad: P0
+      responses:
+        '200':
+          description: Catálogo activo, vacío si no hay dependencias.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dependencia'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+        '503':
+          $ref: '#/components/responses/AutenticacionNoConfigurada'
     post:
       operationId: crearDependencia
-      summary: Crear una dependencia para asignación de Captura
+      summary: Crear una dependencia para asignación de Captura o Revisión
       description: Requiere administrador vigente, Origin autorizado, cookie y CSRF. Alta y auditoría en una transacción, sin contraseñas o hashes en la respuesta ni bitácora. Requiere SQL 001/002 aplicado.
       tags: [Administracion]
       x-roles: [administrador]
@@ -1964,7 +1993,7 @@ components:
     AltaUsuario:
       type: object
       additionalProperties: false
-      required: [nombre, correo, password, rol]
+      required: [nombre, correo, password, rol, dependencia_id]
       properties:
         nombre:
           type: string
@@ -1985,24 +2014,8 @@ components:
           type: string
           enum: [captura, revision]
         dependencia_id:
-          anyOf:
-          - $ref: '#/components/schemas/Id'
-          - type: 'null'
-      allOf:
-      - if:
-          properties:
-            rol:
-              const: captura
-        then:
-          required: [dependencia_id]
-          properties:
-            dependencia_id:
-              $ref: '#/components/schemas/Id'
-        else:
-          properties:
-            dependencia_id:
-              type: 'null'
-      description: Captura requiere dependencia activa y sin otro capturista activo. Revisión omite dependencia_id o usa null. No se crean administradores mediante HTTP. Correo duplicado o Captura ya asignada devuelven 409.
+          $ref: '#/components/schemas/Id'
+      description: Captura y Revisión requieren dependencia activa (DEC-037). Solo Captura se limita a una cuenta activa por dependencia. Revisión conserva consulta global. No se crean administradores mediante HTTP. Correo duplicado o Captura ya asignada devuelven 409.
     AltaDependencia:
       type: object
       additionalProperties: false

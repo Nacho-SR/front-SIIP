@@ -19,6 +19,7 @@ Gestionar fichas e indicadores municipales de Salamanca, capturar variables y PD
 
 - Administrar usuarios, dependencias, familias, indicadores, variables y asignaciones, con catálogos delimitados.
 - Un rol por cuenta: Captura, Revisión o Administrador. Revisar y validar son acciones distintas del mismo rol Revisión.
+- DEC-037 (04/11/2026): Captura y Revisión tienen una dependencia obligatoria y activa; la pertenencia de Revisión no reduce su consulta global. Las altas de estos usuarios y dependencias se realizan desde Administrador.
 - Una cuenta de Captura por dependencia prevista para la operación inicial; el cliente entregará asignaciones oficiales por variable.
 - Guardar solo capturas completas y válidas, sin borradores.
 - DEC-033: periodos naturales, captura desde registro con asignación y validación/publicación al cierre o después, sin plazo máximo que bloquee atrasos. Aviso preventivo siete días antes del fin y señalización de pendiente después. Primer corte: fin del periodo natural del alta; cobertura inicial y periodos previos siguen pendientes.

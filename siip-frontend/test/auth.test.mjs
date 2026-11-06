@@ -3,6 +3,8 @@ import { after, before, beforeEach, test } from 'node:test';
 import { AxiosError } from 'axios';
 import { createPinia, setActivePinia } from 'pinia';
 import { createServer } from 'vite';
+import { createSSRApp } from 'vue';
+import { renderToString } from 'vue/server-renderer';
 
 const usuario = {
   id: '9007199254740993', nombre: 'Cuenta de prueba', correo: 'captura@example.test',
@@ -10,7 +12,7 @@ const usuario = {
 };
 const anonymous = { usuario: null, csrf_token: 'csrf-anonimo-de-prueba' };
 const authenticated = { usuario, csrf_token: 'csrf-autenticado-de-prueba' };
-let vite, api, router, useAuthStore, auth, requests, responses;
+let vite, api, router, useAuthStore, auth, requests, responses, AdminView;
 
 before(async () => {
   vite = await createServer({
@@ -29,6 +31,7 @@ before(async () => {
   ({ useAuthStore } = await vite.ssrLoadModule('/src/store/auth.store.ts'));
   ({ default: api } = await vite.ssrLoadModule('/src/core/api.ts'));
   ({ default: router } = await vite.ssrLoadModule('/src/router/index.ts'));
+  ({ default: AdminView } = await vite.ssrLoadModule('/src/modules/admin/AdminView.vue'));
   for (const route of router.getRoutes()) {
     if (route.components) route.components.default = { render: () => null };
   }
@@ -188,4 +191,77 @@ test('logout fallido no simula haber cerrado la sesión del servidor', async () 
   await auth.logout();
   assert.equal(auth.isAuthenticated, false);
   assert.equal(requests.filter(({ method }) => method === 'delete').length, 1);
+});
+
+async function adminForm() {
+  let state;
+  const app = createSSRApp(AdminView);
+  app.mixin({ created() { state = this.$.setupState; } });
+  await renderToString(app);
+  return state;
+}
+
+test('alta de dependencia actualiza el selector y permite crear Revisión con esa dependencia', async () => {
+  const form = await adminForm();
+  const dependency = { id: '9007199254740993', clave: 'REV', nombre: 'Planeación', activo: true };
+  auth.csrfToken = authenticated.csrf_token;
+  responses.push({ data: [] });
+  await form.loadDependencies();
+  Object.assign(form.dependencyForm, { clave: 'REV', nombre: 'Planeación' });
+  responses.push({ status: 201, data: dependency });
+  await form.createDependency();
+  assert.deepEqual(form.dependencies, [dependency]);
+  assert.equal(form.userForm.dependencia_id, dependency.id);
+  assert.equal(form.dependencyForm.clave, '');
+
+  Object.assign(form.userForm, { nombre: 'Revisión de prueba', correo: 'revision@example.test',
+    password: 'contraseña-sintética-2026', rol: 'revision' });
+  responses.push({ status: 201, data: { ...usuario, nombre: form.userForm.nombre, rol: 'revision', dependencia_id: dependency.id } });
+  await form.createUser();
+  const request = requests.at(-1);
+  assert.equal(request.url, '/administracion/usuarios');
+  assert.equal(request.headers.get('X-CSRF-Token'), authenticated.csrf_token);
+  assert.deepEqual(JSON.parse(request.data), { nombre: 'Revisión de prueba', correo: 'revision@example.test',
+    password: 'contraseña-sintética-2026', rol: 'revision', dependencia_id: dependency.id });
+  assert.equal(form.userForm.password, '');
+  assert.match(form.userSuccess, /creado/);
+});
+
+test('altas sin dependencia o con error del servidor no muestran éxito', async () => {
+  const form = await adminForm();
+  responses.push({ data: [] });
+  await form.loadDependencies();
+  await form.createUser();
+  assert.equal(requests.length, 1);
+  assert.match(form.userError, /dependencia activa/);
+  const dependency = { id: '7', clave: 'REV', nombre: 'Revisión', activo: true };
+  form.dependencies.push(dependency);
+  Object.assign(form.userForm, { dependencia_id: '7', password: 'contraseña-sintética-2026' });
+  responses.push({ status: 409, data: { detail: 'Ya existe una cuenta con ese correo.' } });
+  await form.createUser();
+  assert.equal(form.userError, 'Ya existe una cuenta con ese correo.');
+  assert.equal(form.userSuccess, '');
+  assert.equal(form.userForm.password, '');
+  assert.equal(form.savingUser, false);
+
+  Object.assign(form.dependencyForm, { clave: 'REV', nombre: 'Revisión' });
+  responses.push({ status: 409, data: { detail: 'Ya existe una dependencia con esa clave.' } });
+  await form.createDependency();
+  assert.equal(form.dependencyError, 'Ya existe una dependencia con esa clave.');
+  assert.equal(form.dependencyForm.clave, 'REV');
+  assert.equal(form.dependencies.length, 1);
+});
+
+test('fallo al cargar dependencias bloquea altas hasta que se reintenta', async () => {
+  const form = await adminForm();
+  responses.push({ status: 503, data: { detail: 'Servicio no disponible.' } });
+  await form.loadDependencies();
+  await form.createUser();
+  await form.createDependency();
+  assert.equal(requests.length, 1);
+  assert.equal(form.dependenciesError, 'Servicio no disponible.');
+  responses.push({ data: [] });
+  await form.loadDependencies();
+  assert.equal(form.dependenciesError, '');
+  assert.equal(form.loadingDependencies, false);
 });

@@ -112,9 +112,14 @@ certificado explícitamente antes de usar ese proveedor.
 
 Al 04/11/2026 el equipo dispone de una base PostgreSQL vacía; todavía falta configurar
 la conexión local. **No se ejecutó SQL desde este chat**. Aplicar explícitamente y en
-orden `sql/001_auth_propuesta.sql` y `sql/002_auditoria_configuracion.sql` en la base
+orden `sql/001_auth_propuesta.sql`, `sql/002_auditoria_configuracion.sql` y
+`sql/003_dependencia_revision.sql` en la base
 de desarrollo autorizada (por ejemplo, desde el editor SQL de PostgreSQL).
 El primero crea dependencias, usuarios y sesiones; el segundo, auditoría administrativa.
+El tercero exige dependencia para Captura y Revisión (DEC-037). Si ya existen
+revisores sin dependencia, asignarles la correcta antes de aplicar SQL 003; la
+validación falla sin inventar asignaciones ni cambiar cuentas. El backend rechaza
+el acceso de cuentas de Revisión sin dependencia o con dependencia inactiva.
 La tabla técnica de sesiones guarda JSON, generación para actualización
 atómica y vencimiento; evita recrear sesiones revocadas desde solicitudes obsoletas.
 Las consultas iniciales usan `pg` parametrizado, incluido el compare-and-set; Drizzle
@@ -156,7 +161,7 @@ No se implementaron subida PDF, registro público o recuperación de contraseña
 con Argon2id y auditoría en la misma transacción. Si ya hay cualquier cuenta de
 Administrador (incluso inactiva), falla sin cambiarla. No es un reset de contraseña.
 
-Desde PowerShell, en `siip-backend`, con `.env` configurado y ambos SQL aplicados:
+Desde PowerShell, en `siip-backend`, con `.env` configurado y los tres SQL aplicados:
 
 ```powershell
 $env:ADMIN_NOMBRE = Read-Host 'Nombre del administrador'
@@ -200,8 +205,9 @@ rol administrador vigente. Devuelven 201 con datos públicos, sin contraseña/ha
 }
 ```
 
-Para Revisión se usa el mismo endpoint, `rol: "revision"`, y se omite
-`dependencia_id` o se envía `null`. La cuenta de Captura requiere dependencia activa
+Para Revisión se usa el mismo endpoint, `rol: "revision"`, con `dependencia_id`
+obligatoria, correspondiente a una dependencia activa, igual que para Captura.
+La pertenencia de Revisión no limita su consulta global ni concede captura. La cuenta de Captura requiere dependencia activa
 y solo puede existir una cuenta de Captura activa por dependencia. Los correos se
 normalizan a minúsculas; duplicados responden 409. La contraseña inicial requiere
 15–1024 caracteres; no se exige composición arbitraria. No se admite crear un
@@ -210,6 +216,12 @@ Administrador por HTTP ni imponer campos como `activo`, `creado_por` o hashes.
 El alta y su evento en `auditoria_configuracion` son atómicos. Si falla la bitácora,
 se revierte el alta. El bootstrap se registra con el ID del nuevo administrador
 como actor inicial. Los valores de auditoría no incluyen contraseñas o hashes.
+
+`GET /api/v1/administracion/dependencias` devuelve el catálogo completo de dependencias
+activas como array, ordenado por nombre e ID, sin paginación. Exige sesión de
+Administrador y permite poblar el selector de ambas altas. El frontend en
+`/front-SIIP/administrador` permite crear dependencias y usuarios de Captura/Revisión;
+una dependencia recién creada queda seleccionada para el alta de usuario.
 
 ## Probar el recorrido
 
@@ -224,7 +236,8 @@ usa claves/correos nuevos; las cuentas existentes nunca se sobrescriben.
 
 Para verificar también SQL y persistencia real, configura `TEST_DATABASE_URL` para
 una base de pruebas separada y ejecuta `npm run test:integration`. La prueba crea
-un esquema temporal con prefijo `siip_test_`, verifica su aislamiento, aplica ambos
-SQL, recorre las altas y auth, comprueba auditoría y elimina únicamente ese esquema.
+un esquema temporal con prefijo `siip_test_`, verifica su aislamiento, aplica los tres
+SQL (incluida la dependencia obligatoria para Revisión), recorre las altas y auth,
+comprueba auditoría y elimina únicamente ese esquema.
 Necesita permisos técnicos de crear esquemas en esa base. Sin `TEST_DATABASE_URL`
 se omite; nunca reutiliza automáticamente `DATABASE_URL` para escribir pruebas.

@@ -8,10 +8,9 @@ const accountFields = {
 };
 
 export const initialAdminSchema = z.strictObject(accountFields);
-export const createUserSchema = z.discriminatedUnion('rol', [
-  z.strictObject({ ...accountFields, rol: z.literal('captura'), dependencia_id: idSchema }),
-  z.strictObject({ ...accountFields, rol: z.literal('revision'), dependencia_id: z.null().optional().default(null) }),
-]);
+export const createUserSchema = z.strictObject({
+  ...accountFields, rol: z.enum(['captura', 'revision']), dependencia_id: idSchema,
+});
 
 export const dependencySchema = z.object({
   id: idSchema, clave: z.string(), nombre: z.string(), activo: z.boolean(),

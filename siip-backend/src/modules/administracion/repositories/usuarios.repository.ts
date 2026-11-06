@@ -6,6 +6,7 @@ import type { CreateDependency, Dependency } from '../schemas/usuarios.schema.js
 type NewAccount = Omit<User, 'id'> & { password_hash: string };
 
 export interface UsersRepository {
+  listDependencies(): Promise<Dependency[]>;
   createUser(account: NewAccount, actorId: string): Promise<User>;
   createInitialAdmin(account: NewAccount): Promise<User>;
   createDependency(data: CreateDependency, actorId: string): Promise<Dependency>;
@@ -73,6 +74,13 @@ export function createUsersRepository(pool: Pool): UsersRepository {
   }
 
   return {
+    async listDependencies() {
+      const result = await pool.query<Dependency>(`
+        SELECT id::text, clave, nombre, activo FROM dependencias
+        WHERE activo ORDER BY nombre, id
+      `);
+      return result.rows;
+    },
     createUser: (account, actorId) => insertUser(account, actorId),
     createInitialAdmin: (account) => insertUser(account),
     async createDependency(data, actorId) {

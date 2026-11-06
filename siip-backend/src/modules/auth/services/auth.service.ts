@@ -7,7 +7,7 @@ import type { Account, AuthRepository } from '../repositories/auth.repository.js
 function usable(account: Account | null): account is Account {
   return account !== null && account.activo
     && (account.dependencia_id === null || account.dependencia_activa === true)
-    && (account.rol !== 'captura' || account.dependencia_id !== null);
+    && (account.rol === 'administrador' || account.dependencia_id !== null);
 }
 
 export async function createAuthService(repository: AuthRepository, sessionSecret: string) {

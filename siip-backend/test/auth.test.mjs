@@ -186,6 +186,19 @@ test('cambiar contraseña invalida sesiones anteriores', async (t) => {
   assert.equal((await bootstrap(app, authenticated.cookie)).usuario, null);
 });
 
+test('Revisión sin dependencia no puede autenticar ni conservar una sesión anterior', async (t) => {
+  const { app, account } = await fixture(t);
+  account.rol = 'revision';
+  const authenticated = await login(app);
+  account.dependencia_id = null;
+  assert.equal((await bootstrap(app, authenticated.cookie)).usuario, null);
+  const anonymous = await bootstrap(app);
+  const response = await app.inject({ method: 'POST', url, headers: headers(anonymous),
+    payload: { correo: account.correo, password } });
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.json().codigo, 'CREDENCIALES_INVALIDAS');
+});
+
 test('desactivar una dependencia invalida también una sesión existente', async (t) => {
   const { app, account } = await fixture(t);
   const authenticated = await login(app);

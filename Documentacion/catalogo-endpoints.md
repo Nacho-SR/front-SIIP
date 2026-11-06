@@ -53,8 +53,9 @@ Cookie opaca HttpOnly/Secure/SameSite y token CSRF son la alternativa propuesta.
 
 | Método | Ruta | Propósito | Acceso | Estado |
 |---|---|---|---|---|
-| POST | /administracion/usuarios | Crear Captura con dependencia activa o Revisión sin dependencia; contraseña Argon2id y alta auditada. | Administrador con sesión, Origin y CSRF | Implementado en código; aplicar SQL 001/002 y configurar BD. |
-| POST | /administracion/dependencias | Registrar dependencia necesaria para asignar Captura. | Administrador con sesión, Origin y CSRF | Implementado en código; alta y auditoría atómicas. |
+| POST | /administracion/usuarios | Crear Captura o Revisión con dependencia activa obligatoria; contraseña Argon2id y alta auditada. | Administrador con sesión, Origin y CSRF | Implementado en código/UI; preparar SQL 001/002/003 y configurar BD. |
+| GET | /administracion/dependencias | Catálogo completo de dependencias activas para el selector de altas, ordenado por nombre e ID; array sin paginación. | Administrador con sesión | Implementado; no concede acceso a otros roles. |
+| POST | /administracion/dependencias | Registrar dependencia para asignar usuarios de Captura o Revisión. | Administrador con sesión, Origin y CSRF | Implementado en código/UI; alta y auditoría atómicas. |
 
 El primer administrador se crea por `npm run admin:create`, nunca por endpoint público. El script no modifica cuentas existentes. Colección importable en `../siip-backend/docs/SIIP-auth.postman_collection.json`.
 
