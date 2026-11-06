@@ -24,6 +24,11 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../modules/dashboard/DashboardView.vue'),
       },
       {
+        path: 'estadisticas/analisis',
+        name: 'AnalisisIndicadores',
+        component: () => import('../modules/dashboard/AnalisisIndicadoresView.vue'),
+      },
+      {
         path: '',
         name: 'Consulta', 
         // Esta será nuestra vista de tablas con filtros
@@ -34,11 +39,12 @@ const routes: Array<RouteRecordRaw> = [
         path: 'captura',
         name: 'Captura',
         component: () => import('../modules/capture/CaptureView.vue'),
-        meta: { requiredRoles: ['captura'] }
+        // Protegemos la ruta: solo capturistas y administradores pueden entrar
+        meta: { requiredRoles: ['captura', 'administrador'] }
       },
       {
         path: 'seguimiento',
-        meta: { requiredRoles: ['revision'] },
+        meta: { requiredRoles: ['seguimiento', 'administrador'] },
         children: [
           {
             path: '',
@@ -59,7 +65,14 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../modules/admin/AdminView.vue'),
         // Acceso exclusivo para administradores
         meta: { requiredRoles: ['administrador'] }
-      }
+      },
+      {
+        path: 'administrador/indicadores/nuevo',
+        name: 'AdministradorNuevoIndicador',
+        component: () => import('../modules/admin/NuevoIndicadorView.vue'),
+        meta: { requiredRoles: ['administrador']
+         }
+        },
     ]
   }
 ];
@@ -70,31 +83,29 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach(async (to) => {
+// GUARDIÁN DE NAVEGACIÓN (Navigation Guard)
+// Este código se ejecuta SIEMPRE antes de cambiar de pantalla
+// TODO: Quitar el "any" y tipar correctamente el "to" y "from"
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore();
-
-  if (!authStore.initialized) {
-    try {
-      await authStore.initAuth();
-    } catch {
-      return to.name === 'Login' ? true : { name: 'Login' };
-    }
-  }
-
+  
+  // 1. Verificamos si la ruta requiere autenticación y el usuario no tiene token
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return { name: 'Login' };
+    return next({ name: 'Login' }); // Lo pateamos al login
   }
 
-  if (to.name === 'Login' && authStore.isAuthenticated) {
-    return { name: 'Consulta' };
-  }
-
+  // 2. Verificamos permisos basados en roles (Control de Acceso)
   if (to.meta.requiredRoles) {
     const roles = to.meta.requiredRoles as string[];
-    if (!authStore.user || !roles.includes(authStore.user.rol)) {
-      return { name: 'Consulta' };
+    // Si el usuario existe pero su rol no está en la lista de permitidos
+    if (authStore.user && !roles.includes(authStore.user.role)) {
+      console.warn(`Acceso denegado. Rol actual: ${authStore.user.role}. Requerido: ${roles.join(' o ')}`);
+      return next({ name: 'Consulta' }); // Lo regresamos al dashboard público
     }
   }
+
+  // 3. Si pasa todas las validaciones, lo dejamos pasar
+  next(); 
 });
 
 export default router;

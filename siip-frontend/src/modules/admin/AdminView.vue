@@ -1,194 +1,1486 @@
+
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
-import axios from 'axios';
-import api from '../../core/api';
-import type { User } from '../../store/auth.store';
+import {
+  computed,
+  onMounted,
+  onUnmounted,
+  reactive,
+  ref
+} from 'vue';
 
-interface Dependency {
-  id: string;
-  clave: string;
-  nombre: string;
-  activo: boolean;
+import { useRouter } from 'vue-router';
+
+import {
+  adminState,
+  guardarUsuario,
+  refrescarAdmin,
+  type RolGestionable,
+  type UsuarioAdmin
+} from './data/admin.store';
+
+const router = useRouter();
+
+// ==============================================
+// ESTADO DEL MÓDULO
+// ==============================================
+
+const modalAbierto = ref(false);
+const usuarioEditando = ref<string | null>(null);
+const busqueda = ref('');
+const mensaje = ref('');
+const error = ref('');
+const guardando = ref(false);
+
+const formulario = reactive({
+  nombre: '',
+  correo: '',
+  dependencia: '',
+  rol: 'consulta' as RolGestionable,
+  activo: true
+});
+
+// ==============================================
+// BÚSQUEDA DE USUARIOS
+// ==============================================
+
+const usuariosFiltrados = computed(() => {
+  const termino = busqueda.value
+    .trim()
+    .toLocaleLowerCase('es');
+
+  return adminState.usuarios.filter(usuario =>
+    [
+      usuario.nombre,
+      usuario.correo,
+      usuario.dependencia ?? '',
+      usuario.rol
+    ].some(valor =>
+      String(valor ?? '')
+        .toLocaleLowerCase('es')
+        .includes(termino)
+    )
+  );
+});
+
+// ==============================================
+// ESTADÍSTICAS
+// ==============================================
+
+const usuariosActivos = computed(() =>
+  adminState.usuarios.filter(
+    usuario => usuario.activo
+  ).length
+);
+
+const totalIndicadoresNuevos = computed(() =>
+  adminState.indicadores.length
+);
+
+onMounted(refrescarAdmin);
+
+// ==============================================
+// CREAR USUARIO
+// ==============================================
+
+function nuevoUsuario() {
+  usuarioEditando.value = null;
+
+  Object.assign(formulario, {
+    nombre: '',
+    correo: '',
+    dependencia: '',
+    rol: 'consulta',
+    activo: true
+  });
+
+  error.value = '';
+  mensaje.value = '';
+  modalAbierto.value = true;
 }
 
-const dependencies = ref<Dependency[]>([]);
-const loadingDependencies = ref(true);
-const dependenciesError = ref('');
-const userForm = reactive({ nombre: '', correo: '', password: '', rol: 'captura', dependencia_id: '' });
-const dependencyForm = reactive({ clave: '', nombre: '' });
-const savingUser = ref(false);
-const savingDependency = ref(false);
-const userError = ref('');
-const dependencyError = ref('');
-const userSuccess = ref('');
-const dependencySuccess = ref('');
+// ==============================================
+// EDITAR USUARIO
+// ==============================================
 
-function errorMessage(error: unknown) {
-  return axios.isAxiosError(error)
-    ? error.response?.data?.detail || 'No se pudo conectar con el servidor. Intenta de nuevo.'
-    : 'No se pudo completar la solicitud. Intenta de nuevo.';
+function editarUsuario(usuario: UsuarioAdmin) {
+  usuarioEditando.value = usuario.id;
+
+  Object.assign(formulario, {
+    nombre: usuario.nombre,
+    correo: usuario.correo,
+    dependencia: usuario.dependencia ?? '',
+    rol: usuario.rol,
+    activo: usuario.activo
+  });
+
+  error.value = '';
+  mensaje.value = '';
+  modalAbierto.value = true;
 }
 
-async function loadDependencies() {
-  loadingDependencies.value = true;
-  dependenciesError.value = '';
+// ==============================================
+// CERRAR MODAL
+// ==============================================
+
+function cerrarModal() {
+  if (guardando.value) return;
+
+  modalAbierto.value = false;
+  error.value = '';
+}
+
+function manejarEscape(evento: KeyboardEvent) {
+  if (
+    evento.key === 'Escape' &&
+    modalAbierto.value
+  ) {
+    cerrarModal();
+  }
+}
+
+onMounted(() => {
+  window.addEventListener(
+    'keydown',
+    manejarEscape
+  );
+});
+
+onUnmounted(() => {
+  window.removeEventListener(
+    'keydown',
+    manejarEscape
+  );
+});
+
+// ==============================================
+// GUARDAR USUARIO
+// ==============================================
+
+function guardar() {
+  if (guardando.value) return;
+
+  error.value = '';
+  guardando.value = true;
+
   try {
-    const { data } = await api.get<Dependency[]>('/administracion/dependencias');
-    dependencies.value = data;
-  } catch (error) {
-    dependenciesError.value = errorMessage(error);
+    guardarUsuario(
+      {
+        nombre: formulario.nombre,
+        correo: formulario.correo,
+        dependencia: formulario.dependencia,
+        rol: formulario.rol,
+        activo: formulario.activo
+      },
+      usuarioEditando.value ?? undefined
+    );
+
+    mensaje.value = usuarioEditando.value
+      ? 'Usuario actualizado correctamente.'
+      : 'Usuario registrado correctamente.';
+
+    modalAbierto.value = false;
+    error.value = '';
+
+  } catch (e) {
+    error.value = e instanceof Error
+      ? e.message
+      : 'No fue posible guardar el usuario.';
   } finally {
-    loadingDependencies.value = false;
+    guardando.value = false;
   }
 }
 
-async function createUser() {
-  if (savingUser.value || loadingDependencies.value || dependenciesError.value) return;
-  userError.value = '';
-  userSuccess.value = '';
-  if (!dependencies.value.some(({ id }) => id === userForm.dependencia_id)) {
-    userError.value = 'Selecciona una dependencia activa.';
-    return;
-  }
-  savingUser.value = true;
-  try {
-    const { data } = await api.post<User>('/administracion/usuarios', { ...userForm });
-    userSuccess.value = `Usuario ${data.nombre} creado. Ya puede iniciar sesión con su correo.`;
-    userForm.nombre = '';
-    userForm.correo = '';
-  } catch (error) {
-    userError.value = errorMessage(error);
-  } finally {
-    userForm.password = '';
-    savingUser.value = false;
-  }
+// ==============================================
+// NOMBRES DE ROLES
+// ==============================================
+
+function nombreRol(rol: RolGestionable) {
+  const nombres: Record<RolGestionable, string> = {
+    consulta: 'Consulta',
+    captura: 'Captura',
+    seguimiento: 'Seguimiento'
+  };
+
+  return nombres[rol];
 }
 
-async function createDependency() {
-  if (savingDependency.value || loadingDependencies.value || dependenciesError.value) return;
-  savingDependency.value = true;
-  dependencyError.value = '';
-  dependencySuccess.value = '';
-  try {
-    const { data } = await api.post<Dependency>('/administracion/dependencias', { ...dependencyForm });
-    dependencies.value.push(data);
-    dependencies.value.sort((a, b) => a.nombre.localeCompare(b.nombre));
-    userForm.dependencia_id = data.id;
-    dependencySuccess.value = `Dependencia ${data.clave} creada y seleccionada para el alta de usuario.`;
-    dependencyForm.clave = '';
-    dependencyForm.nombre = '';
-  } catch (error) {
-    dependencyError.value = errorMessage(error);
-  } finally {
-    savingDependency.value = false;
-  }
+// ==============================================
+// INDICADORES
+// ==============================================
+
+function nuevoIndicador() {
+  router.push({
+    name: 'AdministradorNuevoIndicador'
+  });
 }
 
-onMounted(loadDependencies);
+function editarIndicador(id: string) {
+  router.push({
+    name: 'AdministradorNuevoIndicador',
+    query: { editar: id }
+  });
+}
 </script>
 
 <template>
-  <section class="mx-auto max-w-6xl">
-    <header class="mb-6">
-      <h1 class="text-2xl font-bold text-wine">Usuarios y dependencias</h1>
-      <p class="mt-2 text-sm text-gray-600">Altas de Captura y Revisión para el SIIP Salamanca.</p>
+  <div class="admin">
+
+    <!-- ======================================= -->
+    <!-- ENCABEZADO -->
+    <!-- ======================================= -->
+
+    <header class="encabezado">
+      <div>
+        <span class="eyebrow">
+          GESTIÓN Y CONFIGURACIÓN
+        </span>
+
+        <h1>Administrador</h1>
+
+        <p>
+          Administración de usuarios, dependencias,
+          permisos e indicadores del SIIP Salamanca.
+        </p>
+      </div>
+
+      <span class="etiqueta">
+        Acceso administrativo
+      </span>
     </header>
 
-    <!-- Dos columnas comparten 24px de separación; en móvil se apilan sin ancho fijo. -->
-    <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-      <section class="rounded-md border border-gray-200 bg-white p-6" aria-labelledby="new-user-title">
-        <h2 id="new-user-title" class="text-lg font-semibold">Alta de usuario</h2>
-        <p class="mt-1 text-sm text-gray-600">Ambos roles requieren una dependencia activa.</p>
+    <!-- ======================================= -->
+    <!-- TARJETAS DE RESUMEN -->
+    <!-- ======================================= -->
 
-        <form class="mt-6 space-y-4" @submit.prevent="createUser">
-          <fieldset class="space-y-4" :disabled="savingUser">
-            <div>
-              <label for="user-name" class="field-label">Nombre completo</label>
-              <input id="user-name" v-model.trim="userForm.nombre" class="field" required maxlength="200" autocomplete="name" />
-            </div>
-            <div>
-              <label for="user-email" class="field-label">Correo electrónico</label>
-              <input id="user-email" v-model.trim="userForm.correo" class="field" type="email" required maxlength="255" autocomplete="off" />
-            </div>
-            <div class="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label for="user-role" class="field-label">Rol</label>
-                <select id="user-role" v-model="userForm.rol" class="field" required>
-                  <option value="captura">Captura</option>
-                  <option value="revision">Revisión</option>
-                </select>
-              </div>
-              <div>
-                <label for="user-dependency" class="field-label">Dependencia</label>
-                <select id="user-dependency" v-model="userForm.dependencia_id" class="field" required :disabled="loadingDependencies || !!dependenciesError">
-                  <option disabled value="">{{ loadingDependencies ? 'Cargando…' : 'Selecciona una dependencia' }}</option>
-                  <option v-for="dependency in dependencies" :key="dependency.id" :value="dependency.id">{{ dependency.clave }} — {{ dependency.nombre }}</option>
-                </select>
-              </div>
-            </div>
-            <p class="text-sm text-gray-600">Captura aporta información de su dependencia. Revisión conserva la consulta global y las acciones de revisar y validar.</p>
-            <div>
-              <label for="user-password" class="field-label">Contraseña inicial</label>
-              <input id="user-password" v-model="userForm.password" class="field" type="password" required minlength="15" maxlength="1024" autocomplete="new-password" aria-describedby="password-help" />
-              <p id="password-help" class="mt-2 text-sm text-gray-600">De 15 a 1024 caracteres. Compártela con la persona por un medio privado.</p>
-            </div>
-          </fieldset>
-          <p v-if="userError" role="alert" class="text-sm text-red-700">{{ userError }}</p>
-          <p v-if="userSuccess" role="status" class="text-sm text-green-800">{{ userSuccess }}</p>
-          <button class="rounded-md bg-wine px-4 py-2 text-sm font-semibold text-white hover:bg-wine2 disabled:cursor-not-allowed disabled:bg-gray-600" type="submit" :disabled="savingUser || loadingDependencies || !!dependenciesError || !dependencies.length">
-            {{ savingUser ? 'Creando usuario…' : 'Crear usuario' }}
-          </button>
-        </form>
-      </section>
+    <section class="resumen">
 
-      <section class="rounded-md border border-gray-200 bg-white p-6" aria-labelledby="dependencies-title">
-        <h2 id="dependencies-title" class="text-lg font-semibold">Dependencias</h2>
-        <p class="mt-1 text-sm text-gray-600">Registra una dependencia antes de asignarle usuarios.</p>
+      <article class="tarjeta">
+        <span>Usuarios registrados</span>
 
-        <div v-if="dependenciesError" class="mt-4 text-sm">
-          <p role="alert" class="text-red-700">{{ dependenciesError }}</p>
-          <button class="mt-2 font-semibold text-wine underline" type="button" @click="loadDependencies">Reintentar carga</button>
-        </div>
+        <strong>
+          {{ adminState.usuarios.length }}
+        </strong>
 
-        <form class="mt-6 space-y-4" @submit.prevent="createDependency">
-          <fieldset class="space-y-4" :disabled="savingDependency">
-            <div>
-              <label for="dependency-key" class="field-label">Clave</label>
-              <input id="dependency-key" v-model.trim="dependencyForm.clave" class="field uppercase" required maxlength="40" autocomplete="off" />
-            </div>
-            <div>
-              <label for="dependency-name" class="field-label">Nombre de la dependencia</label>
-              <input id="dependency-name" v-model.trim="dependencyForm.nombre" class="field" required maxlength="200" autocomplete="off" />
-            </div>
-          </fieldset>
-          <p v-if="dependencyError" role="alert" class="text-sm text-red-700">{{ dependencyError }}</p>
-          <p v-if="dependencySuccess" role="status" class="text-sm text-green-800">{{ dependencySuccess }}</p>
-          <button class="rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold hover:border-wine disabled:cursor-not-allowed disabled:text-gray-600" type="submit" :disabled="savingDependency || loadingDependencies || !!dependenciesError">
-            {{ savingDependency ? 'Creando dependencia…' : 'Crear dependencia' }}
-          </button>
-        </form>
+        <small>Perfiles gestionados</small>
+      </article>
 
-        <div class="mt-6 border-t border-gray-200 pt-4" :aria-busy="loadingDependencies">
-          <h3 class="text-sm font-semibold">Dependencias activas</h3>
-          <p v-if="loadingDependencies" role="status" class="mt-3 text-sm text-gray-600">Cargando dependencias…</p>
-          <p v-else-if="!dependenciesError && !dependencies.length" class="mt-3 text-sm text-gray-600">Todavía no hay dependencias. Crea la primera para dar de alta usuarios.</p>
-          <ul v-else-if="!dependenciesError" class="mt-2 max-h-64 divide-y divide-gray-100 overflow-y-auto">
-            <li v-for="dependency in dependencies" :key="dependency.id" class="py-3 text-sm">
-              <span class="font-medium text-wine">{{ dependency.clave }}</span>
-              <span class="ml-2 break-words text-gray-600">{{ dependency.nombre }}</span>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <article class="tarjeta">
+        <span>Usuarios activos</span>
+
+        <strong>
+          {{ usuariosActivos }}
+        </strong>
+
+        <small>Con estado habilitado</small>
+      </article>
+
+      <article class="tarjeta">
+        <span>Indicadores del catálogo base</span>
+
+        <strong>63</strong>
+
+        <small>Fase inicial del SIIP</small>
+      </article>
+
+      <article class="tarjeta">
+        <span>Indicadores nuevos</span>
+
+        <strong>
+          {{ totalIndicadoresNuevos }}
+        </strong>
+
+        <small>Registrados en esta demo</small>
+      </article>
+
+    </section>
+
+    <!-- ======================================= -->
+    <!-- NOTIFICACIÓN -->
+    <!-- ======================================= -->
+
+    <div
+      v-if="mensaje"
+      class="mensaje"
+      role="status"
+    >
+      <span>{{ mensaje }}</span>
+
+      <button
+        type="button"
+        aria-label="Cerrar notificación"
+        @click="mensaje = ''"
+      >
+        ×
+      </button>
     </div>
-  </section>
+
+    <!-- ======================================= -->
+    <!-- GESTIÓN DE USUARIOS -->
+    <!-- ======================================= -->
+
+    <section class="panel">
+      <div class="panel-header">
+
+        <div>
+          <span class="eyebrow">
+            CONTROL DE ACCESO
+          </span>
+
+          <h2>Gestión de usuarios</h2>
+
+          <p>
+            Registra y administra usuarios,
+            dependencias y roles de acceso.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="btn-principal btn-agregar-usuario"
+          @click="nuevoUsuario"
+        >
+          <span class="btn-icono">+</span>
+          <span>Agregar usuario</span>
+        </button>
+
+      </div>
+
+      <!-- BÚSQUEDA -->
+
+      <div class="busqueda">
+        <input
+          v-model="busqueda"
+          type="search"
+          aria-label="Buscar usuarios"
+          placeholder="Buscar por nombre, correo, dependencia o rol..."
+        />
+      </div>
+
+      <!-- TABLA -->
+
+      <div class="tabla-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Correo electrónico</th>
+              <th>Dependencia</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr
+              v-for="usuario in usuariosFiltrados"
+              :key="usuario.id"
+            >
+              <td class="nombre-usuario">
+                <strong>
+                  {{ usuario.nombre }}
+                </strong>
+              </td>
+
+              <td class="correo-usuario">
+                {{ usuario.correo }}
+              </td>
+
+              <!-- NUEVA COLUMNA -->
+              <td class="dependencia-usuario">
+                <span
+                  v-if="usuario.dependencia"
+                  class="dependencia-etiqueta"
+                >
+                  {{ usuario.dependencia }}
+                </span>
+
+                <span
+                  v-else
+                  class="sin-dependencia"
+                >
+                  Sin asignar
+                </span>
+              </td>
+
+              <td>
+                <span class="rol">
+                  {{ nombreRol(usuario.rol) }}
+                </span>
+              </td>
+
+              <td>
+                <span
+                  class="estado"
+                  :class="{
+                    activo: usuario.activo,
+                    inactivo: !usuario.activo
+                  }"
+                >
+                  {{
+                    usuario.activo
+                      ? 'Activo'
+                      : 'Inactivo'
+                  }}
+                </span>
+              </td>
+
+              <td>
+                <button
+                  type="button"
+                  class="btn-editar"
+                  @click="editarUsuario(usuario)"
+                >
+                  Editar
+                </button>
+              </td>
+            </tr>
+
+            <tr
+              v-if="usuariosFiltrados.length === 0"
+            >
+              <td
+                colspan="6"
+                class="vacio"
+              >
+                {{
+                  adminState.usuarios.length
+                    ? 'No hay usuarios que coincidan con la búsqueda.'
+                    : 'Todavía no hay usuarios registrados.'
+                }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="nota">
+        Los usuarios registrados pertenecen al
+        entorno demostrativo. Todavía no generan
+        credenciales de autenticación reales.
+      </p>
+    </section>
+
+    <!-- ======================================= -->
+    <!-- GESTIÓN DE INDICADORES -->
+    <!-- ======================================= -->
+
+    <section class="panel">
+      <div class="panel-header">
+
+        <div>
+          <span class="eyebrow">
+            CATÁLOGO METODOLÓGICO
+          </span>
+
+          <h2>Administración de indicadores</h2>
+
+          <p>
+            Registra indicadores con los campos
+            metodológicos establecidos en el Excel
+            del SIIP Salamanca.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="btn-principal"
+          @click="nuevoIndicador"
+        >
+          + Nuevo indicador
+        </button>
+      </div>
+
+      <div
+        v-if="adminState.indicadores.length"
+        class="tabla-scroll tabla-indicadores"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Clave</th>
+              <th>Nombre</th>
+              <th>Agrupación</th>
+              <th>Frecuencia</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr
+              v-for="indicador in adminState.indicadores"
+              :key="indicador.id"
+            >
+              <td>
+                <strong>
+                  {{ indicador.campos.clave }}
+                </strong>
+              </td>
+
+              <td>
+                {{ indicador.campos.nombre }}
+              </td>
+
+              <td>
+                {{ indicador.campos.agrupacion }}
+              </td>
+
+              <td>
+                {{ indicador.campos.frecuencia }}
+              </td>
+
+              <td>
+                <button
+                  type="button"
+                  class="btn-editar"
+                  @click="editarIndicador(indicador.id)"
+                >
+                  Editar
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div
+        v-else
+        class="indicadores-vacio"
+      >
+        <strong>
+          Listo para registrar nuevos indicadores
+        </strong>
+
+        <p>
+          El catálogo inicial conserva sus
+          63 indicadores.
+
+          Los indicadores adicionales se registran
+          por separado para proteger la información
+          original del Excel.
+        </p>
+      </div>
+    </section>
+
+    <!-- ======================================= -->
+    <!-- MODAL CREAR / EDITAR USUARIO -->
+    <!-- ======================================= -->
+
+    <Teleport to="body">
+      <div
+        v-if="modalAbierto"
+        class="modal-fondo"
+        @click.self="cerrarModal"
+      >
+        <section
+          class="modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="titulo-modal-usuario"
+        >
+          <!-- ENCABEZADO DEL MODAL -->
+
+          <header class="modal-header">
+            <div>
+              <span class="eyebrow">
+                GESTIÓN DE USUARIOS
+              </span>
+
+              <h2 id="titulo-modal-usuario">
+                {{
+                  usuarioEditando
+                    ? 'Editar usuario'
+                    : 'Agregar usuario'
+                }}
+              </h2>
+
+              <p>
+                Configura sus datos,
+                dependencia y permisos de acceso.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="cerrar"
+              aria-label="Cerrar modal"
+              @click="cerrarModal"
+            >
+              ×
+            </button>
+          </header>
+
+          <!-- FORMULARIO -->
+
+          <form
+            class="modal-form"
+            @submit.prevent="guardar"
+          >
+            <!-- NOMBRE -->
+
+            <label>
+              Nombre completo
+
+              <input
+                v-model.trim="formulario.nombre"
+                type="text"
+                required
+                minlength="3"
+                maxlength="120"
+                autocomplete="name"
+                placeholder="Nombre y apellidos"
+              />
+            </label>
+
+            <!-- CORREO -->
+
+            <label>
+              Correo electrónico
+
+              <input
+                v-model.trim="formulario.correo"
+                type="email"
+                required
+                maxlength="180"
+                autocomplete="email"
+                placeholder="usuario@institucion.gob.mx"
+              />
+            </label>
+
+            <!-- DEPENDENCIA -->
+
+            <label>
+              Dependencia
+              <span class="campo-ayuda">
+                Unidad administrativa o dependencia
+                municipal a la que pertenece el usuario.
+              </span>
+
+              <input
+                v-model.trim="formulario.dependencia"
+                type="text"
+                required
+                minlength="3"
+                maxlength="180"
+                placeholder="Ej. Dirección de Planeación"
+              />
+            </label>
+
+            <!-- ROL -->
+
+            <label>
+              Rol del usuario
+
+              <select
+                v-model="formulario.rol"
+                required
+              >
+                <option value="consulta">
+                  Consulta
+                </option>
+
+                <option value="captura">
+                  Captura
+                </option>
+
+                <option value="seguimiento">
+                  Seguimiento
+                </option>
+              </select>
+            </label>
+
+            <!-- DESCRIPCIÓN DEL ROL -->
+
+            <div class="rol-ayuda">
+              <strong>
+                Permisos por rol
+              </strong>
+
+              <p
+                v-if="formulario.rol === 'consulta'"
+              >
+                Acceso de lectura al módulo Consulta
+                y a las fichas técnicas publicadas.
+              </p>
+
+              <p
+                v-else-if="formulario.rol === 'captura'"
+              >
+                Captura de variables, envío de
+                expedientes y atención de observaciones.
+              </p>
+
+              <p v-else>
+                Acceso al módulo Seguimiento.
+
+                Las operaciones de captura,
+                revisión y validación tendrán
+                permisos independientes cuando
+                se configure el backend.
+              </p>
+            </div>
+
+            <!-- ESTADO -->
+
+            <label class="interruptor">
+              <input
+                v-model="formulario.activo"
+                type="checkbox"
+              />
+
+              <span>
+                Usuario activo
+              </span>
+            </label>
+
+            <!-- ERRORES -->
+
+            <div
+              v-if="error"
+              class="error"
+              role="alert"
+            >
+              {{ error }}
+            </div>
+
+            <!-- ACCIONES -->
+
+            <footer class="modal-acciones">
+              <button
+                type="button"
+                class="btn-secundario"
+                :disabled="guardando"
+                @click="cerrarModal"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="submit"
+                class="btn-principal btn-guardar-usuario"
+                :disabled="guardando"
+              >
+                {{
+                  guardando
+                    ? 'Guardando...'
+                    : usuarioEditando
+                      ? 'Guardar cambios'
+                      : 'Registrar usuario'
+                }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    </Teleport>
+  </div>
 </template>
 
 <style scoped>
-.field-label {
-  @apply mb-2 block text-sm font-medium;
+.admin {
+  --wine: #70273b;
+  --deep: #431c2a;
+  --gold: #c69a4b;
+  --blue: #245a81;
+  --blue-dark: #183e5a;
+  --blue-light: #eaf3f9;
+  --muted: #777d85;
+  --line: #e8e4dd;
+
+  max-width: 1500px;
+  margin: auto;
+  padding-bottom: 35px;
+  color: #282c33;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
 }
-.field {
-  @apply min-h-10 w-full min-w-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-wine focus:outline-none focus:ring-1 focus:ring-wine disabled:bg-gray-100;
+
+/* =========================================
+   ENCABEZADO
+   ========================================= */
+
+.encabezado,
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.encabezado {
+  margin-bottom: 22px;
+}
+
+.eyebrow {
+  display: block;
+  color: #a17738;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+h1,
+h2 {
+  color: var(--deep);
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+
+h1 {
+  margin: 8px 0;
+  font-size: clamp(30px, 3.5vw, 42px);
+}
+
+h2 {
+  margin: 8px 0;
+  font-size: 25px;
+}
+
+.encabezado p,
+.panel-header p,
+.modal-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.etiqueta {
+  padding: 10px 14px;
+  border: 1px solid #b8d2e4;
+  border-radius: 9px;
+  background: var(--blue-light);
+  color: var(--blue-dark);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* =========================================
+   TARJETAS
+   ========================================= */
+
+.resumen {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 15px;
+  margin-bottom: 22px;
+}
+
+.tarjeta,
+.panel {
+  padding: 23px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 12px 35px #382c260a;
+}
+
+.tarjeta {
+  position: relative;
+  overflow: hidden;
+}
+
+.tarjeta::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--gold);
+}
+
+.tarjeta:nth-child(2)::before {
+  background: var(--blue);
+}
+
+.tarjeta strong {
+  display: block;
+  margin: 12px 0 6px;
+  color: var(--deep);
+  font-size: 32px;
+}
+
+.tarjeta span,
+.tarjeta small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.panel {
+  margin-bottom: 20px;
+}
+
+/* =========================================
+   BOTONES
+   ========================================= */
+
+.btn-principal,
+.btn-secundario,
+.btn-editar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  min-height: 42px;
+  padding: 11px 16px;
+
+  border-radius: 9px;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    transform .2s,
+    background .2s,
+    box-shadow .2s;
+}
+
+.btn-principal {
+  border: 1px solid var(--wine);
+  background: var(--wine);
+  color: #fff;
+}
+
+.btn-principal:hover:not(:disabled) {
+  background: var(--deep);
+  transform: translateY(-1px);
+}
+
+.btn-principal:disabled,
+.btn-secundario:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.btn-secundario,
+.btn-editar {
+  border: 1px solid #e4d7d5;
+  background: #f8f2ef;
+  color: var(--wine);
+}
+
+.btn-secundario:hover:not(:disabled),
+.btn-editar:hover {
+  background: #eee4dc;
+}
+
+.btn-principal:focus-visible,
+.btn-secundario:focus-visible,
+.btn-editar:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* BOTÓN AGREGAR USUARIO */
+
+.btn-agregar-usuario {
+  min-height: 44px;
+  padding: 11px 19px;
+  background: var(--wine);
+  color: #fff;
+  box-shadow:
+    0 5px 15px rgba(112, 39, 59, .16);
+}
+
+.btn-agregar-usuario > span {
+  color: #fff;
+}
+
+.btn-icono {
+  display: grid;
+  place-items: center;
+
+  width: 23px;
+  height: 23px;
+
+  border-radius: 6px;
+  background: #ffffff24;
+
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* =========================================
+   BÚSQUEDA
+   ========================================= */
+
+.busqueda {
+  margin: 22px 0 12px;
+}
+
+.busqueda input {
+  width: 100%;
+  padding: 12px;
+
+  border: 1px solid #dddcd7;
+  border-radius: 9px;
+
+  background: #fff;
+  color: #282c33;
+
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.busqueda input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px #245a8122;
+}
+
+/* =========================================
+   TABLAS
+   ========================================= */
+
+.tabla-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 780px;
+
+  border-collapse: collapse;
+  text-align: left;
+}
+
+th,
+td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+th {
+  background: #faf9f7;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+tbody tr:hover {
+  background: #fcfaf8;
+}
+
+td strong {
+  color: var(--deep);
+}
+
+.nombre-usuario {
+  min-width: 150px;
+}
+
+.correo-usuario {
+  overflow-wrap: anywhere;
+}
+
+.dependencia-usuario {
+  min-width: 190px;
+}
+
+.dependencia-etiqueta {
+  display: inline-block;
+  color: var(--blue-dark);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.sin-dependencia {
+  color: #9b6a30;
+  font-size: 11px;
+  font-style: italic;
+}
+
+.rol,
+.estado {
+  display: inline-block;
+  padding: 7px 10px;
+  border-radius: 20px;
+
+  background: #f3edf0;
+  color: var(--wine);
+
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.estado.activo {
+  background: #e8f5ed;
+  color: #217447;
+}
+
+.estado.inactivo {
+  background: #f0f1f3;
+  color: #68717c;
+}
+
+/* =========================================
+   ESTADOS VACÍOS
+   ========================================= */
+
+.vacio,
+.indicadores-vacio {
+  padding: 35px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.indicadores-vacio strong {
+  color: var(--deep);
+  font-size: 15px;
+}
+
+.indicadores-vacio p {
+  line-height: 1.8;
+}
+
+.nota {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+/* =========================================
+   NOTIFICACIONES
+   ========================================= */
+
+.mensaje {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+
+  padding: 13px 16px;
+  margin-bottom: 15px;
+
+  border-radius: 9px;
+  background: #e8f5ed;
+  color: #217447;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mensaje button {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* =========================================
+   MODAL DE USUARIOS
+   ========================================= */
+
+.modal-fondo {
+  --wine: #70273b;
+  --deep: #431c2a;
+  --gold: #c69a4b;
+  --blue: #245a81;
+  --muted: #777d85;
+  --line: #e8e4dd;
+
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 15px;
+
+  background: #19131bb8;
+  backdrop-filter: blur(5px);
+}
+
+.modal {
+  width: min(550px, 100%);
+  max-height: 95vh;
+  max-height: 95dvh;
+
+  overflow-y: auto;
+  border-radius: 17px;
+  background: white;
+
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  box-shadow: 0 30px 90px #0004;
+}
+
+/* ENCABEZADO DEL MODAL */
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+
+  padding: 25px;
+
+  border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(
+      125deg,
+      #fcf6f7,
+      #f4f8fb
+    );
+}
+
+.modal-header h2 {
+  margin: 8px 0;
+  color: var(--deep);
+  font-size: 25px;
+  font-weight: 750;
+}
+
+.modal-header p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.modal-header .eyebrow {
+  color: #a17738;
+}
+
+.cerrar {
+  display: grid;
+  place-items: center;
+
+  width: 35px;
+  height: 35px;
+  flex-shrink: 0;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: #f1e4e8;
+  color: var(--wine);
+
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.cerrar:hover {
+  background: #e9d3db;
+}
+
+/* FORMULARIO */
+
+.modal-form {
+  display: grid;
+  gap: 17px;
+  padding: 25px;
+}
+
+.modal-form label {
+  display: grid;
+  gap: 8px;
+  color: #48444a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.modal-form input:not([type="checkbox"]),
+.modal-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 12px;
+
+  border: 1px solid #dddcd7;
+  border-radius: 9px;
+
+  background: white;
+  color: #282c33;
+
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.modal-form input:focus,
+.modal-form select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px #245a8122;
+}
+
+.campo-ayuda {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* AYUDA SOBRE EL ROL */
+
+.rol-ayuda {
+  padding: 14px 16px;
+  border-left: 3px solid var(--gold);
+
+  background: #faf7f0;
+  border-radius: 0 9px 9px 0;
+}
+
+.rol-ayuda strong {
+  color: var(--wine);
+  font-size: 12px;
+}
+
+.rol-ayuda p {
+  margin: 7px 0 0;
+  color: #6c6767;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+/* USUARIO ACTIVO */
+
+.modal-form .interruptor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.interruptor input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--wine);
+}
+
+/* ERROR */
+
+.error {
+  padding: 12px;
+
+  background: #fde8eb;
+  color: #a62b3a;
+
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* BOTONES DEL MODAL */
+
+.modal-acciones {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+
+.modal-acciones .btn-principal,
+.modal-acciones .btn-secundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 44px;
+  padding: 12px 20px;
+
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.modal-acciones .btn-principal {
+  background: #70273b !important;
+  color: #ffffff !important;
+  border: 1px solid #70273b !important;
+
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-acciones .btn-principal:hover:not(:disabled) {
+  background: #431c2a !important;
+}
+
+.modal-acciones .btn-principal:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.modal-acciones .btn-secundario {
+  background: #f8f2ef;
+  color: #70273b;
+  border: 1px solid #e4d7d5;
+}
+
+.modal-acciones .btn-secundario:hover {
+  background: #eee4dc;
+}
+
+.modal-acciones button:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* =========================================
+   RESPONSIVE
+   ========================================= */
+
+@media (max-width: 900px) {
+  .resumen {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 550px) {
+  .resumen {
+    grid-template-columns: 1fr;
+  }
+
+  .panel,
+  .tarjeta {
+    padding: 17px;
+  }
+
+  .modal-header,
+  .modal-form {
+    padding: 18px;
+  }
+
+  .modal-acciones {
+    flex-wrap: wrap;
+  }
+
+  .modal-acciones button {
+    flex: 1;
+  }
+
+  .btn-agregar-usuario {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-principal,
+  .btn-secundario,
+  .btn-editar {
+    transition: none;
+  }
 }
 </style>

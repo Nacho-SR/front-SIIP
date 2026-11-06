@@ -1,0 +1,449 @@
+
+{
+  "SIIP.01.F01.002": {
+    "tipo": "variation",
+    "campos": [
+      {"clave": "IDPA", "descripcion": "Incidencia delictiva periodo anterior"},
+      {"clave": "IDA", "descripcion": "Incidencia delictiva actual"}
+    ],
+    "actual": "IDA",
+    "anterior": "IDPA"
+  },
+  "SIIP.01.F01.003": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "CZAP", "descripcion": "Cantidad de zonas de alta prioridad atendidas"},
+      {"clave": "ZAP", "descripcion": "Cantidad total de zonas de alta prioridad identificadas"}
+    ]
+  },
+  "SIIP.01.F02.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "PC", "descripcion": "Cantidad de plazas operativas cubiertas"},
+      {"clave": "PD", "descripcion": "Cantidad total de plazas operativas disponibles"}
+    ]
+  },
+  "SIIP.01.F02.003": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "EE", "descripcion": "Cantidad de elementos con equipamiento completo"},
+      {"clave": "TE", "descripcion": "Cantidad total de elementos del estado de fuerza"}
+    ]
+  },
+  "SIIP.01.F03.003": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "EV", "descripcion": "Cantidad acumulada al periodo de elementos operativos con evaluaciones y certificaciones obligatorias vigentes"},
+      {"clave": "TE", "descripcion": "Cantidad total de elementos operativos sujetos a evaluaciones y certificaciones obligatorias"}
+    ]
+  },
+  "SIIP.01.F04.002": {
+    "tipo": "ratio1000",
+    "campos": [
+      {"clave": "QP", "descripcion": "Cantidad de quejas presentadas contra la policía municipal"},
+      {"clave": "IP", "descripcion": "Cantidad de intervenciones policiales registradas en el mismo periodo"}
+    ]
+  },
+  "SIIP.01.F05.002": {
+    "tipo": "sum",
+    "campos": [
+      {"clave": "P", "descripcion": "Cantidad acumulada al periodo de pláticas impartidas"},
+      {"clave": "T", "descripcion": "Cantidad total de talleres impartidos"}
+    ]
+  },
+  "SIIP.01.F05.003": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "CA", "descripcion": "Cantidad de comités vecinales activos con seguimiento institucional en los últimos 12 meses"},
+      {"clave": "TC", "descripcion": "Cantidad total de comités que cuentan o contaron con registro"}
+    ]
+  },
+  "SIIP.01.F06.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "ZC", "descripcion": "Cantidad de zonas prioritarias con cobertura efectiva de vigilancia y monitoreo"},
+      {"clave": "TZ", "descripcion": "Cantidad total de zonas prioritarias vigentes"}
+    ]
+  },
+  "SIIP.01.F06.003": {
+    "tipo": "average",
+    "campos": [
+      {"clave": "Ti", "descripcion": "Suma de los tiempos de respuesta de los casos válidos del periodo"},
+      {"clave": "n", "descripcion": "Cantidad total de casos válidos registrados en el periodo"}
+    ]
+  },
+  "SIIP.01.F07.003": {
+    "tipo": "direct",
+    "campos": [
+      {"clave": "AAc", "descripcion": "Porcentaje de avance acumulado del desarrollo de la plataforma digital para el Juzgado Cívico"}
+    ]
+  },
+  "SIIP.01.F08.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "PC", "descripcion": "Cantidad acumulada al periodo de personal de primer contacto que concluyó o acreditó la capacitación de atención a víctimas"},
+      {"clave": "TP", "descripcion": "Cantidad total de personal sujeto a capacitación de atención a víctimas"}
+    ]
+  },
+  "SIIP.01.F09.002": {
+    "tipo": "ratio100000",
+    "campos": [
+      {"clave": "EE", "descripcion": "Cantidad de elementos policiales adscritos a unidades especializadas"},
+      {"clave": "PM", "descripcion": "Cantidad de población de mujeres del municipio"}
+    ]
+  },
+  "SIIP.01.F09.003": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "MA", "descripcion": "Cantidad de mujeres con reporte 911 clasificado como prioridad alta que recibieron atención municipal especializada"},
+      {"clave": "MP", "descripcion": "Cantidad total de mujeres con reporte clasificado como prioridad alta"}
+    ]
+  },
+  "SIIP.01.F10.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "EI", "descripcion": "Cantidad acumulada al periodo de establecimientos de alto riesgo inspeccionados en tiempo"},
+      {"clave": "EP", "descripcion": "Cantidad total de establecimientos de alto riesgo identificados"}
+    ]
+  },
+  "SIIP.01.F11.003": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "RA", "descripcion": "Cantidad de registros de empresas revisados y actualizados"},
+      {"clave": "TR", "descripcion": "Cantidad total de registros que deben actualizarse"}
+    ]
+  },
+  "SIIP.02.F12.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "PB", "descripcion": "Cantidad acumulada al periodo de población objetivo beneficiada por obras y acciones FISM concluidas"},
+      {"clave": "PO", "descripcion": "Cantidad total de población objetivo del fondo"}
+    ]
+  },
+  "SIIP.02.F13.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "PA", "descripcion": "Cantidad acumulada al periodo de personas de la población objetivo atendidas mediante acciones de fortalecimiento de capacidades"},
+      {"clave": "PO", "descripcion": "Cantidad total de población objetivo definida"}
+    ]
+  },
+  "SIIP.02.F14.001": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "ERU", "descripcion": "Cantidad acumulada al periodo de estudiantes de la población objetivo que recibieron un paquete de útiles escolares"},
+      {"clave": "EPO", "descripcion": "Cantidad total de estudiantes considerados como población objetivo durante el periodo"}
+    ]
+  },
+  "SIIP.02.F15.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "POC", "descripcion": "Población objetivo cubierta por jornadas o acciones de salud"},
+      {"clave": "POT", "descripcion": "Población objetivo total definida"}
+    ],
+    "advertencia": "El algoritmo cita PC/PT, pero las variables metodológicas son POC/POT. Confirmar la notación con el responsable."
+  },
+  "SIIP.02.F16.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "IE", "descripcion": "Cantidad acumulada al periodo de intervenciones de servicios básicos ejecutadas en zonas prioritarias"},
+      {"clave": "IP", "descripcion": "Cantidad total de intervenciones en servicios básicos programadas en dichas zonas"}
+    ]
+  },
+  "SIIP.02.F17.002": {
+    "tipo": "variation",
+    "campos": [
+      {"clave": "AA", "descripcion": "Cantidad de asistentes a eventos culturales del semestre actual"},
+      {"clave": "AP", "descripcion": "Cantidad de asistentes a eventos culturales del semestre previo"}
+    ],
+    "actual": "AA",
+    "anterior": "AP"
+  },
+  "SIIP.02.F17.003": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "BPC3", "descripcion": "Cantidad de bienes patrimoniales que utilizan tres o más canales distintos de divulgación"},
+      {"clave": "BPT", "descripcion": "Cantidad total de bienes patrimoniales considerados para el seguimiento"}
+    ]
+  },
+  "SIIP.03.F18.002": {
+    "tipo": "average",
+    "campos": [
+      {"clave": "Si", "descripcion": "Suma de las calificaciones de satisfacción otorgadas por las personas visitantes"},
+      {"clave": "n", "descripcion": "Cantidad total de encuestas válidas en el periodo"}
+    ]
+  },
+  "SIIP.03.F19.002": {
+    "tipo": "sum",
+    "campos": [
+      {"clave": "FE", "descripcion": "Cantidad de ferias de empleo concluidas y documentadas durante el periodo"}
+    ]
+  },
+  "SIIP.03.F20.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "EA", "descripcion": "Cantidad de establecimientos con todos los permisos o autorizaciones municipales vigentes aplicables"},
+      {"clave": "ET", "descripcion": "Cantidad total de establecimientos sujetos a regulación municipal considerados en el periodo"}
+    ]
+  },
+  "SIIP.03.F21.002": {
+    "tipo": "sum",
+    "campos": [
+      {"clave": "Bi", "descripcion": "Cantidad de MiPyMEs o emprendimientos distintos beneficiados durante el periodo"}
+    ]
+  },
+  "SIIP.03.F22.001": {
+    "tipo": "variation",
+    "campos": [
+      {"clave": "EI_ac", "descripcion": "Cantidad de empresas instaladas en el municipio en el periodo actual"},
+      {"clave": "EI_ant", "descripcion": "Cantidad de empresas instaladas en el municipio en el periodo anterior"}
+    ],
+    "actual": "EI_ac",
+    "anterior": "EI_ant"
+  },
+  "SIIP.03.F23.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "PI", "descripcion": "Cantidad acumulada al periodo de productores apoyados que implementan la tecnología o práctica promovida"},
+      {"clave": "TP", "descripcion": "Cantidad total de productores apoyados sujetos a seguimiento"}
+    ]
+  },
+  "SIIP.03.F24.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "EI", "descripcion": "Cantidad acumulada al periodo de espacios públicos prioritarios con internet operativo"},
+      {"clave": "TE", "descripcion": "Cantidad total de espacios públicos definidos para contar con internet funcional"}
+    ]
+  },
+  "SIIP.04.F25.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "OR", "descripcion": "Cantidad de obras irregulares susceptibles de regularización que obtuvieron permiso"},
+      {"clave": "OI", "descripcion": "Cantidad total de obras irregulares susceptibles de regularización identificadas"}
+    ],
+    "advertencia": "La demo solo capturaba OI. Se requieren OR y OI conforme al algoritmo."
+  },
+  "SIIP.04.F26.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "SA", "descripcion": "Superficie de expansión urbana ocurrida sobre suelo de alto valor ambiental"},
+      {"clave": "TE", "descripcion": "Superficie total de expansión urbana del periodo"}
+    ]
+  },
+  "SIIP.04.F27.002": {
+    "tipo": "sum",
+    "campos": [
+      {"clave": "Fi", "descripcion": "Cantidad de fraccionamientos que cumplen los criterios municipales de irregularidad"}
+    ]
+  },
+  "SIIP.04.F28.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "PI", "descripcion": "Cantidad de predios regularizados incorporados o corregidos en el padrón"},
+      {"clave": "PR", "descripcion": "Cantidad total de predios regularizados que requieren actualización catastral"}
+    ]
+  },
+  "SIIP.04.F29.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "AC", "descripcion": "Cantidad acumulada al periodo de acciones concluidas en zonas prioritarias"},
+      {"clave": "AP", "descripcion": "Cantidad total de acciones programadas"}
+    ]
+  },
+  "SIIP.04.F30.001": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "EA", "descripcion": "Cantidad acumulada al periodo de espacios públicos y áreas verdes atendidos"},
+      {"clave": "TE", "descripcion": "Cantidad total de espacios públicos y áreas verdes programados para atención"}
+    ]
+  },
+  "SIIP.04.F31.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "AV", "descripcion": "Cantidad de árboles plantados que permanecen vivos y viables a los 12 o 24 meses"},
+      {"clave": "AP", "descripcion": "Cantidad total de árboles plantados sujetos a verificación"}
+    ]
+  },
+  "SIIP.04.F32.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "DP", "descripcion": "Cantidad de denuncias o reportes ambientales inspeccionados y resueltos dentro del plazo"},
+      {"clave": "TR", "descripcion": "Cantidad total de denuncias o reportes procedentes sujetos al plazo"}
+    ]
+  },
+  "SIIP.04.F33.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "CD", "descripcion": "Capacidad disponible de abastecimiento de agua potable"},
+      {"clave": "DR", "descripcion": "Demanda máxima o requerimiento de diseño para el periodo"}
+    ]
+  },
+  "SIIP.05.F34.003": {
+    "tipo": "loss_pct",
+    "campos": [
+      {"clave": "AP", "descripcion": "Volumen de agua potable producida o suministrada a la red"},
+      {"clave": "AF", "descripcion": "Volumen total facturado o contabilizado como entregado"}
+    ]
+  },
+  "SIIP.05.F34.004": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "VT", "descripcion": "Volumen colectado que recibe tratamiento y cumple la norma aplicable"},
+      {"clave": "VC", "descripcion": "Volumen total de aguas residuales colectadas"}
+    ]
+  },
+  "SIIP.05.F35.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "AR", "descripcion": "Cantidad de acciones de mantenimiento de alumbrado realizadas"},
+      {"clave": "AP", "descripcion": "Cantidad total de acciones programadas para el periodo"}
+    ]
+  },
+  "SIIP.05.F36.002": {
+    "tipo": "ratio",
+    "campos": [
+      {"clave": "CV", "descripcion": "Capacidad volumétrica remanente (m³)"},
+      {"clave": "VP", "descripcion": "Volumen anual proyectado de ocupación (m³/año)"}
+    ]
+  },
+  "SIIP.05.F36.003": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "RV", "descripcion": "Peso total de residuos valorizados, reciclados o aprovechados (toneladas)"},
+      {"clave": "TR", "descripcion": "Peso total de residuos gestionados durante el periodo (toneladas)"}
+    ],
+    "advertencia": "La demo utilizaba VAL. Aquí se requieren RV y TR conforme al algoritmo."
+  },
+  "SIIP.05.F37.001": {
+    "tipo": "sum",
+    "campos": [
+      {"clave": "Ei", "descripcion": "Cantidad total de espacios disponibles para inhumaciones"}
+    ]
+  },
+  "SIIP.05.F38.002": {
+    "tipo": "direct",
+    "campos": [
+      {"clave": "OV", "descripcion": "Cantidad de incumplimientos u observaciones asentados en la última acta de verificación sanitaria"}
+    ]
+  },
+  "SIIP.06.F39.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "KC", "descripcion": "Kilómetros de vialidad con conservación preventiva realizada"},
+      {"clave": "KP", "descripcion": "Kilómetros programados para conservación"}
+    ]
+  },
+  "SIIP.06.F40.001": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "PE", "descripcion": "Kilómetros de banquetas programadas y ejecutadas"},
+      {"clave": "KP", "descripcion": "Kilómetros totales de banquetas programados"}
+    ],
+    "advertencia": "El algoritmo utiliza KE pero la descripción de variables utiliza PE. Confirmar la clave antes de operación oficial."
+  },
+  "SIIP.06.F41.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "KC", "descripcion": "Kilómetros de ciclovías construidos y habilitados"},
+      {"clave": "KP", "descripcion": "Kilómetros programados en el sistema de ciclovías"}
+    ]
+  },
+  "SIIP.06.F42.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "UA", "descripcion": "Unidades de transporte que aprueban revista físico-mecánica y requisitos de operación"},
+      {"clave": "UR", "descripcion": "Total de unidades revisadas y sujetas a dichos requisitos"}
+    ]
+  },
+  "SIIP.06.F43.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "PC", "descripcion": "Cantidad de puntos prioritarios con intervención concluida"},
+      {"clave": "PD", "descripcion": "Cantidad total de puntos de conflicto vial prioritarios definidos para atención"}
+    ]
+  },
+  "SIIP.07.F44.002": {
+    "tipo": "direct",
+    "campos": [
+      {"clave": "P_PbR", "descripcion": "Porcentaje acumulado de implementación del Presupuesto Basado en Resultados"}
+    ]
+  },
+  "SIIP.07.F45.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "SC", "descripcion": "Cantidad de servidores con evaluación de desempeño y plan de competencias cumplido"},
+      {"clave": "TS", "descripcion": "Cantidad total de servidores sujetos al proceso"}
+    ]
+  },
+  "SIIP.07.F46.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "TI", "descripcion": "Cantidad de trámites municipales que pueden realizarse completamente por internet"},
+      {"clave": "TT", "descripcion": "Cantidad total de trámites municipales susceptibles de digitalización completa"}
+    ]
+  },
+  "SIIP.07.F47.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "CP", "descripcion": "Cantidad de colonias y localidades consideradas en el esquema de presupuesto participativo"},
+      {"clave": "TC", "descripcion": "Cantidad total de colonias y localidades elegibles"}
+    ]
+  },
+  "SIIP.07.F48.003": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "SP", "descripcion": "Cantidad de observaciones de auditoría solventadas dentro del plazo"},
+      {"clave": "TO", "descripcion": "Cantidad total de observaciones cuyo plazo vence en el periodo"}
+    ]
+  },
+  "SIIP.07.F49.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "SC", "descripcion": "Cantidad de solicitudes de información con respuesta emitida"},
+      {"clave": "SR", "descripcion": "Cantidad total de solicitudes recibidas que requieren respuesta en el periodo"}
+    ]
+  },
+  "SIIP.07.F50.001": {
+    "tipo": "direct",
+    "campos": [
+      {"clave": "CH", "descripcion": "Calificación global obtenida mediante la aplicación de la HECRA del INEGI"}
+    ]
+  },
+  "SIIP.07.F51.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "SC", "descripcion": "Solicitudes ciudadanas procedentes concluidas conforme al proceso aplicable"},
+      {"clave": "TS", "descripcion": "Total de solicitudes ciudadanas procedentes"}
+    ]
+  },
+  "SIIP.08.F52.001": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "IP", "descripcion": "Ingresos propios municipales"},
+      {"clave": "IT", "descripcion": "Ingresos totales municipales"}
+    ]
+  },
+  "SIIP.08.F52.002": {
+    "tipo": "variation",
+    "campos": [
+      {"clave": "RA", "descripcion": "Recaudación predial actual"},
+      {"clave": "RP", "descripcion": "Recaudación predial previa"}
+    ],
+    "actual": "RA",
+    "anterior": "RP",
+    "advertencia": "El algoritmo requiere confirmar los paréntesis y el ajuste por inflación antes de utilizar este cálculo oficialmente."
+  },
+  "SIIP.08.F53.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "PE", "descripcion": "Presupuesto ejercido o devengado al periodo"},
+      {"clave": "PA", "descripcion": "Presupuesto aprobado o modificado correspondiente"}
+    ]
+  },
+  "SIIP.08.F54.002": {
+    "tipo": "ratio100",
+    "campos": [
+      {"clave": "CJ", "descripcion": "Cantidad de predios destinados a equipamientos y espacios públicos con expediente jurídico completo y propiedad acreditada"},
+      {"clave": "TP", "descripcion": "Cantidad total de predios destinados a equipamientos y espacios públicos programados para contar con expediente jurídico completo"}
+    ]
+  }
+}
