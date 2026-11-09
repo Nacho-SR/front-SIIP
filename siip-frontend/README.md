@@ -28,11 +28,23 @@ permisos exclusivos en rutas y menú. Consulta no requiere dependencia y accede 
 Consulta, Estadísticas y su análisis. El soporte del backend se recuperó de `main`,
 incluido SQL 004 preparado para este rol; no se aplicó SQL a ninguna base.
 
-Estado de `develop`, paso 1 (09/11/2026): se recuperaron compilación, sesión real,
-cliente HTTP y permisos conservando el diseño del acceso y la barra lateral.
-Las pantallas de indicadores siguen siendo prototipos con datos locales.
-**Usuarios y dependencias aún usa el prototipo local**: conectar las altas y el
-catálogo con la API corresponde al paso 2. Las tres pruebas existentes de esas
-altas se conservan y siguen fallando hasta recuperar esa funcionalidad; `npm test`
-todavía no queda completamente verde. Las pruebas de autenticación cubren también
-el formulario de acceso, el menú por perfil y el cierre de sesión fallido.
+Estado de `develop`, pasos 1 y 2 (09/11/2026): se recuperaron compilación, sesión
+real, cliente HTTP, permisos y altas administrativas conservando el diseño visual.
+Las pruebas cubren también el formulario de acceso, el menú por perfil, el cierre
+de sesión fallido y los errores/reintentos de altas.
+
+En **Administrador → Dependencias**, crea la dependencia con clave y nombre.
+El catálogo activo alimenta el selector de **Agregar usuario**. Captura y Revisión
+requieren una dependencia activa; Consulta no la solicita y envía `null`, incluso
+si el catálogo está vacío o no pudo cargarse. Las altas piden nombre, correo,
+rol y contraseña inicial de 15–1024 caracteres. Solo se confirma éxito tras la
+respuesta de la API; los errores conservan los datos y limpian la contraseña.
+Cancelar también elimina la contraseña del formulario. No se crean administradores
+por esta pantalla ni se envía un estado de activación arbitrario.
+
+Las cuentas se persisten mediante la API, sin leer ni escribir usuarios en
+localStorage. La tabla muestra únicamente las altas confirmadas desde que se abrió
+la vista y así se identifica; no es el catálogo completo de usuarios. La API aún no
+ofrece listado, edición ni desactivación de usuarios; se retiró la edición simulada.
+No se borraron datos locales antiguos. El registro de indicadores sigue siendo un
+prototipo local, pendiente de su propio paso de integración.

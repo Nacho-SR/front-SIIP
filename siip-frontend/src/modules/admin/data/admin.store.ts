@@ -1,25 +1,4 @@
-
 import { reactive } from 'vue';
-
-// =====================================================
-// TIPOS Y ROLES
-// =====================================================
-
-export type RolGestionable =
-  | 'consulta'
-  | 'captura'
-  | 'seguimiento';
-
-export interface UsuarioAdmin {
-  id: string;
-  nombre: string;
-  correo: string;
-  dependencia: string;
-  rol: RolGestionable;
-  activo: boolean;
-  creadoEn: string;
-  actualizadoEn: string;
-}
 
 export interface IndicadorAdmin {
   id: string;
@@ -28,19 +7,7 @@ export interface IndicadorAdmin {
   actualizadoEn: string;
 }
 
-// =====================================================
-// CLAVES DE ALMACENAMIENTO
-// =====================================================
-
-// Se conservan las claves originales para no perder
-// los usuarios e indicadores previamente registrados.
-
-const USUARIOS_KEY = 'siip-admin-usuarios-v1';
 const INDICADORES_KEY = 'siip-admin-indicadores-v1';
-
-// =====================================================
-// FUNCIONES DE ALMACENAMIENTO
-// =====================================================
 
 function leer<T>(clave: string): T[] {
   try {
@@ -65,170 +32,12 @@ function guardar<T>(clave: string, datos: T[]) {
   );
 }
 
-// =====================================================
-// ESTADO REACTIVO
-// =====================================================
-
 export const adminState = reactive({
-  usuarios: leer<UsuarioAdmin>(USUARIOS_KEY),
-  indicadores: leer<IndicadorAdmin>(
-    INDICADORES_KEY
-  )
+  indicadores: leer<IndicadorAdmin>(INDICADORES_KEY)
 });
 
-// =====================================================
-// ACTUALIZAR DATOS
-// =====================================================
-
 export function refrescarAdmin() {
-  adminState.usuarios = leer<UsuarioAdmin>(
-    USUARIOS_KEY
-  );
-
-  adminState.indicadores = leer<IndicadorAdmin>(
-    INDICADORES_KEY
-  );
-}
-
-// =====================================================
-// REGISTRAR / EDITAR USUARIO
-// =====================================================
-
-export function guardarUsuario(
-  datos: Pick<
-    UsuarioAdmin,
-    | 'nombre'
-    | 'correo'
-    | 'dependencia'
-    | 'rol'
-    | 'activo'
-  >,
-  id?: string
-) {
-  // Normalizar los datos recibidos.
-  const nombre = datos.nombre.trim();
-
-  const correo = datos.correo
-    .trim()
-    .toLowerCase();
-
-  const dependencia = datos.dependencia.trim();
-
-  // -------------------------------------------------
-  // VALIDACIÓN: NOMBRE
-  // -------------------------------------------------
-
-  if (nombre.length < 3) {
-    throw new Error(
-      'Escribe el nombre completo del usuario.'
-    );
-  }
-
-  // -------------------------------------------------
-  // VALIDACIÓN: CORREO
-  // -------------------------------------------------
-
-  if (
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)
-  ) {
-    throw new Error(
-      'Ingresa un correo electrónico válido.'
-    );
-  }
-
-  // -------------------------------------------------
-  // VALIDACIÓN: DEPENDENCIA
-  // -------------------------------------------------
-
-  if (dependencia.length < 3) {
-    throw new Error(
-      'Escribe una dependencia válida.'
-    );
-  }
-
-  // -------------------------------------------------
-  // VALIDACIÓN: ROL
-  // -------------------------------------------------
-
-  const rolesPermitidos: RolGestionable[] = [
-    'consulta',
-    'captura',
-    'seguimiento'
-  ];
-
-  if (!rolesPermitidos.includes(datos.rol)) {
-    throw new Error(
-      'El rol seleccionado no está permitido.'
-    );
-  }
-
-  // -------------------------------------------------
-  // VALIDACIÓN: CORREO DUPLICADO
-  // -------------------------------------------------
-
-  const correoDuplicado = adminState.usuarios.some(
-    usuario =>
-      usuario.correo.toLowerCase() === correo &&
-      usuario.id !== id
-  );
-
-  if (correoDuplicado) {
-    throw new Error(
-      'Ya existe un usuario con este correo.'
-    );
-  }
-
-  const fecha = new Date().toISOString();
-
-  // -------------------------------------------------
-  // EDITAR USUARIO
-  // -------------------------------------------------
-
-  if (id) {
-    const indice = adminState.usuarios.findIndex(
-      usuario => usuario.id === id
-    );
-
-    if (indice < 0) {
-      throw new Error(
-        'No se encontró el usuario.'
-      );
-    }
-
-    const actual = adminState.usuarios[indice];
-
-    adminState.usuarios[indice] = {
-      ...actual,
-      nombre,
-      correo,
-      dependencia,
-      rol: datos.rol,
-      activo: datos.activo,
-      actualizadoEn: fecha
-    };
-
-  // -------------------------------------------------
-  // REGISTRAR USUARIO NUEVO
-  // -------------------------------------------------
-
-  } else {
-    adminState.usuarios.unshift({
-      id: crypto.randomUUID(),
-      nombre,
-      correo,
-      dependencia,
-      rol: datos.rol,
-      activo: datos.activo,
-      creadoEn: fecha,
-      actualizadoEn: fecha
-    });
-  }
-
-  // Persistir los datos.
-  guardar(
-    USUARIOS_KEY,
-    adminState.usuarios
-  );
+  adminState.indicadores = leer<IndicadorAdmin>(INDICADORES_KEY);
 }
 
 // =====================================================

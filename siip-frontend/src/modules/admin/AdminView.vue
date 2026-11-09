@@ -1,467 +1,324 @@
 
 <script setup lang="ts">
-import {
-  computed,
-  onMounted,
-  onUnmounted,
-  reactive,
-  ref
-} from 'vue';
-
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import axios from 'axios';
 import { useRouter } from 'vue-router';
+import api from '../../core/api';
+import type { User } from '../../store/auth.store';
+import { adminState, refrescarAdmin } from './data/admin.store';
 
-import {
-  adminState,
-  guardarUsuario,
-  refrescarAdmin,
-  type RolGestionable,
-  type UsuarioAdmin
-} from './data/admin.store';
+interface Dependency {
+  id: string;
+  clave: string;
+  nombre: string;
+  activo: boolean;
+}
 
 const router = useRouter();
-
-// ==============================================
-// ESTADO DEL MÓDULO
-// ==============================================
-
-const modalAbierto = ref(false);
-const usuarioEditando = ref<string | null>(null);
-const busqueda = ref('');
-const mensaje = ref('');
-const error = ref('');
-const guardando = ref(false);
-
-const formulario = reactive({
-  nombre: '',
-  correo: '',
-  dependencia: '',
-  rol: 'consulta' as RolGestionable,
-  activo: true
+const dependencies = ref<Dependency[]>([]);
+const loadingDependencies = ref(true);
+const dependenciesError = ref('');
+const userForm = reactive({
+  nombre: '', correo: '', password: '',
+  rol: 'captura' as Exclude<User['rol'], 'administrador'>, dependencia_id: '',
 });
+const requiresDependency = computed(() => userForm.rol !== 'consulta');
+const dependencyUnavailable = computed(() => requiresDependency.value
+  && (loadingDependencies.value || !!dependenciesError.value || !dependencies.value.length));
+const dependencyForm = reactive({ clave: '', nombre: '' });
+const savingUser = ref(false);
+const savingDependency = ref(false);
+const userError = ref('');
+const dependencyError = ref('');
+const userSuccess = ref('');
+const dependencySuccess = ref('');
+// shortcut: solo altas confirmadas en esta vista; incorporar el catálogo al existir GET de usuarios.
+const createdUsers = ref<User[]>([]);
+const busqueda = ref('');
+const modalAbierto = ref(false);
+const modalDialog = ref<HTMLElement | null>(null);
+let previousFocus: HTMLElement | null = null;
 
-// ==============================================
-// BÚSQUEDA DE USUARIOS
-// ==============================================
+function errorMessage(error: unknown) {
+  return axios.isAxiosError(error)
+    ? error.response?.data?.detail || 'No se pudo conectar con el servidor. Intenta de nuevo.'
+    : 'No se pudo completar la solicitud. Intenta de nuevo.';
+}
+
+async function loadDependencies() {
+  if (savingDependency.value) return;
+  loadingDependencies.value = true;
+  dependenciesError.value = '';
+  try {
+    const { data } = await api.get<Dependency[]>('/administracion/dependencias');
+    dependencies.value = data;
+    if (!data.some(({ id, activo }) => activo && id === userForm.dependencia_id)) {
+      userForm.dependencia_id = '';
+    }
+  } catch (error) {
+    dependenciesError.value = errorMessage(error);
+  } finally {
+    loadingDependencies.value = false;
+  }
+}
+
+async function createUser() {
+  if (savingUser.value || (requiresDependency.value && (loadingDependencies.value || dependenciesError.value))) return;
+  userError.value = '';
+  userSuccess.value = '';
+  if (requiresDependency.value && !dependencies.value.some(({ id, activo }) => activo && id === userForm.dependencia_id)) {
+    userError.value = 'Selecciona una dependencia activa.';
+    return;
+  }
+  savingUser.value = true;
+  try {
+    const { data } = await api.post<User>('/administracion/usuarios', {
+      ...userForm, dependencia_id: requiresDependency.value ? userForm.dependencia_id : null,
+    });
+    createdUsers.value.unshift(data);
+    userSuccess.value = `Usuario ${data.nombre} creado. Ya puede iniciar sesión con su correo.`;
+    userForm.nombre = '';
+    userForm.correo = '';
+  } catch (error) {
+    userError.value = errorMessage(error);
+  } finally {
+    userForm.password = '';
+    savingUser.value = false;
+  }
+  if (userSuccess.value) await cerrarModal();
+}
+
+async function createDependency() {
+  if (savingDependency.value || loadingDependencies.value || dependenciesError.value) return;
+  savingDependency.value = true;
+  dependencyError.value = '';
+  dependencySuccess.value = '';
+  try {
+    const { data } = await api.post<Dependency>('/administracion/dependencias', { ...dependencyForm });
+    dependencies.value.push(data);
+    dependencies.value.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    userForm.dependencia_id = data.id;
+    dependencySuccess.value = `Dependencia ${data.clave} creada. Disponible para Captura y Revisión.`;
+    dependencyForm.clave = '';
+    dependencyForm.nombre = '';
+  } catch (error) {
+    dependencyError.value = errorMessage(error);
+  } finally {
+    savingDependency.value = false;
+  }
+}
+
+function dependencyName(id: string | null) {
+  if (id === null) return 'No aplica';
+  return dependencies.value.find(dependency => dependency.id === id)?.nombre || id;
+}
 
 const usuariosFiltrados = computed(() => {
-  const termino = busqueda.value
-    .trim()
-    .toLocaleLowerCase('es');
-
-  return adminState.usuarios.filter(usuario =>
-    [
-      usuario.nombre,
-      usuario.correo,
-      usuario.dependencia ?? '',
-      usuario.rol
-    ].some(valor =>
-      String(valor ?? '')
-        .toLocaleLowerCase('es')
-        .includes(termino)
-    )
-  );
+  const termino = busqueda.value.trim().toLocaleLowerCase('es');
+  return createdUsers.value.filter(usuario =>
+    [usuario.nombre, usuario.correo, dependencyName(usuario.dependencia_id), nombreRol(usuario.rol)]
+      .some(valor => valor.toLocaleLowerCase('es').includes(termino)));
 });
+const totalIndicadoresNuevos = computed(() => adminState.indicadores.length);
 
-// ==============================================
-// ESTADÍSTICAS
-// ==============================================
-
-const usuariosActivos = computed(() =>
-  adminState.usuarios.filter(
-    usuario => usuario.activo
-  ).length
-);
-
-const totalIndicadoresNuevos = computed(() =>
-  adminState.indicadores.length
-);
-
-onMounted(refrescarAdmin);
-
-// ==============================================
-// CREAR USUARIO
-// ==============================================
-
-function nuevoUsuario() {
-  usuarioEditando.value = null;
-
-  Object.assign(formulario, {
-    nombre: '',
-    correo: '',
-    dependencia: '',
-    rol: 'consulta',
-    activo: true
-  });
-
-  error.value = '';
-  mensaje.value = '';
-  modalAbierto.value = true;
+function nombreRol(rol: User['rol']) {
+  return { administrador: 'Administrador', captura: 'Captura', revision: 'Revisión', consulta: 'Consulta' }[rol];
 }
 
-// ==============================================
-// EDITAR USUARIO
-// ==============================================
-
-function editarUsuario(usuario: UsuarioAdmin) {
-  usuarioEditando.value = usuario.id;
-
-  Object.assign(formulario, {
-    nombre: usuario.nombre,
-    correo: usuario.correo,
-    dependencia: usuario.dependencia ?? '',
-    rol: usuario.rol,
-    activo: usuario.activo
-  });
-
-  error.value = '';
-  mensaje.value = '';
+async function nuevoUsuario() {
+  const dependencia_id = dependencies.value.some(({ id, activo }) => activo && id === userForm.dependencia_id)
+    ? userForm.dependencia_id : '';
+  Object.assign(userForm, { nombre: '', correo: '', password: '', dependencia_id, rol: 'captura' });
+  userError.value = '';
+  userSuccess.value = '';
+  previousFocus = typeof document === 'undefined' ? null : document.activeElement as HTMLElement;
   modalAbierto.value = true;
+  await nextTick();
+  modalDialog.value?.querySelector('input')?.focus();
 }
 
-// ==============================================
-// CERRAR MODAL
-// ==============================================
-
-function cerrarModal() {
-  if (guardando.value) return;
-
+async function cerrarModal() {
+  if (savingUser.value) return;
   modalAbierto.value = false;
-  error.value = '';
+  userError.value = '';
+  userForm.password = '';
+  await nextTick();
+  if (previousFocus?.isConnected) previousFocus.focus();
 }
 
-function manejarEscape(evento: KeyboardEvent) {
-  if (
-    evento.key === 'Escape' &&
-    modalAbierto.value
-  ) {
-    cerrarModal();
+function manejarTeclado(evento: KeyboardEvent) {
+  if (!modalAbierto.value) return;
+  if (evento.key === 'Escape') void cerrarModal();
+  if (evento.key !== 'Tab') return;
+  const elementos = modalDialog.value?.querySelectorAll<HTMLElement>('button:enabled, input:enabled, select:enabled, [tabindex="0"]');
+  const primero = elementos?.[0];
+  const ultimo = elementos?.[elementos.length - 1];
+  if (!primero || !ultimo) {
+    evento.preventDefault();
+    modalDialog.value?.focus();
+  } else if (evento.shiftKey && (document.activeElement === primero || !modalDialog.value?.contains(document.activeElement))) {
+    evento.preventDefault();
+    ultimo.focus();
+  } else if (!evento.shiftKey && (document.activeElement === ultimo || !modalDialog.value?.contains(document.activeElement))) {
+    evento.preventDefault();
+    primero.focus();
   }
 }
+
+watch(() => userForm.rol, (rol) => {
+  if (rol === 'consulta') userForm.dependencia_id = '';
+  userError.value = '';
+});
 
 onMounted(() => {
-  window.addEventListener(
-    'keydown',
-    manejarEscape
-  );
+  refrescarAdmin();
+  void loadDependencies();
+  window.addEventListener('keydown', manejarTeclado);
 });
-
-onUnmounted(() => {
-  window.removeEventListener(
-    'keydown',
-    manejarEscape
-  );
-});
-
-// ==============================================
-// GUARDAR USUARIO
-// ==============================================
-
-function guardar() {
-  if (guardando.value) return;
-
-  error.value = '';
-  guardando.value = true;
-
-  try {
-    guardarUsuario(
-      {
-        nombre: formulario.nombre,
-        correo: formulario.correo,
-        dependencia: formulario.dependencia,
-        rol: formulario.rol,
-        activo: formulario.activo
-      },
-      usuarioEditando.value ?? undefined
-    );
-
-    mensaje.value = usuarioEditando.value
-      ? 'Usuario actualizado correctamente.'
-      : 'Usuario registrado correctamente.';
-
-    modalAbierto.value = false;
-    error.value = '';
-
-  } catch (e) {
-    error.value = e instanceof Error
-      ? e.message
-      : 'No fue posible guardar el usuario.';
-  } finally {
-    guardando.value = false;
-  }
-}
-
-// ==============================================
-// NOMBRES DE ROLES
-// ==============================================
-
-function nombreRol(rol: RolGestionable) {
-  const nombres: Record<RolGestionable, string> = {
-    consulta: 'Consulta',
-    captura: 'Captura',
-    seguimiento: 'Seguimiento'
-  };
-
-  return nombres[rol];
-}
-
-// ==============================================
-// INDICADORES
-// ==============================================
+onUnmounted(() => window.removeEventListener('keydown', manejarTeclado));
 
 function nuevoIndicador() {
-  router.push({
-    name: 'AdministradorNuevoIndicador'
-  });
+  router.push({ name: 'AdministradorNuevoIndicador' });
 }
-
 function editarIndicador(id: string) {
-  router.push({
-    name: 'AdministradorNuevoIndicador',
-    query: { editar: id }
-  });
+  router.push({ name: 'AdministradorNuevoIndicador', query: { editar: id } });
 }
 </script>
 
 <template>
   <div class="admin">
-
-    <!-- ======================================= -->
-    <!-- ENCABEZADO -->
-    <!-- ======================================= -->
-
     <header class="encabezado">
       <div>
-        <span class="eyebrow">
-          GESTIÓN Y CONFIGURACIÓN
-        </span>
-
+        <span class="eyebrow">GESTIÓN Y CONFIGURACIÓN</span>
         <h1>Administrador</h1>
-
-        <p>
-          Administración de usuarios, dependencias,
-          permisos e indicadores del SIIP Salamanca.
-        </p>
+        <p>Administración de usuarios, dependencias e indicadores del SIIP Salamanca.</p>
       </div>
-
-      <span class="etiqueta">
-        Acceso administrativo
-      </span>
+      <span class="etiqueta">Acceso administrativo</span>
     </header>
 
-    <!-- ======================================= -->
-    <!-- TARJETAS DE RESUMEN -->
-    <!-- ======================================= -->
-
     <section class="resumen">
-
       <article class="tarjeta">
-        <span>Usuarios registrados</span>
-
-        <strong>
-          {{ adminState.usuarios.length }}
-        </strong>
-
-        <small>Perfiles gestionados</small>
+        <span>Usuarios creados en esta sesión</span>
+        <strong>{{ createdUsers.length }}</strong>
+        <small>Altas confirmadas</small>
       </article>
-
       <article class="tarjeta">
-        <span>Usuarios activos</span>
-
-        <strong>
-          {{ usuariosActivos }}
-        </strong>
-
-        <small>Con estado habilitado</small>
+        <span>Dependencias activas</span>
+        <strong>{{ loadingDependencies || dependenciesError ? '—' : dependencies.length }}</strong>
+        <small>Catálogo institucional</small>
       </article>
-
       <article class="tarjeta">
         <span>Indicadores del catálogo base</span>
-
         <strong>63</strong>
-
         <small>Fase inicial del SIIP</small>
       </article>
-
       <article class="tarjeta">
         <span>Indicadores nuevos</span>
-
-        <strong>
-          {{ totalIndicadoresNuevos }}
-        </strong>
-
+        <strong>{{ totalIndicadoresNuevos }}</strong>
         <small>Registrados en esta demo</small>
       </article>
-
     </section>
 
-    <!-- ======================================= -->
-    <!-- NOTIFICACIÓN -->
-    <!-- ======================================= -->
-
-    <div
-      v-if="mensaje"
-      class="mensaje"
-      role="status"
-    >
-      <span>{{ mensaje }}</span>
-
-      <button
-        type="button"
-        aria-label="Cerrar notificación"
-        @click="mensaje = ''"
-      >
-        ×
-      </button>
+    <div v-if="userSuccess" class="mensaje" role="status">
+      <span>{{ userSuccess }}</span>
+      <button type="button" aria-label="Cerrar notificación" @click="userSuccess = ''">×</button>
     </div>
-
-    <!-- ======================================= -->
-    <!-- GESTIÓN DE USUARIOS -->
-    <!-- ======================================= -->
 
     <section class="panel">
       <div class="panel-header">
-
         <div>
-          <span class="eyebrow">
-            CONTROL DE ACCESO
-          </span>
-
+          <span class="eyebrow">CONTROL DE ACCESO</span>
           <h2>Gestión de usuarios</h2>
-
-          <p>
-            Registra y administra usuarios,
-            dependencias y roles de acceso.
-          </p>
+          <p>Altas de Captura, Revisión y Consulta. Las cuentas creadas ya pueden iniciar sesión.</p>
         </div>
-
-        <button
-          type="button"
-          class="btn-principal btn-agregar-usuario"
-          @click="nuevoUsuario"
-        >
-          <span class="btn-icono">+</span>
-          <span>Agregar usuario</span>
+        <button type="button" class="btn-principal btn-agregar-usuario" @click="nuevoUsuario">
+          <span class="btn-icono">+</span><span>Agregar usuario</span>
         </button>
-
       </div>
 
-      <!-- BÚSQUEDA -->
-
+      <p class="nota">Se muestran solo las altas realizadas desde que abriste esta pantalla.</p>
       <div class="busqueda">
-        <input
-          v-model="busqueda"
-          type="search"
-          aria-label="Buscar usuarios"
-          placeholder="Buscar por nombre, correo, dependencia o rol..."
-        />
+        <input v-model="busqueda" type="search" aria-label="Buscar usuarios creados en esta sesión"
+          placeholder="Buscar por nombre, correo, dependencia o rol..." />
       </div>
-
-      <!-- TABLA -->
-
       <div class="tabla-scroll">
         <table>
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Correo electrónico</th>
-              <th>Dependencia</th>
-              <th>Rol</th>
-              <th>Estado</th>
-              <th>Acción</th>
-            </tr>
-          </thead>
-
+          <thead><tr><th>Nombre</th><th>Correo electrónico</th><th>Dependencia</th><th>Rol</th></tr></thead>
           <tbody>
-            <tr
-              v-for="usuario in usuariosFiltrados"
-              :key="usuario.id"
-            >
-              <td class="nombre-usuario">
-                <strong>
-                  {{ usuario.nombre }}
-                </strong>
-              </td>
-
-              <td class="correo-usuario">
-                {{ usuario.correo }}
-              </td>
-
-              <!-- NUEVA COLUMNA -->
+            <tr v-for="usuario in usuariosFiltrados" :key="usuario.id">
+              <td class="nombre-usuario"><strong>{{ usuario.nombre }}</strong></td>
+              <td class="correo-usuario">{{ usuario.correo }}</td>
               <td class="dependencia-usuario">
-                <span
-                  v-if="usuario.dependencia"
-                  class="dependencia-etiqueta"
-                >
-                  {{ usuario.dependencia }}
-                </span>
-
-                <span
-                  v-else
-                  class="sin-dependencia"
-                >
-                  Sin asignar
+                <span :class="usuario.dependencia_id === null ? 'sin-dependencia' : 'dependencia-etiqueta'">
+                  {{ dependencyName(usuario.dependencia_id) }}
                 </span>
               </td>
-
-              <td>
-                <span class="rol">
-                  {{ nombreRol(usuario.rol) }}
-                </span>
-              </td>
-
-              <td>
-                <span
-                  class="estado"
-                  :class="{
-                    activo: usuario.activo,
-                    inactivo: !usuario.activo
-                  }"
-                >
-                  {{
-                    usuario.activo
-                      ? 'Activo'
-                      : 'Inactivo'
-                  }}
-                </span>
-              </td>
-
-              <td>
-                <button
-                  type="button"
-                  class="btn-editar"
-                  @click="editarUsuario(usuario)"
-                >
-                  Editar
-                </button>
-              </td>
+              <td><span class="rol">{{ nombreRol(usuario.rol) }}</span></td>
             </tr>
-
-            <tr
-              v-if="usuariosFiltrados.length === 0"
-            >
-              <td
-                colspan="6"
-                class="vacio"
-              >
-                {{
-                  adminState.usuarios.length
-                    ? 'No hay usuarios que coincidan con la búsqueda.'
-                    : 'Todavía no hay usuarios registrados.'
-                }}
+            <tr v-if="usuariosFiltrados.length === 0">
+              <td colspan="4" class="vacio">
+                {{ createdUsers.length ? 'No hay usuarios que coincidan con la búsqueda.' : 'Todavía no has creado usuarios en esta sesión.' }}
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-
-      <p class="nota">
-        Los usuarios registrados pertenecen al
-        entorno demostrativo. Todavía no generan
-        credenciales de autenticación reales.
-      </p>
     </section>
 
-    <!-- ======================================= -->
+    <section class="panel" aria-labelledby="dependencias-titulo">
+      <div class="panel-header">
+        <div>
+          <span class="eyebrow">ORGANIZACIÓN INSTITUCIONAL</span>
+          <h2 id="dependencias-titulo">Dependencias</h2>
+          <p>Registra una dependencia antes de asignarle usuarios de Captura o Revisión. Consulta no requiere dependencia.</p>
+        </div>
+      </div>
+
+      <div v-if="dependenciesError">
+        <p class="error" role="alert">{{ dependenciesError }}</p>
+        <button type="button" class="btn-secundario" @click="loadDependencies">Reintentar carga</button>
+      </div>
+
+      <form class="modal-form formulario-dependencia" @submit.prevent="createDependency">
+        <fieldset class="campos-form" :disabled="savingDependency || loadingDependencies || !!dependenciesError">
+          <label>
+            Clave
+            <input v-model.trim="dependencyForm.clave" required maxlength="40" autocomplete="off" placeholder="Ej. PLAN" />
+          </label>
+          <label>
+            Nombre de la dependencia
+            <input v-model.trim="dependencyForm.nombre" required maxlength="200" autocomplete="off" placeholder="Ej. Dirección de Planeación" />
+          </label>
+        </fieldset>
+        <p v-if="dependencyError" class="error" role="alert">{{ dependencyError }}</p>
+        <p v-if="dependencySuccess" class="mensaje" role="status">{{ dependencySuccess }}</p>
+        <div>
+          <button type="submit" class="btn-principal" :disabled="savingDependency || loadingDependencies || !!dependenciesError">
+            {{ savingDependency ? 'Creando dependencia…' : 'Crear dependencia' }}
+          </button>
+        </div>
+      </form>
+
+      <div :aria-busy="loadingDependencies">
+        <p v-if="loadingDependencies" class="nota" role="status">Cargando dependencias…</p>
+        <p v-else-if="!dependenciesError && !dependencies.length" class="nota">
+          Todavía no hay dependencias. Crea la primera para dar de alta Captura o Revisión.
+        </p>
+        <div v-else-if="!dependenciesError" class="tabla-scroll">
+          <table>
+            <caption class="nota">Dependencias activas</caption>
+            <thead><tr><th>Clave</th><th>Nombre</th></tr></thead>
+            <tbody>
+              <tr v-for="dependency in dependencies" :key="dependency.id">
+                <td><strong>{{ dependency.clave }}</strong></td>
+                <td>{{ dependency.nombre }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- GESTIÓN DE INDICADORES -->
     <!-- ======================================= -->
 
@@ -563,210 +420,81 @@ function editarIndicador(id: string) {
     </section>
 
     <!-- ======================================= -->
-    <!-- MODAL CREAR / EDITAR USUARIO -->
-    <!-- ======================================= -->
 
     <Teleport to="body">
-      <div
-        v-if="modalAbierto"
-        class="modal-fondo"
-        @click.self="cerrarModal"
-      >
-        <section
-          class="modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="titulo-modal-usuario"
-        >
-          <!-- ENCABEZADO DEL MODAL -->
-
+      <div v-if="modalAbierto" class="modal-fondo" @click.self="cerrarModal">
+        <section ref="modalDialog" class="modal" role="dialog" aria-modal="true"
+          aria-labelledby="titulo-modal-usuario" tabindex="-1">
           <header class="modal-header">
             <div>
-              <span class="eyebrow">
-                GESTIÓN DE USUARIOS
-              </span>
-
-              <h2 id="titulo-modal-usuario">
-                {{
-                  usuarioEditando
-                    ? 'Editar usuario'
-                    : 'Agregar usuario'
-                }}
-              </h2>
-
-              <p>
-                Configura sus datos,
-                dependencia y permisos de acceso.
-              </p>
+              <span class="eyebrow">GESTIÓN DE USUARIOS</span>
+              <h2 id="titulo-modal-usuario">Agregar usuario</h2>
+              <p>Configura sus datos, rol y contraseña inicial.</p>
             </div>
-
-            <button
-              type="button"
-              class="cerrar"
-              aria-label="Cerrar modal"
-              @click="cerrarModal"
-            >
-              ×
-            </button>
+            <button type="button" class="cerrar" aria-label="Cerrar modal" :disabled="savingUser" @click="cerrarModal">×</button>
           </header>
 
-          <!-- FORMULARIO -->
+          <form class="modal-form" @submit.prevent="createUser">
+            <fieldset class="campos-form" :disabled="savingUser">
+              <label>
+                Nombre completo
+                <input v-model.trim="userForm.nombre" required maxlength="200" autocomplete="name" placeholder="Nombre y apellidos" />
+              </label>
+              <label>
+                Correo electrónico
+                <input v-model.trim="userForm.correo" type="email" required maxlength="255" autocomplete="off" placeholder="usuario@institucion.gob.mx" />
+              </label>
+              <label>
+                Rol del usuario
+                <select v-model="userForm.rol" required>
+                  <option value="captura">Captura</option>
+                  <option value="revision">Revisión</option>
+                  <option value="consulta">Consulta</option>
+                </select>
+              </label>
+              <div class="rol-ayuda">
+                <strong>Permisos por rol</strong>
+                <p v-if="userForm.rol === 'consulta'">
+                  Lectura global de información publicada, fichas técnicas y estadísticas. Sin dependencia ni acciones de captura, revisión o administración.
+                </p>
+                <p v-else-if="userForm.rol === 'captura'">
+                  Aporta información de su dependencia, envía capturas y atiende observaciones. Solo puede haber una cuenta de Captura activa por dependencia.
+                </p>
+                <p v-else>
+                  Consulta globalmente, revisa y valida desde Seguimiento. Su dependencia no limita la consulta global ni concede captura.
+                </p>
+              </div>
 
-          <form
-            class="modal-form"
-            @submit.prevent="guardar"
-          >
-            <!-- NOMBRE -->
+              <template v-if="requiresDependency">
+                <label>
+                  Dependencia
+                  <span class="campo-ayuda">Selecciona una dependencia activa del catálogo institucional.</span>
+                  <select v-model="userForm.dependencia_id" required :disabled="loadingDependencies || !!dependenciesError">
+                    <option disabled value="">{{ loadingDependencies ? 'Cargando…' : 'Selecciona una dependencia' }}</option>
+                    <option v-for="dependency in dependencies" :key="dependency.id" :value="dependency.id">
+                      {{ dependency.clave }} — {{ dependency.nombre }}
+                    </option>
+                  </select>
+                </label>
+                <p v-if="dependenciesError" class="error" role="alert">{{ dependenciesError }}</p>
+                <button v-if="dependenciesError" type="button" class="btn-secundario" @click="loadDependencies">Reintentar carga</button>
+                <p v-else-if="!loadingDependencies && !dependencies.length" class="nota">
+                  Crea primero una dependencia en el panel Dependencias.
+                </p>
+              </template>
 
-            <label>
-              Nombre completo
-
-              <input
-                v-model.trim="formulario.nombre"
-                type="text"
-                required
-                minlength="3"
-                maxlength="120"
-                autocomplete="name"
-                placeholder="Nombre y apellidos"
-              />
-            </label>
-
-            <!-- CORREO -->
-
-            <label>
-              Correo electrónico
-
-              <input
-                v-model.trim="formulario.correo"
-                type="email"
-                required
-                maxlength="180"
-                autocomplete="email"
-                placeholder="usuario@institucion.gob.mx"
-              />
-            </label>
-
-            <!-- DEPENDENCIA -->
-
-            <label>
-              Dependencia
-              <span class="campo-ayuda">
-                Unidad administrativa o dependencia
-                municipal a la que pertenece el usuario.
-              </span>
-
-              <input
-                v-model.trim="formulario.dependencia"
-                type="text"
-                required
-                minlength="3"
-                maxlength="180"
-                placeholder="Ej. Dirección de Planeación"
-              />
-            </label>
-
-            <!-- ROL -->
-
-            <label>
-              Rol del usuario
-
-              <select
-                v-model="formulario.rol"
-                required
-              >
-                <option value="consulta">
-                  Consulta
-                </option>
-
-                <option value="captura">
-                  Captura
-                </option>
-
-                <option value="seguimiento">
-                  Seguimiento
-                </option>
-              </select>
-            </label>
-
-            <!-- DESCRIPCIÓN DEL ROL -->
-
-            <div class="rol-ayuda">
-              <strong>
-                Permisos por rol
-              </strong>
-
-              <p
-                v-if="formulario.rol === 'consulta'"
-              >
-                Acceso de lectura al módulo Consulta
-                y a las fichas técnicas publicadas.
-              </p>
-
-              <p
-                v-else-if="formulario.rol === 'captura'"
-              >
-                Captura de variables, envío de
-                expedientes y atención de observaciones.
-              </p>
-
-              <p v-else>
-                Acceso al módulo Seguimiento.
-
-                Las operaciones de captura,
-                revisión y validación tendrán
-                permisos independientes cuando
-                se configure el backend.
-              </p>
-            </div>
-
-            <!-- ESTADO -->
-
-            <label class="interruptor">
-              <input
-                v-model="formulario.activo"
-                type="checkbox"
-              />
-
-              <span>
-                Usuario activo
-              </span>
-            </label>
-
-            <!-- ERRORES -->
-
-            <div
-              v-if="error"
-              class="error"
-              role="alert"
-            >
-              {{ error }}
-            </div>
-
-            <!-- ACCIONES -->
-
+              <label>
+                Contraseña inicial
+                <input v-model="userForm.password" type="password" required minlength="15" maxlength="1024"
+                  autocomplete="new-password" aria-describedby="password-help" />
+                <span id="password-help" class="campo-ayuda">De 15 a 1024 caracteres. Compártela con la persona por un medio privado.</span>
+              </label>
+            </fieldset>
+            <p v-if="userError" class="error" role="alert">{{ userError }}</p>
             <footer class="modal-acciones">
-              <button
-                type="button"
-                class="btn-secundario"
-                :disabled="guardando"
-                @click="cerrarModal"
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="submit"
-                class="btn-principal btn-guardar-usuario"
-                :disabled="guardando"
-              >
-                {{
-                  guardando
-                    ? 'Guardando...'
-                    : usuarioEditando
-                      ? 'Guardar cambios'
-                      : 'Registrar usuario'
-                }}
+              <button type="button" class="btn-secundario" :disabled="savingUser" @click="cerrarModal">Cancelar</button>
+              <button type="submit" class="btn-principal btn-guardar-usuario" :disabled="savingUser || dependencyUnavailable">
+                {{ savingUser ? 'Creando usuario…' : 'Registrar usuario' }}
               </button>
             </footer>
           </form>
@@ -1285,6 +1013,34 @@ td strong {
   display: grid;
   gap: 17px;
   padding: 25px;
+}
+
+.campos-form {
+  display: grid;
+  gap: 17px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.formulario-dependencia {
+  padding: 20px 0;
+}
+
+.formulario-dependencia .campos-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 700px) {
+  .formulario-dependencia .campos-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cerrar:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
 }
 
 .modal-form label {

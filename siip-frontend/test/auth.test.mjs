@@ -279,11 +279,7 @@ test('logout fallido no simula haber cerrado la sesión del servidor', async () 
 });
 
 async function adminForm() {
-  let state;
-  const app = createSSRApp(AdminView);
-  app.mixin({ created() { state = this.$.setupState; } });
-  await renderToString(app);
-  return state;
+  return (await renderComponent(AdminView)).state;
 }
 
 test('alta de dependencia actualiza el selector y permite crear Revisión con esa dependencia', async () => {
@@ -298,6 +294,8 @@ test('alta de dependencia actualiza el selector y permite crear Revisión con es
   assert.deepEqual(form.dependencies, [dependency]);
   assert.equal(form.userForm.dependencia_id, dependency.id);
   assert.equal(form.dependencyForm.clave, '');
+  await form.nuevoUsuario();
+  assert.equal(form.userForm.dependencia_id, dependency.id);
 
   Object.assign(form.userForm, { nombre: 'Revisión de prueba', correo: 'revision@example.test',
     password: 'contraseña-sintética-2026', rol: 'revision' });
@@ -349,4 +347,116 @@ test('fallo al cargar dependencias bloquea altas hasta que se reintenta', async 
   await form.loadDependencies();
   assert.equal(form.dependenciesError, '');
   assert.equal(form.loadingDependencies, false);
+});
+
+test('Consulta se crea sin dependencia incluso si falla el catálogo y no se guarda en localStorage', async () => {
+  const form = await adminForm();
+  responses.push({ status: 503, data: { detail: 'No disponible.' } });
+  await form.loadDependencies();
+  Object.assign(form.userForm, {
+    nombre: 'Consulta Presidencia', correo: 'consulta@example.test',
+    password: 'contraseña-sintética-2026', rol: 'consulta', dependencia_id: '7',
+  });
+  const consulta = { ...usuario, nombre: form.userForm.nombre, correo: form.userForm.correo, rol: 'consulta', dependencia_id: null };
+  responses.push({ status: 201, data: consulta });
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true, value: { getItem() { assert.fail('Las altas no leen localStorage'); },
+      setItem() { assert.fail('Las altas no escriben localStorage'); } },
+  });
+  try {
+    await form.createUser();
+  } finally {
+    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
+    else delete globalThis.localStorage;
+  }
+  assert.deepEqual(JSON.parse(requests.at(-1).data), {
+    nombre: consulta.nombre, correo: consulta.correo, password: 'contraseña-sintética-2026',
+    rol: 'consulta', dependencia_id: null,
+  });
+  assert.deepEqual(form.createdUsers, [consulta]);
+  assert.equal(form.createdUsers[0].id, usuario.id);
+  assert.equal(form.userForm.password, '');
+  assert.match(form.userSuccess, /creado/);
+  assert.deepEqual((await adminForm()).createdUsers, []);
+});
+
+test('el alta pendiente evita duplicados y solo el éxito del servidor cierra el modal', async () => {
+  const form = await adminForm();
+  responses.push({ data: [{ id: '7', clave: 'REV', nombre: 'Revisión', activo: true }] });
+  await form.loadDependencies();
+  await form.nuevoUsuario();
+  Object.assign(form.userForm, { nombre: usuario.nombre, correo: usuario.correo,
+    dependencia_id: usuario.dependencia_id, password: 'contraseña-sintética-2026', rol: 'revision' });
+  responses.push({ status: 422, data: { detail: 'La dependencia ya no está activa.' } });
+  const pending = form.createUser();
+  assert.equal(form.savingUser, true);
+  await form.createUser();
+  await form.cerrarModal();
+  assert.equal(form.modalAbierto, true);
+  await pending;
+  assert.equal(requests.length, 2);
+  assert.equal(form.modalAbierto, true);
+  assert.equal(form.userError, 'La dependencia ya no está activa.');
+  assert.equal(form.userSuccess, '');
+  assert.equal(form.userForm.nombre, usuario.nombre);
+  assert.equal(form.userForm.password, '');
+  assert.equal(form.createdUsers.length, 0);
+
+  form.userForm.password = 'otra-contraseña-sintética';
+  responses.push({ status: 201, data: { ...usuario, rol: 'revision' } });
+  await form.createUser();
+  assert.equal(form.modalAbierto, false);
+  assert.equal(form.createdUsers.length, 1);
+  assert.equal(form.userError, '');
+});
+
+test('reintentar el catálogo invalida una selección eliminada o inactiva', async () => {
+  const form = await adminForm();
+  responses.push({ data: [{ id: '7', clave: 'REV', nombre: 'Revisión', activo: true }] });
+  await form.loadDependencies();
+  form.userForm.dependencia_id = '7';
+  responses.push({ data: [] });
+  await form.loadDependencies();
+  assert.equal(form.userForm.dependencia_id, '');
+  assert.equal(form.dependencyUnavailable, true);
+  await form.createUser();
+  assert.match(form.userError, /dependencia activa/);
+  form.dependencies.push({ id: '7', clave: 'REV', nombre: 'Revisión', activo: false });
+  form.userForm.dependencia_id = '7';
+  await form.createUser();
+  assert.equal(requests.length, 2);
+  assert.equal(form.createdUsers.length, 0);
+});
+
+test('cancelar el modal borra la contraseña sin registrar una cuenta', async () => {
+  const form = await adminForm();
+  await form.nuevoUsuario();
+  form.userForm.password = 'contraseña-sintética-2026';
+  form.userError = 'Error previo';
+  await form.cerrarModal();
+  assert.equal(form.modalAbierto, false);
+  assert.equal(form.userForm.password, '');
+  assert.equal(form.userError, '');
+  assert.equal(requests.length, 0);
+});
+
+test('el modal muestra contraseña inicial y dependencia solo para Captura y Revisión', async () => {
+  for (const rol of ['captura', 'revision', 'consulta']) {
+    const app = createSSRApp(AdminView).use(router);
+    app.mixin({ created() {
+      if (this.$parent) return;
+      this.$.setupState.modalAbierto = true;
+      this.$.setupState.userForm.rol = rol;
+    } });
+    const context = {};
+    const html = await renderToString(app, context);
+    const modal = context.teleports.body;
+    assert.match(modal, /role="dialog" aria-modal="true"/);
+    assert.match(modal, /type="password" required minlength="15" maxlength="1024"/);
+    assert.match(modal, /value="revision"/);
+    assert.doesNotMatch(modal, /value="seguimiento"|Usuario activo|Editar usuario/);
+    assert.equal(modal.includes('Selecciona una dependencia activa del catálogo institucional.'), rol !== 'consulta');
+    assert.match(html, /Se muestran solo las altas realizadas desde que abriste esta pantalla/);
+  }
 });

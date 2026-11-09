@@ -227,10 +227,11 @@ como actor inicial. Los valores de auditoría no incluyen contraseñas o hashes.
 
 `GET /api/v1/administracion/dependencias` devuelve el catálogo completo de dependencias
 activas como array, ordenado por nombre e ID, sin paginación. Exige sesión de
-Administrador y permite poblar el selector de ambas altas. En `develop` la nueva
-pantalla administrativa todavía usa datos locales; reconectarla con estos endpoints
-es el paso 2 de la recuperación. Las altas HTTP del backend sí conservan validación
-y auditoría.
+Administrador y permite poblar el selector de ambas altas. En `develop` la pantalla
+administrativa usa estos endpoints para cargar dependencias y crear dependencias y
+usuarios de Captura, Revisión o Consulta. Las altas conservan validación y auditoría.
+La tabla de usuarios del frontend solo muestra las altas de la vista actual: aún no
+hay endpoints de listado, edición ni desactivación de usuarios.
 
 ## Probar el recorrido
 
