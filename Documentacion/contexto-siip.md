@@ -34,11 +34,12 @@ Usa datos y fórmulas reales del Excel al diseñar el esquema. No conviertas aut
 - **Captura:** un capturista por dependencia previsto para MVP; ingresa datos completos y válidos, responde observaciones y consulta resultados e históricos exclusivamente de indicadores relacionados con su dependencia.
 - **Revisión:** pertenece a una dependencia obligatoria y activa (DEC-037, 04/11/2026); revisa, emite observaciones, valida y puede consultar todos los indicadores y generar reportes. La pertenencia no limita su consulta global. Revisar y validar son acciones distintas, aunque del mismo rol.
 - **Administrador:** gestiona cuentas, dependencias, familias, indicadores, variables, asignaciones, catálogos delimitados, reaperturas justificadas, historial y supervisión. No reemplaza el flujo ordinario de revisión/validación. No habrá importación (DEC-023).
+- **Consulta (DEC-038):** múltiples cuentas sin dependencia, con lectura global de fichas, resultados publicados y estadísticas. Sin acciones de captura, revisión, validación o administración ni acceso predeterminado a expedientes/PDF internos.
 
 ### Capturas, revisión, histórico
 - No existen borradores: se registra una captura únicamente cuando todos los campos obligatorios están completos y son válidos.
 - DEC-032 (30/10/2026): cada dependencia envía sus variables y Revisión valida el conjunto cuando todas las aportaciones requeridas estén revisadas. En reapertura solo se reenvía la parte necesaria; el mecanismo de referencias a lo no modificado es propuesta técnica pendiente de adaptar/aprobar en el modelo.
-- DEC-033: periodos calendario naturales, captura desde registro con dependencia asignada y validación/publicación solo al cierre o después. No hay plazo máximo que bloquee atrasos.
+- DEC-033/039: periodos calendario naturales, captura desde registro con dependencia asignada y cierre al terminar el periodo, último día incluido en America/Mexico_City. Faltantes/incompletos quedan grises; completos conservan revisión y pueden validarse después. Administrador reabre solo para justificación PDF, sin completar datos ni retirar el gris. Sustituye la captura tardía sin bloqueo.
 - Señalización preventiva siete días antes del fin del periodo y señalización cuando acaba y queda pendiente. Zona America/Mexico_City. Alta trimestral el 10 de febrero: primer corte el 31 de marzo. Se mantienen mensual, trimestral, semestral y anual; bimestral fue solo ejemplo. Falta definir cobertura de datos del primer periodo de alta intermedia y autorización de periodos previos.
 - El hilo de observaciones por indicador + periodo + ciclo se cierra al validar, pero se conserva con autor, rol, fecha, acción y comentario. Reapertura crea otro ciclo; no borra anteriores.
 - Resultado validado se publica automáticamente. El último publicado continúa visible cuando el administrador lo reabre; al validarse la corrección, se reemplaza la versión publicada y se conserva la anterior para auditoría.
@@ -57,6 +58,7 @@ Usa datos y fórmulas reales del Excel al diseñar el esquema. No conviertas aut
 - Máximo 1 resultado por indicador por corte; no se suman, interpolan ni promedian valores para forzar igualdad entre frecuencias.
 - DEC-033 confirma periodos naturales: para corte 30/sept/2026 y periodos exigibles, mensual sep/2026, trimestral jul–sep/2026, semestral ene–jun/2026 y anual ene–dic/2025. El alta determina desde cuándo se captura y el primer corte exigible; no desplaza los trimestres o años naturales.
 - No evaluables: sin captura, pendiente, observados, sin valor validado o sin semáforo por falta de antecedente. No se tratan como rojos ni como cero.
+- DEC-039: el gris requiere incumplimiento al cierre confirmado, no se deduce de una publicación ausente. No se inventan fechas de alta o exigibilidad. La falta de color publicado y un envío completo aún en revisión son estados distintos del gris.
 - Mostrar cobertura (evaluables / universo aplicable) y periodo fuente individual. **Denominador exacto y umbral mínimo de cobertura no aprobados**.
 
 ## 6. Semáforo temático aprobado por el equipo (DEC-021)

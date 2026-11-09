@@ -48,3 +48,35 @@ la vista y así se identifica; no es el catálogo completo de usuarios. La API a
 ofrece listado, edición ni desactivación de usuarios; se retiró la edición simulada.
 No se borraron datos locales antiguos. El registro de indicadores sigue siendo un
 prototipo local, pendiente de su propio paso de integración.
+
+Paso 3 (09/11/2026), Consulta: el selector elige un **mes/año de corte cerrado**,
+independientemente de que haya resultados. Cada frecuencia resuelve su periodo
+natural completo; septiembre de 2026 usa septiembre, T3, S1 y 2025 respectivamente.
+Si falta ese periodo, no se arrastra otro. El total del catálogo no se presenta como
+universo exigible: aún faltan alta, asignaciones y exigibilidad confirmadas.
+
+El índice informativo es `(verdes + 0.5 × amarillos) / evaluables`, con umbrales
+0.80/0.50 y sin índice cuando N=0. Gris y ausencia de color no entran en N. Se
+mantiene pendiente la política de cobertura: el color de referencia del índice no
+se presenta como color temático oficial. Los filtros no cambian el universo del grupo.
+
+Consulta ya no recalcula colores con reglas actuales. La proyección de lectura
+acepta un snapshot `publicacion` con `valor`, `semaforo` (verde/amarillo/rojo/null),
+`version`, `versionRegla` y `publicadaEn`. Conserva ese snapshot durante reapertura
+y escoge la publicación vigente hoy del periodo esperado (DEC-016/022/030).
+Una validación local antigua sin snapshot muestra el valor sin color publicado;
+no se fabrican versiones ni se migran colores calculados anteriormente.
+
+El gris requiere `cumplimientoCierre: 'incumplido'`; no se infiere de la ausencia de
+resultado. La justificación no lo retira. Un envío completo en revisión sigue sin
+publicación, sin volverse gris. El adaptador local solo proyecta campos de consulta;
+no entrega variables, observaciones ni nombres de PDF internos a la vista.
+La fórmula textual del catálogo se muestra en Metodología; Fuentes y medición
+muestra estado, valor, periodo esperado/fuente y versiones disponibles.
+
+**Límite operativo:** la vista conserva datos sintéticos de sesión y lo indica.
+Todavía no hay API ni productor de publicaciones/cierre que genere esos metadatos;
+la proyección y sus casos se prueban con fixtures. El reloj del prototipo usa
+America/Mexico_City; el calendario y las autorizaciones reales deben venir del
+servidor. No hay cierre automático ni carga de justificaciones en este paso.
+La separación de campos en frontend no sustituye autorización por objeto en API.

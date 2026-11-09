@@ -1,31 +1,13 @@
 
 <script setup lang="ts">
-import {
-  computed,
-  onActivated,
-  onMounted,
-  onUnmounted,
-  ref
-} from 'vue';
-
+import { computed, onActivated, onMounted, onUnmounted, ref } from 'vue';
 import catalogo from './data/indicadores-siip.json';
-
 import FichaTecnicaModal from './components/FichaTecnicaModal.vue';
-
+import { obtenerResultadosConsulta } from '../review/data/seguimiento.store';
 import {
-  obtenerBandeja,
-  type ExpedienteSeguimiento
-} from '../review/data/seguimiento.store';
-
-// =====================================================
-// TIPOS
-// =====================================================
-
-type ColorSemaforo =
-  | 'verde'
-  | 'amarillo'
-  | 'rojo'
-  | 'gris';
+  mensajesEstado, periodoEsperado, resultadoDelCorte, resumenTematico, ultimoCorteCerrado,
+  type ColorSemaforo, type ResultadoConsulta,
+} from './data/consulta';
 
 interface Indicador {
   clave: string;
@@ -49,889 +31,123 @@ interface Indicador {
 }
 
 interface IndicadorConsulta extends Indicador {
-  semaforo: ColorSemaforo;
+  semaforo: ColorSemaforo | null;
   valorValidado: number | null;
   periodoValidado: string | null;
+  periodoEsperado: string | null;
+  mensaje: string;
+  versionPublicacion: string | null;
+  versionRegla: string | null;
 }
-
-interface ConteoSemaforo {
-  verde: number;
-  amarillo: number;
-  rojo: number;
-  gris: number;
-}
-
-interface GrupoConsulta {
-  clave: string;
-  nombre: string;
-  nombreOriginal: string;
-  indicadores: IndicadorConsulta[];
-  total: number;
-  conteo: ConteoSemaforo;
-  semaforo: ColorSemaforo;
-  expandido: boolean;
-}
-
-interface ReglaSemaforo {
-  direccion: 'sube' | 'baja';
-  verde: number;
-  amarillo: number;
-  verdeInclusivo?: boolean;
-  amarilloInclusivo?: boolean;
-}
-
-// =====================================================
-// CATÁLOGO OFICIAL
-// =====================================================
 
 const indicadoresCatalogo = catalogo as Indicador[];
-
-// =====================================================
-// REGLAS DEL SEMÁFORO INDIVIDUAL
-// =====================================================
-//
-// Estas reglas continúan siendo provisionales,
-// igual que en la versión anterior.
-//
-// Antes de su publicación oficial se deben
-// contrastar con los criterios del Excel.
-//
-// Los indicadores sin regla configurada
-// permanecerán en gris.
-//
-// NO se utilizan datos sin validar.
-
-const reglas: Record<string, ReglaSemaforo> = {
-
-  // SEGURIDAD
-
-  'SIIP.01.F01.002': {
-    direccion: 'baja',
-    verde: -3,
-    amarillo: 3
-  },
-
-  'SIIP.01.F01.003': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75
-  },
-
-  'SIIP.01.F02.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.01.F02.003': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.01.F03.003': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.01.F05.003': {
-    direccion: 'sube',
-    verde: 80,
-    amarillo: 70,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.01.F06.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.01.F06.003': {
-    direccion: 'baja',
-    verde: 14,
-    amarillo: 20
-  },
-
-  'SIIP.01.F08.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.01.F09.003': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.01.F11.003': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  // BIENESTAR
-
-  'SIIP.02.F16.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.02.F17.002': {
-    direccion: 'sube',
-    verde: 3,
-    amarillo: 0,
-    verdeInclusivo: false
-  },
-
-  'SIIP.02.F17.003': {
-    direccion: 'sube',
-    verde: 40,
-    amarillo: 30,
-    verdeInclusivo: false
-  },
-
-  // DESARROLLO ECONÓMICO
-
-  'SIIP.03.F18.002': {
-    direccion: 'sube',
-    verde: 8,
-    amarillo: 7
-  },
-
-  'SIIP.03.F19.002': {
-    direccion: 'sube',
-    verde: 4,
-    amarillo: 3
-  },
-
-  'SIIP.03.F20.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.03.F21.002': {
-    direccion: 'sube',
-    verde: 270,
-    amarillo: 225,
-    amarilloInclusivo: false
-  },
-
-  // TERRITORIO
-
-  'SIIP.04.F25.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.04.F26.002': {
-    direccion: 'baja',
-    verde: 5,
-    amarillo: 10,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.04.F27.002': {
-    direccion: 'baja',
-    verde: 1,
-    amarillo: 2
-  },
-
-  'SIIP.04.F28.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.04.F31.002': {
-    direccion: 'sube',
-    verde: 60,
-    amarillo: 45,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.04.F32.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.04.F33.002': {
-    direccion: 'sube',
-    verde: 50,
-    amarillo: 45,
-    amarilloInclusivo: false
-  },
-
-  // SERVICIOS PÚBLICOS
-
-  'SIIP.05.F34.003': {
-    direccion: 'baja',
-    verde: 50,
-    amarillo: 60,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.05.F34.004': {
-    direccion: 'sube',
-    verde: 75,
-    amarillo: 70,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.05.F35.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.05.F36.002': {
-    direccion: 'sube',
-    verde: 5,
-    amarillo: 3,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.05.F38.002': {
-    direccion: 'baja',
-    verde: 5,
-    amarillo: 10
-  },
-
-  // MOVILIDAD
-
-  'SIIP.06.F42.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  // GOBIERNO
-
-  'SIIP.07.F46.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.07.F48.003': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.07.F49.002': {
-    direccion: 'sube',
-    verde: 95,
-    amarillo: 85,
-    amarilloInclusivo: false
-  },
-
-  'SIIP.07.F50.001': {
-    direccion: 'sube',
-    verde: 4,
-    amarillo: 3.5
-  },
-
-  'SIIP.07.F51.002': {
-    direccion: 'sube',
-    verde: 90,
-    amarillo: 75,
-    amarilloInclusivo: false
-  }
-
-  // Las reglas pendientes no se calculan
-  // arbitrariamente.
-};
-
-// Indicadores con advertencia metodológica.
-// No se les asigna color hasta confirmar la fórmula.
-const indicadoresPendientes = new Set([
-  'SIIP.02.F15.002',
-  'SIIP.04.F25.002',
-  'SIIP.05.F36.003',
-  'SIIP.06.F40.001',
-  'SIIP.08.F52.002'
-]);
-
-// =====================================================
-// ESTADO DE CONSULTA
-// =====================================================
-
 const filtros = ref({
-  busqueda: '',
-  tipologia: 'Todas',
-  ambito: 'Todos',
-  desagregacion: 'Todas',
-  semaforo: 'Todos'
+  busqueda: '', tipologia: 'Todas', ambito: 'Todos', desagregacion: 'Todas', semaforo: 'Todos',
 });
-
-const periodoElegido = ref('');
-
+const corteMaximo = ref(ultimoCorteCerrado());
+const periodoElegido = ref(corteMaximo.value);
+const periodoActivo = computed(() => periodoEsperado('mensual', periodoElegido.value)
+  && periodoElegido.value <= corteMaximo.value ? periodoElegido.value : '');
+const resultados = ref<ResultadoConsulta[]>([]);
 const gruposAbiertos = ref<string[]>([]);
-
-const expedientes = ref<ExpedienteSeguimiento[]>([]);
-
-// =====================================================
-// FICHA TÉCNICA DE TRES APARTADOS
-// =====================================================
-//
-// Conservamos la clave para recuperar siempre
-// la información completa del indicador.
-
 const claveFichaSeleccionada = ref<string | null>(null);
-
-const fichaSeleccionada = computed(() => {
-  if (!claveFichaSeleccionada.value) {
-    return null;
-  }
-
-  return indicadores.value.find(
-    indicador =>
-      indicador.clave === claveFichaSeleccionada.value
-  ) ?? null;
-});
+const fichaSeleccionada = computed(() => indicadores.value.find(indicador =>
+  indicador.clave === claveFichaSeleccionada.value) ?? null);
 
 function abrirFicha(indicador: IndicadorConsulta) {
   claveFichaSeleccionada.value = indicador.clave;
 }
-
 function cerrarFicha() {
   claveFichaSeleccionada.value = null;
 }
 
-// =====================================================
-// CARGAR RESULTADOS DE SEGUIMIENTO
-// =====================================================
-
 function cargarResultados() {
-  try {
-    expedientes.value = obtenerBandeja();
-  } catch (error) {
-    console.error(
-      'No se pudieron cargar los resultados:',
-      error
-    );
-
-    expedientes.value = [];
-  }
+  corteMaximo.value = ultimoCorteCerrado();
+  resultados.value = obtenerResultadosConsulta();
 }
-
 function actualizarAlVolver() {
-  if (document.visibilityState === 'visible') {
-    cargarResultados();
-  }
+  if (document.visibilityState === 'visible') cargarResultados();
 }
-
-function actualizarAlEnfocar() {
-  cargarResultados();
-}
-
 onMounted(() => {
   cargarResultados();
-
-  window.addEventListener(
-    'focus',
-    actualizarAlEnfocar
-  );
-
-  document.addEventListener(
-    'visibilitychange',
-    actualizarAlVolver
-  );
+  window.addEventListener('focus', cargarResultados);
+  document.addEventListener('visibilitychange', actualizarAlVolver);
 });
-
 onActivated(cargarResultados);
-
 onUnmounted(() => {
-  window.removeEventListener(
-    'focus',
-    actualizarAlEnfocar
-  );
-
-  document.removeEventListener(
-    'visibilitychange',
-    actualizarAlVolver
-  );
+  window.removeEventListener('focus', cargarResultados);
+  document.removeEventListener('visibilitychange', actualizarAlVolver);
 });
 
-// =====================================================
-// PERIODOS CON RESULTADOS VALIDADOS
-// =====================================================
-//
-// Cada semáforo temático debe utilizar resultados
-// de un MISMO periodo.
-//
-// Nunca se combinan resultados de meses o
-// ejercicios diferentes en una agrupación.
-
-const periodosDisponibles = computed(() =>
-  [...new Set(
-    expedientes.value
-      .filter(
-        exp => exp.estado === 'Validada'
-      )
-      .map(exp => exp.periodo)
-      .filter(Boolean)
-  )].sort((a, b) => b.localeCompare(a))
-);
-
-const periodoActivo = computed(() => {
-  if (
-    periodoElegido.value &&
-    periodosDisponibles.value.includes(
-      periodoElegido.value
-    )
-  ) {
-    return periodoElegido.value;
-  }
-
-  return periodosDisponibles.value[0] ?? '';
-});
-
-// =====================================================
-// RESULTADOS VALIDADOS DEL PERIODO
-// =====================================================
-
-const resultadosPorIndicador = computed(() => {
-  const mapa = new Map<
-    string,
-    ExpedienteSeguimiento
-  >();
-
-  if (!periodoActivo.value) {
-    return mapa;
-  }
-
-  const validados = expedientes.value
-    .filter(exp =>
-      exp.estado === 'Validada' &&
-      exp.periodo === periodoActivo.value &&
-      typeof exp.valor === 'number' &&
-      Number.isFinite(exp.valor)
-    )
-    .sort((a, b) =>
-      b.actualizadoEn.localeCompare(
-        a.actualizadoEn
-      )
-    );
-
-  for (const expediente of validados) {
-    if (!mapa.has(expediente.indicadorClave)) {
-      mapa.set(
-        expediente.indicadorClave,
-        expediente
-      );
-    }
-  }
-
-  return mapa;
-});
-
-// =====================================================
-// EVALUACIÓN DEL SEMÁFORO
-// =====================================================
-
-function evaluarSemaforo(
-  clave: string,
-  valor: number | null
-): ColorSemaforo {
-  if (
-    valor === null ||
-    !Number.isFinite(valor)
-  ) {
-    return 'gris';
-  }
-
-  if (indicadoresPendientes.has(clave)) {
-    return 'gris';
-  }
-
-  const regla = reglas[clave];
-
-  if (!regla) {
-    return 'gris';
-  }
-
-  let verde = false;
-  let amarillo = false;
-
-  if (regla.direccion === 'sube') {
-    verde = regla.verdeInclusivo === false
-      ? valor > regla.verde
-      : valor >= regla.verde;
-
-    amarillo = regla.amarilloInclusivo === false
-      ? valor > regla.amarillo
-      : valor >= regla.amarillo;
-  } else {
-    verde = regla.verdeInclusivo === false
-      ? valor < regla.verde
-      : valor <= regla.verde;
-
-    amarillo = regla.amarilloInclusivo === false
-      ? valor < regla.amarillo
-      : valor <= regla.amarillo;
-  }
-
-  if (verde) return 'verde';
-  if (amarillo) return 'amarillo';
-
-  return 'rojo';
-}
-
-// =====================================================
-// CATÁLOGO CON SEMÁFOROS
-// =====================================================
-
-const indicadores = computed<IndicadorConsulta[]>(() =>
-  indicadoresCatalogo.map(indicador => {
-    const expediente =
-      resultadosPorIndicador.value.get(
-        indicador.clave
-      );
-
-    const valor = expediente?.valor ?? null;
-
-    return {
-      ...indicador,
-
-      valorValidado: valor,
-
-      periodoValidado:
-        expediente?.periodo ?? null,
-
-      semaforo: evaluarSemaforo(
-        indicador.clave,
-        valor
-      )
-    };
-  })
-);
-
-// =====================================================
-// OPCIONES DE FILTROS
-// =====================================================
-
-function opciones(
-  campo: 'tipologia' | 'ambito' | 'desagregacion'
-): string[] {
-  return [...new Set(
-    indicadoresCatalogo
-      .map(indicador =>
-        indicador[campo]?.trim()
-      )
-      .filter(
-        (valor): valor is string =>
-          Boolean(valor)
-      )
-  )].sort((a, b) =>
-    a.localeCompare(b, 'es')
-  );
-}
-
-function normalizar(texto: string): string {
-  return texto
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
-// =====================================================
-// FILTRAR INDICADORES
-// =====================================================
-
-const indicadoresFiltrados = computed(() => {
-  const busqueda = normalizar(
-    filtros.value.busqueda
-  );
-
-  return indicadores.value.filter(indicador => {
-    const texto = normalizar([
-      indicador.clave,
-      indicador.nombre,
-      indicador.agrupacion,
-      indicador.familia
-    ].join(' '));
-
-    const coincideBusqueda =
-      texto.includes(busqueda);
-
-    const coincideTipologia =
-      filtros.value.tipologia === 'Todas' ||
-      indicador.tipologia ===
-        filtros.value.tipologia;
-
-    const coincideAmbito =
-      filtros.value.ambito === 'Todos' ||
-      indicador.ambito ===
-        filtros.value.ambito;
-
-    const coincideDesagregacion =
-      filtros.value.desagregacion === 'Todas' ||
-      indicador.desagregacion ===
-        filtros.value.desagregacion;
-
-    const coincideSemaforo =
-      filtros.value.semaforo === 'Todos' ||
-      indicador.semaforo ===
-        filtros.value.semaforo;
-
-    return (
-      coincideBusqueda &&
-      coincideTipologia &&
-      coincideAmbito &&
-      coincideDesagregacion &&
-      coincideSemaforo
-    );
-  });
-});
-
-function limpiarFiltros() {
-  filtros.value = {
-    busqueda: '',
-    tipologia: 'Todas',
-    ambito: 'Todos',
-    desagregacion: 'Todas',
-    semaforo: 'Todos'
+const indicadores = computed<IndicadorConsulta[]>(() => indicadoresCatalogo.map(indicador => {
+  const esperado = periodoEsperado(indicador.frecuencia, periodoActivo.value);
+  const resultado = resultadoDelCorte(resultados.value, indicador.clave, indicador.frecuencia, periodoActivo.value);
+  return {
+    ...indicador,
+    periodoEsperado: esperado,
+    valorValidado: resultado?.valor ?? null,
+    periodoValidado: resultado?.estado === 'publicado' || resultado?.estado === 'validacion_local' ? resultado.periodo : null,
+    semaforo: resultado?.semaforo ?? null,
+    mensaje: esperado ? mensajesEstado[resultado?.estado ?? 'sin_publicacion'] : 'Sin periodo: verifica el corte y la frecuencia.',
+    versionPublicacion: resultado?.versionPublicacion ?? null,
+    versionRegla: resultado?.versionRegla ?? null,
   };
+}));
+
+function opciones(campo: 'tipologia' | 'ambito' | 'desagregacion'): string[] {
+  return [...new Set(indicadoresCatalogo.map(indicador => indicador[campo]?.trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'es'));
 }
-
-// =====================================================
-// DESPLEGAR AGRUPACIONES
-// =====================================================
-
+function normalizar(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+const indicadoresFiltrados = computed(() => indicadores.value.filter(indicador => {
+  const texto = normalizar([indicador.clave, indicador.nombre, indicador.agrupacion, indicador.familia].join(' '));
+  return texto.includes(normalizar(filtros.value.busqueda))
+    && (filtros.value.tipologia === 'Todas' || indicador.tipologia === filtros.value.tipologia)
+    && (filtros.value.ambito === 'Todos' || indicador.ambito === filtros.value.ambito)
+    && (filtros.value.desagregacion === 'Todas' || indicador.desagregacion === filtros.value.desagregacion)
+    && (filtros.value.semaforo === 'Todos' || (indicador.semaforo ?? 'sin_color') === filtros.value.semaforo);
+}));
+function limpiarFiltros() {
+  filtros.value = { busqueda: '', tipologia: 'Todas', ambito: 'Todos', desagregacion: 'Todas', semaforo: 'Todos' };
+}
 function estaAbierto(nombre: string): boolean {
   return gruposAbiertos.value.includes(nombre);
 }
-
 function toggleAgrupacion(nombre: string) {
-  if (estaAbierto(nombre)) {
-    gruposAbiertos.value =
-      gruposAbiertos.value.filter(
-        item => item !== nombre
-      );
-  } else {
-    gruposAbiertos.value = [
-      ...gruposAbiertos.value,
-      nombre
-    ];
-  }
+  gruposAbiertos.value = estaAbierto(nombre)
+    ? gruposAbiertos.value.filter(item => item !== nombre) : [...gruposAbiertos.value, nombre];
 }
 
-// =====================================================
-// SEMÁFORO DE AGRUPACIÓN TEMÁTICA
-// =====================================================
-
-function calcularColorGrupo(
-  conteo: ConteoSemaforo
-): ColorSemaforo {
-  if (
-    conteo.amarillo > 3 ||
-    conteo.rojo >= 2
-  ) {
-    return 'rojo';
-  }
-
-  if (
-    conteo.amarillo === 3 ||
-    conteo.rojo === 1
-  ) {
-    return 'amarillo';
-  }
-
-  // No declaramos un grupo favorable cuando
-  // todavía tiene indicadores sin evaluar.
-  if (conteo.gris > 0) {
-    return 'gris';
-  }
-
-  return 'verde';
-}
-
-function contarColores(
-  lista: IndicadorConsulta[]
-): ConteoSemaforo {
-  return {
-    verde: lista.filter(
-      ind => ind.semaforo === 'verde'
-    ).length,
-
-    amarillo: lista.filter(
-      ind => ind.semaforo === 'amarillo'
-    ).length,
-
-    rojo: lista.filter(
-      ind => ind.semaforo === 'rojo'
-    ).length,
-
-    gris: lista.filter(
-      ind => ind.semaforo === 'gris'
-    ).length
-  };
-}
-
-// =====================================================
-// CONSTRUIR AGRUPACIONES
-// =====================================================
-
-const agrupaciones = computed<GrupoConsulta[]>(() => {
-  const nombres = [...new Set(
-    indicadores.value.map(
-      indicador => indicador.agrupacion
-    )
-  )].sort((a, b) => a.localeCompare(b, 'es'));
-
-  return nombres
-    .map(nombreOriginal => {
-      // Usamos TODOS los indicadores del periodo
-      // para determinar el estado temático.
-      const todos = indicadores.value.filter(
-        indicador =>
-          indicador.agrupacion === nombreOriginal
-      );
-
-      // Los filtros solo modifican las filas visibles.
-      const visibles = indicadoresFiltrados.value.filter(
-        indicador =>
-          indicador.agrupacion === nombreOriginal
-      );
-
-      const conteo = contarColores(todos);
-
-      const coincidencia = nombreOriginal.match(
-        /^(\d+)[.\s-]*/
-      );
-
-      const clave =
-        coincidencia?.[1] ?? '';
-
-      const nombre = nombreOriginal
-        .replace(/^\d+[.\s-]*/, '')
-        .trim();
-
-      return {
-        clave,
-        nombre,
-        nombreOriginal,
-
-        indicadores: visibles,
-        total: todos.length,
-
-        conteo,
-        semaforo: calcularColorGrupo(conteo),
-
-        // Usar siempre el nombre original:
-        // así el desplegable abre y cierra bien.
-        expandido: estaAbierto(nombreOriginal)
-      };
-    })
-    .filter(grupo =>
-      grupo.indicadores.length > 0
-    );
+const agrupaciones = computed(() => {
+  const nombres = [...new Set(indicadores.value.map(indicador => indicador.agrupacion))]
+    .sort((a, b) => a.localeCompare(b, 'es'));
+  return nombres.map(nombreOriginal => {
+    const todos = indicadores.value.filter(indicador => indicador.agrupacion === nombreOriginal);
+    const visibles = indicadoresFiltrados.value.filter(indicador => indicador.agrupacion === nombreOriginal);
+    return {
+      clave: nombreOriginal.match(/^(\d+)[.\s-]*/)?.[1] ?? '',
+      nombre: nombreOriginal.replace(/^\d+[.\s-]*/, '').trim(),
+      nombreOriginal, indicadores: visibles, total: todos.length,
+      ...resumenTematico(todos.map(indicador => indicador.semaforo)),
+      expandido: estaAbierto(nombreOriginal),
+    };
+  }).filter(grupo => grupo.indicadores.length > 0);
 });
-
-// =====================================================
-// AVISOS DE ATENCIÓN
-// =====================================================
+type GrupoConsulta = (typeof agrupaciones.value)[number];
 
 function mensajeGrupo(grupo: GrupoConsulta): string {
-  const {
-    rojo,
-    amarillo,
-    gris
-  } = grupo.conteo;
-
-  if (rojo > 0 && amarillo > 0) {
-    return `Atención: ${rojo} en rojo y ${amarillo} en amarillo`;
-  }
-
-  if (rojo > 0) {
-    return `Atención prioritaria: ${rojo} indicador(es) en rojo`;
-  }
-
-  if (amarillo > 0) {
-    return `Atención: ${amarillo} indicador(es) en amarillo`;
-  }
-
-  if (gris > 0) {
-    return `${gris} indicador(es) pendientes de evaluación`;
-  }
-
-  return 'Sin alertas en los indicadores evaluados';
+  const indice = grupo.indice === null ? 'sin índice' : `índice informativo ${grupo.indice.toFixed(2)} (${etiquetaSemaforo(grupo.colorReferencia)})`;
+  return `${indice}; ${grupo.evaluables}/${grupo.total} indicadores del catálogo evaluables. Color temático oficial pendiente de política de cobertura.`;
 }
+const totalIndicadores = computed(() => indicadores.value.length);
+const totalVisibles = computed(() => indicadoresFiltrados.value.length);
+const alertasGenerales = computed(() => resumenTematico(indicadores.value.map(indicador => indicador.semaforo)).conteo);
 
-function claseAlerta(
-  grupo: GrupoConsulta
-): ColorSemaforo {
-  if (grupo.conteo.rojo > 0) {
-    return 'rojo';
-  }
-
-  if (grupo.conteo.amarillo > 0) {
-    return 'amarillo';
-  }
-
-  if (grupo.conteo.gris > 0) {
-    return 'gris';
-  }
-
-  return 'verde';
-}
-
-// =====================================================
-// RESUMEN GENERAL
-// =====================================================
-
-const totalIndicadores = computed(() =>
-  indicadores.value.length
-);
-
-const totalVisibles = computed(() =>
-  indicadoresFiltrados.value.length
-);
-
-const alertasGenerales = computed(() =>
-  contarColores(indicadores.value)
-);
-
-// =====================================================
-// ETIQUETAS
-// =====================================================
-
-function etiquetaSemaforo(
-  color: ColorSemaforo
-): string {
-  const etiquetas: Record<ColorSemaforo, string> = {
-    verde: 'Verde',
-    amarillo: 'Amarillo',
-    rojo: 'Rojo',
-    gris: 'Sin evaluar'
-  };
-
-  return etiquetas[color];
+function etiquetaSemaforo(color: ColorSemaforo | null): string {
+  return color === null ? 'Sin color publicado'
+    : { verde: 'Verde', amarillo: 'Amarillo', rojo: 'Rojo', gris: 'Gris · incumplimiento' }[color];
 }
 </script>
 
@@ -992,7 +208,13 @@ function etiquetaSemaforo(
       <div class="resumen-item gris">
         <span class="dot"></span>
         <strong>{{ alertasGenerales.gris }}</strong>
-        <span>Sin evaluar</span>
+        <span>Incumplimiento al cierre</span>
+      </div>
+
+      <div class="resumen-item sin-color">
+        <span class="dot"></span>
+        <strong>{{ alertasGenerales.sinColor }}</strong>
+        <span>Sin color publicado</span>
       </div>
 
     </section>
@@ -1084,34 +306,20 @@ function etiquetaSemaforo(
             <option value="verde">Verde</option>
             <option value="amarillo">Amarillo</option>
             <option value="rojo">Rojo</option>
-            <option value="gris">Sin evaluar</option>
+            <option value="gris">Gris · incumplimiento</option>
+            <option value="sin_color">Sin color publicado</option>
           </select>
         </label>
 
-        <!-- PERIODO COMÚN -->
+        <!-- CORTE MENSUAL CON FRECUENCIAS MIXTAS -->
         <label>
-          Periodo evaluado
-
-          <select
+          Mes y año de corte
+          <input
             v-model="periodoElegido"
-            :disabled="periodosDisponibles.length === 0"
-          >
-            <option value="">
-              {{
-                periodosDisponibles.length
-                  ? 'Último periodo disponible'
-                  : 'Sin periodos validados'
-              }}
-            </option>
-
-            <option
-              v-for="periodo in periodosDisponibles"
-              :key="periodo"
-              :value="periodo"
-            >
-              {{ periodo }}
-            </option>
-          </select>
+            type="month"
+            :max="corteMaximo"
+            required
+          />
         </label>
 
         <button
@@ -1141,7 +349,7 @@ function etiquetaSemaforo(
           v-if="periodoActivo"
           class="periodo-etiqueta"
         >
-          Periodo evaluado: {{ periodoActivo }}
+          Corte mensual: {{ periodoActivo }} · America/Mexico_City
         </span>
       </div>
 
@@ -1153,6 +361,15 @@ function etiquetaSemaforo(
         Actualizar resultados
       </button>
     </div>
+
+    <p class="nota-metodologica" role="status">
+      Datos de demostración; no usar como reporte oficial.
+      Cada indicador usa su periodo completo correspondiente al corte, sin sustituir faltantes por resultados anteriores.
+      Sin fecha de alta y exigibilidad confirmadas no se presume incumplimiento.
+    </p>
+    <p v-if="!periodoActivo" role="alert" class="nota-metodologica">
+      Selecciona un mes cerrado, hasta {{ corteMaximo }}.
+    </p>
 
     <!-- ======================================== -->
     <!-- AGRUPACIONES TEMÁTICAS -->
@@ -1203,18 +420,18 @@ function etiquetaSemaforo(
           <div class="grupo-derecha">
 
             <span
-              class="grupo-semaforo"
-              :class="grupo.semaforo"
+              class="grupo-semaforo sin-color"
             >
               <span class="dot"></span>
-              {{ etiquetaSemaforo(grupo.semaforo) }}
+              Color temático pendiente
             </span>
 
             <span class="grupo-conteo">
               {{ grupo.conteo.verde }} V ·
               {{ grupo.conteo.amarillo }} A ·
               {{ grupo.conteo.rojo }} R ·
-              {{ grupo.conteo.gris }} S/E
+              {{ grupo.conteo.gris }} gris ·
+              {{ grupo.conteo.sinColor }} sin color
             </span>
 
           </div>
@@ -1222,17 +439,14 @@ function etiquetaSemaforo(
 
         <!-- AVISO DE ATENCIÓN -->
         <div
-          class="grupo-alerta"
-          :class="claseAlerta(grupo)"
+          class="grupo-alerta sin-color"
         >
           <span class="alerta-icono">
             {{
               grupo.conteo.rojo > 0 ||
               grupo.conteo.amarillo > 0
                 ? '!'
-                : grupo.conteo.gris > 0
-                  ? 'i'
-                  : '✓'
+                : 'i'
             }}
           </span>
 
@@ -1249,7 +463,7 @@ function etiquetaSemaforo(
               )
             "
           >
-            · {{ grupo.conteo.gris }} sin evaluar
+            · {{ grupo.conteo.gris }} incumplidos (fuera del índice)
           </small>
         </div>
 
@@ -1266,7 +480,8 @@ function etiquetaSemaforo(
                 <th>Tipología</th>
                 <th>Ámbito</th>
                 <th>Territorio</th>
-                <th>Periodo</th>
+                <th>Periodo esperado</th>
+                <th>Valor</th>
                 <th>Semáforo</th>
                 <th>Ficha técnica</th>
               </tr>
@@ -1316,16 +531,17 @@ function etiquetaSemaforo(
                 <!-- PERIODO -->
                 <td class="periodo">
                   {{
-                    ind.periodoValidado ??
-                    'Sin periodo validado'
+                    ind.periodoEsperado ?? 'Sin periodo definido'
                   }}
                 </td>
+
+                <td>{{ ind.valorValidado === null ? '—' : `${ind.valorValidado.toLocaleString('es-MX')} ${ind.unidad}` }}</td>
 
                 <!-- SEMÁFORO -->
                 <td>
                   <span
                     class="indicador-semaforo"
-                    :class="ind.semaforo"
+                    :class="ind.semaforo ?? 'sin-color'"
                   >
                     <span class="dot"></span>
 
@@ -1335,6 +551,7 @@ function etiquetaSemaforo(
                       )
                     }}
                   </span>
+                  <small class="indicador-ayuda">{{ ind.mensaje }}</small>
                 </td>
 
                 <!-- ABRIR FICHA -->
@@ -1398,17 +615,15 @@ function etiquetaSemaforo(
         descriptiva de los indicadores contenida
         en el catálogo SIIP.
 
-        Los semáforos individuales utilizan
-        exclusivamente resultados validados
-        del periodo seleccionado.
-
-        Los indicadores sin datos o sin una regla
-        metodológica confirmada permanecen
-        sin evaluar.
-
-        El estado temático combina indicadores
-        del mismo periodo y nunca mezcla
-        resultados de periodos diferentes.
+        Valor, color y versiones se leen de la publicación conservada; cambiar reglas no recalcula el historial.
+        Los registros locales antiguos sin publicación versionada se muestran sin color publicado.
+        El gris significa incumplimiento confirmado al cierre; no equivale a rojo ni a cero.
+        Un envío completo puede continuar en revisión después del cierre sin volverse gris.
+        La justificación documental no elimina el gris y no se muestra como evidencia pública.
+        El índice informativo es (verdes + 0.5 × amarillos) / evaluables. Umbrales: verde ≥ 0.80,
+        amarillo ≥ 0.50 y rojo &lt; 0.50. Sin evaluables no hay índice.
+        El total del catálogo es una referencia; el universo aplicable, la cobertura mínima y el tratamiento
+        de grupos pequeños siguen pendientes. No se asigna un color temático oficial.
       </p>
     </footer>
 
@@ -1426,6 +641,11 @@ function etiquetaSemaforo(
     :periodo-validado="
       fichaSeleccionada.periodoValidado
     "
+    :periodo-esperado="fichaSeleccionada.periodoEsperado"
+    :valor-validado="fichaSeleccionada.valorValidado"
+    :mensaje-estado="fichaSeleccionada.mensaje"
+    :version-publicacion="fichaSeleccionada.versionPublicacion"
+    :version-regla="fichaSeleccionada.versionRegla"
     @cerrar="cerrarFicha"
   />
 
@@ -1506,7 +726,7 @@ function etiquetaSemaforo(
 .resumen-general {
   display: grid;
   grid-template-columns:
-    repeat(4, minmax(0, 1fr));
+    repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -1555,6 +775,18 @@ function etiquetaSemaforo(
 
 .gris .dot {
   background: #a5adb5;
+}
+
+.sin-color .dot {
+  background: transparent;
+  border: 2px dashed #245a81;
+}
+
+.grupo-semaforo.sin-color,
+.grupo-alerta.sin-color,
+.indicador-semaforo.sin-color {
+  background: #eaf3f9;
+  color: #245a81;
 }
 
 /* ====================================== */

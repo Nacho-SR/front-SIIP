@@ -16,7 +16,7 @@ let vite, api, router, useAuthStore, auth, requests, responses, AdminView, MainL
 
 before(async () => {
   vite = await createServer({
-    server: { middlewareMode: true, watch: null, hmr: false },
+    server: { middlewareMode: true, watch: null, hmr: false, ws: false },
     appType: 'custom',
     plugins: [{
       name: 'test-memory-history',

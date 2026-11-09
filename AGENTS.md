@@ -22,7 +22,7 @@ Este repositorio corresponde al **Sistema Integrado de Indicadores de Planeació
 - DEC-034: preparar evidencias para Supabase Storage; no crear recursos ni cambiar proveedor de PostgreSQL sin concretar ese alcance.
 - DEC-035: hay esqueleto modular y código de autenticación con SQL mínimo propuesto. Al 04/11/2026 el equipo tiene una BD vacía; DEC-036 añade script de administrador inicial y altas de Captura/Revisión/dependencias con auditoría. La conexión y aplicación explícita del SQL siguen pendientes; no se ejecuta SQL automáticamente. No afirmar pruebas de PostgreSQL real; no ejecutar el SQL ni migraciones sin nueva autorización.
 - La evaluación temática usa **cortes mensuales con periodicidades mixtas**, decisión DEC-013.
-- No hay borradores de captura ni plazos máximos que bloqueen capturas/validaciones atrasadas. La validación/publicación sí debe esperar al cierre del periodo (DEC-033).
+- No hay borradores de captura. DEC-039 sustituye la captura tardía sin bloqueo: cierre al terminar el periodo natural en America/Mexico_City, último día incluido; faltantes/incompletos quedan grises. Los completos conservan revisión y pueden validarse después. Reapertura solo para PDF de justificación, sin completar datos ni quitar el gris. Gris no es rojo/cero ni evaluable temático. El cierre operativo y los permisos de las justificaciones siguen pendientes; no inferir incumplimiento sin exigibilidad y estado de cierre confirmados.
 - Solo se publican resultados validados; reaperturas administrativas mantienen visible la última versión validada hasta sustituirla por otra validada.
 - Deben existir reportes y notificaciones; sus detalles aún se definen. No habrá importación ni chat (ajuste de alcance confirmado por el equipo el 22/10/2026).
 

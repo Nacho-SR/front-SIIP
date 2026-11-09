@@ -7,6 +7,7 @@ import {
   ref,
   watch
 } from 'vue';
+import type { ColorSemaforo } from '../data/consulta';
 
 interface Indicador {
   clave: string;
@@ -24,13 +25,10 @@ interface Indicador {
   frecuencia: string;
   fuente: string;
   sentido: string;
+  algoritmo: string;
 }
 
-type Semaforo =
-  | 'verde'
-  | 'amarillo'
-  | 'rojo'
-  | 'gris';
+type Semaforo = ColorSemaforo;
 
 type Seccion =
   | 'identificacion'
@@ -39,8 +37,13 @@ type Seccion =
 
 const props = defineProps<{
   indicador: Indicador;
-  semaforo: Semaforo;
+  semaforo: Semaforo | null;
   periodoValidado?: string | null;
+  periodoEsperado?: string | null;
+  valorValidado?: number | null;
+  mensajeEstado?: string;
+  versionPublicacion?: string | null;
+  versionRegla?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -76,25 +79,27 @@ const nombreSemaforo = computed(() => {
     verde: 'Verde',
     amarillo: 'Amarillo',
     rojo: 'Rojo',
-    gris: 'Sin evaluar'
+    gris: 'Gris · incumplimiento'
   };
 
-  return nombres[props.semaforo];
+  return props.semaforo === null ? 'Sin color publicado' : nombres[props.semaforo];
 });
 
 const descripcionSemaforo = computed(() => {
   const descripciones: Record<Semaforo, string> = {
     verde:
-      'El último resultado validado disponible se encuentra en un rango favorable.',
+      'El resultado publicado del periodo esperado se encuentra en un rango favorable.',
     amarillo:
-      'El último resultado validado disponible requiere atención.',
+      'El resultado publicado del periodo esperado requiere atención.',
     rojo:
-      'El último resultado validado disponible requiere atención prioritaria.',
+      'El resultado publicado del periodo esperado requiere atención prioritaria.',
     gris:
-      'No existe una evaluación publicada suficiente para asignar un color.'
+      'Incumplimiento confirmado al cierre. La justificación documental conserva el gris; no equivale a rojo ni a cero.'
   };
 
-  return descripciones[props.semaforo];
+  return props.semaforo === null
+    ? 'No hay un color publicado para el periodo esperado. La falta de publicación no confirma incumplimiento.'
+    : descripciones[props.semaforo];
 });
 
 function mostrar(valor?: string | null) {
@@ -166,7 +171,7 @@ onUnmounted(() => {
 
               <span
                 class="semaforo"
-                :class="semaforo"
+                :class="semaforo ?? 'sin-color'"
               >
                 <span class="semaforo-dot"></span>
                 {{ nombreSemaforo }}
@@ -403,6 +408,14 @@ onUnmounted(() => {
               </p>
             </div>
 
+            <div class="bloque-texto">
+              <div class="bloque-titulo">
+                <span class="marcador"></span>
+                <h4>Fórmula del indicador</h4>
+              </div>
+              <p class="formula">{{ mostrar(indicador.algoritmo) }}</p>
+            </div>
+
             <div class="aviso-metodologico">
               <div class="aviso-icono">i</div>
 
@@ -412,15 +425,9 @@ onUnmounted(() => {
                 </strong>
 
                 <p>
-                  Esta sección presenta las
-                  características metodológicas
-                  descriptivas del indicador.
-
-                  El algoritmo matemático, las variables
-                  capturadas y el cálculo preliminar
-                  se consultan dentro del módulo de
-                  Seguimiento, de acuerdo con los
-                  permisos asignados.
+                  La fórmula textual es parte de la ficha de consulta. Su presencia no confirma
+                  la metodología operativa: la conciliación de las fichas sigue pendiente.
+                  Los valores capturados, observaciones y PDF internos requieren permisos específicos.
                 </p>
               </div>
             </div>
@@ -487,33 +494,36 @@ onUnmounted(() => {
 
             <div
               class="estado-publicacion"
-              :class="semaforo"
+              :class="semaforo ?? 'sin-color'"
             >
               <span class="estado-punto"></span>
 
               <div>
                 <strong>
-                  Estado publicado: {{ nombreSemaforo }}
+                  Estado del periodo: {{ nombreSemaforo }}
                 </strong>
 
                 <p>
                   {{ descripcionSemaforo }}
                 </p>
+                <p>{{ mensajeEstado }}</p>
+                <p>Periodo esperado: {{ periodoEsperado ?? 'Sin periodo definido' }}</p>
+                <p>Valor: {{ valorValidado == null ? '—' : `${valorValidado.toLocaleString('es-MX')} ${indicador.unidad}` }}</p>
+                <p>Publicación: {{ versionPublicacion ?? 'Sin versión publicada' }} · Regla: {{ versionRegla ?? 'Sin versión publicada' }}</p>
 
                 <small>
                   {{
                     periodoValidado
-                      ? `Periodo validado: ${periodoValidado}`
-                      : 'Sin periodo validado disponible'
+                      ? `Periodo fuente: ${periodoValidado}`
+                      : 'Sin resultado del periodo esperado'
                   }}
                 </small>
               </div>
             </div>
 
             <p class="aclaracion">
-              El estado semafórico solo es aplicable
-              a un resultado validado que cuente
-              con una regla metodológica definida.
+              El color se conserva con la versión publicada; no se recalcula con la regla actual.
+              Un resultado publicado sin color no contribuye al índice temático.
             </p>
           </section>
         </div>
@@ -543,6 +553,23 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.formula {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.semaforo.sin-color,
+.estado-publicacion.sin-color {
+  color: #245a81;
+  background: #eaf3f9;
+}
+
+.sin-color .semaforo-dot,
+.sin-color .estado-punto {
+  background: transparent;
+  border: 2px dashed #245a81;
+}
+
 .ficha-overlay {
   --wine: #70273b;
   --deep: #431c2a;

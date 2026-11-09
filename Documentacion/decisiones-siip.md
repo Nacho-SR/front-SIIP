@@ -1,6 +1,6 @@
 # Registro operativo de decisiones SIIP (copia para Codex)
 
-**Actualizado al 27/10/2026.** Basado en `SIIP_Registro_de_Decisiones_v0_2.docx` y los acuerdos posteriores del equipo. DEC-001..025 conservan sus acuerdos funcionales. DEC-026 queda sustituida por DEC-027; DEC-028 registra PostgreSQL como motor propuesto, sin aprobación del esquema. La aprobación formal del cliente puede seguir pendiente. Las propuestas PROP-BD y PROP-TEC NO se convierten en decisiones aprobadas por documentarlas. Si existe discrepancia futura entre acuerdos confirmados, solicitar conciliación antes de cambiar su interpretación.
+**Actualizado al 09/11/2026.** DEC-038 amplía roles y DEC-039 sustituye la captura tardía de DEC-009/017. Basado en `SIIP_Registro_de_Decisiones_v0_2.docx` y los acuerdos posteriores del equipo. DEC-001..025 conservan sus acuerdos funcionales. DEC-026 queda sustituida por DEC-027; DEC-028 registra PostgreSQL como motor propuesto, sin aprobación del esquema. La aprobación formal del cliente puede seguir pendiente. Las propuestas PROP-BD y PROP-TEC NO se convierten en decisiones aprobadas por documentarlas. Si existe discrepancia futura entre acuerdos confirmados, solicitar conciliación antes de cambiar su interpretación.
 
 | ID | Estado | Decisión |
 |---|---|---|
@@ -8,11 +8,11 @@
 | DEC-002 | Equipo: confirmada | No hay varias dependencias aportando a una misma variable en MVP; sí variables distintas del mismo indicador. |
 | DEC-003 | Equipo: confirmada | Fórmula textual almacenada para la ficha; sin editor de expresiones arbitrarias en MVP. |
 | DEC-004 | Equipo: confirmada; precisada por DEC-030/031 el 30/10/2026 | Los cambios de regla no recalculan resultados/colores publicados. Una captura en revisión conserva su regla; capturas atrasadas y reaperturas usan la regla del periodo correspondiente. |
-| DEC-005 | Equipo: confirmada | Roles exclusivos Captura, Revisión, Administrador. |
+| DEC-005 | Histórica; sustituida por DEC-038 el 06/11/2026 | Roles exclusivos Captura, Revisión, Administrador en el alcance anterior. |
 | DEC-006 | Equipo: confirmada | Una cuenta de captura por dependencia prevista inicialmente. |
 | DEC-007 | Equipo: confirmada | No hay borradores; capturas completas y válidas. |
 | DEC-008 | Equipo: confirmada | Hilos de revisión por ciclo, cerrados pero preservados para auditoría. |
-| DEC-009 | Equipo: confirmada; precisada por DEC-033 | No hay plazos máximos que bloqueen capturas o validaciones atrasadas. Captura desde el alta con asignación; validar/publicar solo al cierre del periodo o después. |
+| DEC-009 | Histórica en captura tardía; sustituida por DEC-039. Validación posterior al cierre se conserva | No hay plazos máximos que bloqueen capturas o validaciones atrasadas. Captura desde el alta con asignación; validar/publicar solo al cierre del periodo o después. |
 | DEC-010 | Equipo: confirmada | Consulta autenticada; Captura ve dependencias asignadas y Revisión todo. |
 | DEC-011 | Equipo: confirmada | Publicación automática después de validar. |
 | DEC-012 | Equipo: confirmada | Reapertura solo por administrador, con nuevo ciclo validable y trazabilidad. |
@@ -20,7 +20,7 @@
 | DEC-014 | Equipo: confirmada | Si falta histórico para semaforizar, se publica valor validado sin color, fuera del temático. |
 | DEC-015 | Equipo: confirmada | Indicadores por colonia se capturan municipalmente; desglose queda en evidencia. |
 | DEC-016 | Equipo: confirmada | Última versión validada permanece publicada durante reapertura, hasta nueva validación. |
-| DEC-017 | Equipo: confirmada | Aviso siete días antes de fin de periodo y señalización de atraso sin bloqueo. |
+| DEC-017 | Precisada por DEC-039 el 06/11/2026 | Se conserva el aviso preventivo de siete días. El cierre ahora bloquea nuevos datos y marca en gris los faltantes/incompletos. |
 | DEC-018 | Equipo: confirmada | Metas porcentuales respetan formato/origen de Excel; 1 en celda porcentual representa 100%. |
 | DEC-019 | Equipo: confirmada; ajustada por DEC-023 | Administrador gestiona usuarios, dependencias, indicadores, variables, asignaciones, catálogos específicos y reaperturas, sin validar por sí mismo. La importación se retiró del alcance. |
 | DEC-020 | Equipo: confirmada | En semáforo temático solo participan resultados publicados con color calculable; mostrar cobertura. |
@@ -41,6 +41,8 @@
 | DEC-035 | Equipo: implementación solicitada 30/10/2026 | Se autoriza el esqueleto por módulos con controllers, services, repositories, schemas y guards, y comenzar autenticación. El equipo confirma que todavía no tiene BD y pide preparar código y SQL sin ejecutarlo. Se implementan los tres endpoints de sesión de DEC-029 y adaptador PostgreSQL; SQL mínimo de autenticación propuesto para revisión, sin aprobar las demás tablas del MVP. Las pruebas usan dobles sintéticos; no hay verificación de PostgreSQL real ni recursos creados. |
 | DEC-036 | Equipo: implementación solicitada 04/11/2026 | El equipo confirma una base PostgreSQL vacía, sin SQL aplicado ni conexión configurada. Se implementa script CLI para el primer administrador y POST protegidos de altas de Captura/Revisión y dependencias. Sin alta HTTP de administradores ni sobrescritura de cuentas. Se prepara SQL de auditoría para altas atómicas y colección Postman; no se ejecuta SQL desde el chat. La prueba real requiere configurar una conexión de desarrollo o TEST_DATABASE_URL aislada. |
 | DEC-037 | Equipo: confirmada e implementación solicitada 04/11/2026 | Los usuarios de Revisión también pertenecen a una dependencia, obligatoria y activa como en Captura. Esto no cambia su consulta global de DEC-010 ni las acciones exclusivas de cada rol. Se habilitan formularios de altas de usuarios/dependencias desde Administrador y consulta del catálogo activo para asignación. No se crean administradores por HTTP. Se prepara SQL 003 para exigir dependencia a Captura/Revisión; cuentas anteriores sin dependencia requieren asignación real antes de aplicarlo. No se ejecuta SQL ni se reasignan cuentas desde el chat. |
+| DEC-038 | Confirmada e implementación solicitada por el usuario 06/11/2026 | Cuatro roles exclusivos: Captura, Revisión, Administrador y Consulta. Consulta permite múltiples cuentas de lectura global, sin dependencia, pensadas inicialmente para Presidencia. Alta solo por Administrador. Acceso a fichas, resultados publicados y estadísticas; no concede captura, revisión, validación, administración ni expedientes/PDF internos. Permisos de exportación y PDF pendientes. Se actualizan auth, altas, UI y contratos; SQL 004 preparado, no ejecutado. |
+| DEC-039 | Acuerdo con el director comunicado y precisado por el usuario 06/11/2026 | Cierre de captura al fin del periodo natural en America/Mexico_City, último día incluido. Faltantes/incompletos quedan grises. Envíos completos conservan revisión y pueden validarse después. Administrador reabre solo para PDF de justificación, sin completar datos ni quitar el gris. Sustituye la captura tardía sin bloqueo de DEC-009/017. Gris no es rojo/cero ni evaluable temático. La corrección de publicaciones validadas sigue siendo otro flujo. Cierre y justificación aún sin implementación operativa. |
 
 Actualización técnica del 30/10/2026: DEC-029/035 completan la selección inicial de DEC-027. Hay arranque, validación de entorno, cabeceras, CORS, límites por IP y código de autenticación modular. Sesión con cookie/CSRF y Argon2id; expiración absoluta inicial de 30 minutos y 5 intentos de login/IP/minuto como valores técnicos revisables. Se relee cuenta/rol/dependencia vigentes; cambios de hash invalidan sesiones previas mediante huella HMAC. El almacén de sesiones usa generación y compare-and-set para impedir sobrescrituras obsoletas tras rotación/revocación. Sin DATABASE_URL, auth responde 503 y salud sigue disponible. El SQL no se ejecuta al iniciar ni se ha aplicado; PostgreSQL real sigue pendiente de prueba.
 

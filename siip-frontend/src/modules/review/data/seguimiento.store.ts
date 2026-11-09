@@ -2,6 +2,7 @@
 import type {
   RegistroCaptura
 } from '../../capture/data/captura.types';
+import { proyectarResultadoConsulta, type PublicacionConsulta } from '../../consulta/data/consulta';
 
 const STORAGE_KEY = 'siip-capturas-prototipo-v1';
 
@@ -29,6 +30,13 @@ export interface ExpedienteSeguimiento
   extends Omit<RegistroCaptura, 'estado'> {
   estado: EstadoSeguimiento;
   historial?: EventoSeguimiento[];
+  publicacion?: PublicacionConsulta;
+  cumplimientoCierre?: 'completo' | 'incumplido';
+}
+
+// shortcut: proyección de datos sintéticos locales; sustituir por la API de publicaciones cuando exista.
+export function obtenerResultadosConsulta() {
+  return obtenerExpedientes().map(proyectarResultadoConsulta);
 }
 
 // Obtener expedientes guardados
