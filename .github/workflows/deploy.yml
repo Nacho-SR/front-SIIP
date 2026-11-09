@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           # Indicamos dónde está el lockfile para el caché
           cache-dependency-path: './siip-frontend/package-lock.json' 

@@ -33,3 +33,8 @@ Este repositorio corresponde al **Sistema Integrado de Indicadores de Planeació
 - Nunca inventes respuestas del cliente ni presentes el documento del consultor como especificación definitiva.
 - No ejecutes migraciones destructivas, no hagas deploy, no envíes cambios al remoto y no modifiques datos productivos sin autorización.
 - Mantén secretos, contraseñas, tokens y archivos `.env` fuera del control de versiones.
+
+## Integración visual en develop — 09/11/2026
+
+- En `develop`, Captura y Seguimiento son vistas previas sin escrituras (paso 4, 09/11/2026). No reactivar el guardado local como sustituto de la API de negocio: faltan asignaciones, calendario del servidor, metodología conciliada, versiones inmutables y autorización por objeto. Las fichas adicionales de Administrador son demostrativas; no activan indicadores. Auth y altas de usuarios/dependencias sí conservan su integración con el backend.
+- No inferir incumplimiento gris sin exigibilidad y estado de cierre confirmados. La falta de publicación y el envío completo aún en revisión se muestran por separado.

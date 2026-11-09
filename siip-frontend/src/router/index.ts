@@ -24,6 +24,11 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../modules/dashboard/DashboardView.vue'),
       },
       {
+        path: 'estadisticas/analisis',
+        name: 'AnalisisIndicadores',
+        component: () => import('../modules/dashboard/AnalisisIndicadoresView.vue'),
+      },
+      {
         path: '',
         name: 'Consulta', 
         // Esta será nuestra vista de tablas con filtros
@@ -59,7 +64,14 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../modules/admin/AdminView.vue'),
         // Acceso exclusivo para administradores
         meta: { requiredRoles: ['administrador'] }
-      }
+      },
+      {
+        path: 'administrador/indicadores/nuevo',
+        name: 'AdministradorNuevoIndicador',
+        component: () => import('../modules/admin/NuevoIndicadorView.vue'),
+        meta: { requiredRoles: ['administrador']
+         }
+        },
     ]
   }
 ];

@@ -1,5 +1,7 @@
 # Backend SIIP
 
+Estado de la integración visual, límites operativos y verificación del 09/11/2026: [informe](../Documentacion/verificacion-integracion-visual-2026-11-09.md).
+
 Node.js 22, TypeScript y Fastify 5. Ejecuta los comandos desde `siip-backend`.
 
 ```powershell

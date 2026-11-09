@@ -1,3 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+:root {
+  --font-principal: 'Manrope', 'Segoe UI', sans-serif;
+  --font-titulos: 'Manrope', 'Segoe UI', sans-serif;
+}
+
+html,
+body,
+#app,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-principal);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-titulos) !important;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+}

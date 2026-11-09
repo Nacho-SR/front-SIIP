@@ -1,5 +1,7 @@
 # SIIP frontend
 
+Estado de la integración visual, límites operativos y verificación del 09/11/2026: [informe](../Documentacion/verificacion-integracion-visual-2026-11-09.md).
+
 Vue 3, TypeScript y Pinia. Desde esta carpeta:
 
 ```powershell
