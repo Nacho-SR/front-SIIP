@@ -12,7 +12,7 @@ const usuario = {
 };
 const anonymous = { usuario: null, csrf_token: 'csrf-anonimo-de-prueba' };
 const authenticated = { usuario, csrf_token: 'csrf-autenticado-de-prueba' };
-let vite, api, router, useAuthStore, auth, requests, responses, AdminView;
+let vite, api, router, useAuthStore, auth, requests, responses, AdminView, MainLayout;
 
 before(async () => {
   vite = await createServer({
@@ -32,6 +32,7 @@ before(async () => {
   ({ default: api } = await vite.ssrLoadModule('/src/core/api.ts'));
   ({ default: router } = await vite.ssrLoadModule('/src/router/index.ts'));
   ({ default: AdminView } = await vite.ssrLoadModule('/src/modules/admin/AdminView.vue'));
+  ({ default: MainLayout } = await vite.ssrLoadModule('/src/layouts/MainLayout.vue'));
   for (const route of router.getRoutes()) {
     if (route.components) route.components.default = { render: () => null };
   }
@@ -104,7 +105,7 @@ test('sesión anónima o backend sin configurar no habilitan rutas protegidas', 
 
 test('rutas de captura, revisión y administración mantienen roles exclusivos', async () => {
   auth.initialized = true;
-  for (const rol of ['captura', 'revision', 'administrador']) {
+  for (const rol of ['captura', 'revision', 'administrador', 'consulta']) {
     auth.user = { ...usuario, rol };
     assert.equal(auth.isCapturista, rol === 'captura');
     assert.equal(auth.isRevisor, rol === 'revision');
@@ -117,6 +118,26 @@ test('rutas de captura, revisión y administración mantienen roles exclusivos',
       assert.equal(router.currentRoute.value.path, rol === allowed ? path : '/');
     }
   }
+});
+
+test('Consulta recupera sesión y navega por consulta y estadísticas sin permisos de escritura', async () => {
+  responses.push({ data: { ...authenticated, usuario: { ...usuario, rol: 'consulta', dependencia_id: null } } });
+  await router.replace('/estadisticas');
+  assert.equal(router.currentRoute.value.name, 'Estadisticas');
+  assert.equal(auth.user.rol, 'consulta');
+  assert.equal(auth.user.dependencia_id, null);
+  assert.equal(auth.isCapturista || auth.isRevisor || auth.isAdmin, false);
+  await router.replace('/');
+  assert.equal(router.currentRoute.value.name, 'Consulta');
+});
+
+test('la navegación de Consulta solo muestra Consulta y Estadísticas', async () => {
+  auth.initialized = true;
+  auth.user = { ...usuario, rol: 'consulta', dependencia_id: null };
+  const html = await renderToString(createSSRApp(MainLayout).use(router));
+  assert.match(html, />Consulta<\/a>/);
+  assert.match(html, />Estadísticas<\/a>/);
+  assert.doesNotMatch(html, />(Captura|Seguimiento|Administrador)<\/a>/);
 });
 
 test('403 de permisos o CSRF conserva la sesión y no intenta logout', async () => {
@@ -264,4 +285,24 @@ test('fallo al cargar dependencias bloquea altas hasta que se reintenta', async 
   await form.loadDependencies();
   assert.equal(form.dependenciesError, '');
   assert.equal(form.loadingDependencies, false);
+});
+
+test('alta de Consulta permite catálogo vacío o fallido y nunca envía dependencia anterior', async () => {
+  for (const catalog of [{ data: [] }, { status: 503, data: { detail: 'Catálogo no disponible.' } }]) {
+    const form = await adminForm();
+    responses.push(catalog);
+    await form.loadDependencies();
+    Object.assign(form.userForm, { nombre: 'Consulta', correo: 'consulta@example.test',
+      password: 'contraseña-sintética-2026', rol: 'consulta', dependencia_id: '7' });
+    assert.equal(form.requiresDependency, false);
+    assert.equal(form.dependencyUnavailable, false);
+    responses.push({ status: 201, data: { ...usuario, rol: 'consulta', dependencia_id: null } });
+    await form.createUser();
+    const payload = JSON.parse(requests.at(-1).data);
+    assert.equal(payload.rol, 'consulta');
+    assert.equal(payload.dependencia_id, null);
+    assert.equal(form.userForm.password, '');
+    assert.match(form.userSuccess, /creado/);
+    assert.equal(form.userError, '');
+  }
 });

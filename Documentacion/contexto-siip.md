@@ -1,6 +1,6 @@
 # Contexto de trabajo — SIIP Salamanca
 
-**Corte de contexto:** 27 de octubre de 2026.
+**Corte de contexto:** 6 de noviembre de 2026.
 **Origen:** conversación de requisitos entre equipo desarrollador y ChatGPT, Word del consultor, Excel de fichas técnicas, diagrama ERD de draw.io.  
 **Naturaleza:** resumen de trabajo; **no es transcripción literal completa de la conversación** ni evidencia de aprobación formal por parte del cliente.
 
@@ -31,6 +31,7 @@ Usa datos y fórmulas reales del Excel al diseñar el esquema. No conviertas aut
 
 ## 4. Operación confirmada
 ### Roles
+- **Consulta (DEC-038):** múltiples cuentas sin dependencia, lectura global de fichas, resultados publicados y estadísticas. No captura, revisa, valida ni administra; sin acceso automático a insumos/PDF internos o exportaciones. Alta por Administrador.
 - **Captura:** un capturista por dependencia previsto para MVP; ingresa datos completos y válidos, responde observaciones y consulta resultados e históricos exclusivamente de indicadores relacionados con su dependencia.
 - **Revisión:** pertenece a una dependencia obligatoria y activa (DEC-037, 04/11/2026); revisa, emite observaciones, valida y puede consultar todos los indicadores y generar reportes. La pertenencia no limita su consulta global. Revisar y validar son acciones distintas, aunque del mismo rol.
 - **Administrador:** gestiona cuentas, dependencias, familias, indicadores, variables, asignaciones, catálogos delimitados, reaperturas justificadas, historial y supervisión. No reemplaza el flujo ordinario de revisión/validación. No habrá importación (DEC-023).
@@ -38,8 +39,8 @@ Usa datos y fórmulas reales del Excel al diseñar el esquema. No conviertas aut
 ### Capturas, revisión, histórico
 - No existen borradores: se registra una captura únicamente cuando todos los campos obligatorios están completos y son válidos.
 - DEC-032 (30/10/2026): cada dependencia envía sus variables y Revisión valida el conjunto cuando todas las aportaciones requeridas estén revisadas. En reapertura solo se reenvía la parte necesaria; el mecanismo de referencias a lo no modificado es propuesta técnica pendiente de adaptar/aprobar en el modelo.
-- DEC-033: periodos calendario naturales, captura desde registro con dependencia asignada y validación/publicación solo al cierre o después. No hay plazo máximo que bloquee atrasos.
-- Señalización preventiva siete días antes del fin del periodo y señalización cuando acaba y queda pendiente. Zona America/Mexico_City. Alta trimestral el 10 de febrero: primer corte el 31 de marzo. Se mantienen mensual, trimestral, semestral y anual; bimestral fue solo ejemplo. Falta definir cobertura de datos del primer periodo de alta intermedia y autorización de periodos previos.
+- DEC-033: periodos calendario naturales, captura desde registro con dependencia asignada y validación/publicación solo al cierre o después. DEC-039 sustituye la captura tardía: cierre al fin del periodo, gris por faltantes/incompletos y reapertura solo para PDF de justificación sin quitar el gris. Envíos completos conservan revisión y validación posterior al cierre.
+- Señalización preventiva siete días antes del fin del periodo y gris por incumplimiento al terminar, según DEC-039. Zona America/Mexico_City. Alta trimestral el 10 de febrero: primer corte el 31 de marzo. Se mantienen mensual, trimestral, semestral y anual; bimestral fue solo ejemplo. Falta definir cobertura de datos del primer periodo de alta intermedia y autorización de periodos previos.
 - El hilo de observaciones por indicador + periodo + ciclo se cierra al validar, pero se conserva con autor, rol, fecha, acción y comentario. Reapertura crea otro ciclo; no borra anteriores.
 - Resultado validado se publica automáticamente. El último publicado continúa visible cuando el administrador lo reabre; al validarse la corrección, se reemplaza la versión publicada y se conserva la anterior para auditoría.
 - Vista Consulta siempre autenticada y filtrada por permisos.
@@ -65,7 +66,7 @@ Confirmado por el equipo el 22/10/2026: verdes=1, amarillos=0.5, rojos=0; índic
 ### Acuerdos posteriores a la revisión inicial
 - DEC-022: los cortes históricos consultan las publicaciones actuales de los periodos esperados, sin reconstrucción de lo conocido entonces y sin arrastre de otros periodos.
 - DEC-023: no habrá importación; reportes y notificaciones siguen en alcance.
-- DEC-024/034: evidencias en PDF, con Supabase Storage como dirección de implementación. Límites, conservación y mecanismo final de descarga siguen por definir; se recomienda bucket privado y acceso por API SIIP.
+- DEC-024 y DEC-041: evidencias en PDF en Cloudflare R2; sustituye Supabase Storage de DEC-034. Límites, conservación y mecanismo final de descarga siguen por definir; se recomienda bucket privado y acceso por API SIIP.
 - DEC-025: conservar valores utilizados y configuración aplicada. Variables fijas y sus vigencias aún por definir; no asumir reutilización automática. DEC-030 descarta recalcular publicaciones por cambios de regla, sin resolver la selección de vigencias de variables fijas.
 - El cliente entregará responsables por variable. Se puede modelar la estructura antes de contar con esas asignaciones.
 - Conflicto pendiente con DEC-002: el auxiliar consolida las mismas variables entre dependencias en `SIIP.02.F13.002` y `SIIP.02.F16.002`. DEC-032 confirma envío por dependencia/validación conjunta; descomponer aportaciones como variables distintas sigue como propuesta y exige verificar solapamientos y universos. No habilitar sumas automáticas sin esa definición.
@@ -73,8 +74,8 @@ Confirmado por el equipo el 22/10/2026: verdes=1, amarillos=0.5, rojos=0; índic
 
 ## 7. Lineamientos técnicos
 - Stack confirmado por el equipo: frontend Vue + TypeScript y backend Node.js + TypeScript (DEC-027), sustituyendo Laravel de DEC-026. Actualización del 30/10/2026, DEC-029: el backend ya tiene base Node.js 22/Fastify 5, `pg`/Drizzle instalados, validación de entorno y ruta de salud. DEC-035 añade módulos y código de autenticación Argon2id con cookie/CSRF y adaptador de sesiones PostgreSQL. El SQL mínimo de autenticación no se ha ejecutado desde este chat. Al 04/11/2026 el equipo confirma una BD vacía; DEC-036 añade script de administrador inicial, altas administrativas y SQL de auditoría. La conexión y aplicación de SQL siguen pendientes. Se verificó con dobles sintéticos, no con PostgreSQL real. No se ha conectado la BD ni aprobado o migrado el esquema. El frontend ya contiene Vue/TypeScript/Vite/Pinia.
-- PostgreSQL se mantiene como motor propuesto (DEC-028); el esquema de 13 tablas no está aprobado. El equipo propone Neon Free para desarrollo remoto, sin crear recursos todavía y conservando salida a otro proveedor PostgreSQL para producción.
-- Solo la API necesita credenciales de BD durante la operación; migraciones y respaldos usan accesos técnicos separados. Hostinger Web Premium sin VPS está confirmado: no aloja PostgreSQL y no figura entre las opciones actuales de API Node.js de Hostinger. Hosting definitivo pendiente.
+- PostgreSQL se mantiene como motor propuesto (DEC-028); el esquema de 13 tablas no está aprobado. DEC-040 selecciona Hostinger VPS KVM 1 para frontend/API/PostgreSQL y sustituye la propuesta de Neon. No se han creado recursos ni se ha probado el VPS desde esta actualización.
+- Solo la API necesita credenciales de BD durante la operación; migraciones y respaldos usan accesos técnicos separados. El antecedente Web Premium queda diferenciado del VPS KVM 1 seleccionado en DEC-040. Compatibilidad documental comprobada; contratación, región, configuración y despliegue pendientes. [Costos vigentes](infraestructura-hostinger-r2.md).
 - [Arquitectura tecnológica](arquitectura-tecnologica.md): propone tres entornos, bases separadas, desarrollo remoto como modalidad de desarrollo, secretos protegidos, migraciones tras aprobación y recuperación comprobada. Detalles operativos, RPO/RTO y proveedor son propuestas, no decisiones funcionales del cliente.
 - Modelo de datos mínimo: preferir ENUM simples frente a catálogos separados cuando no se necesite operar sobre registros de catálogo.
 - Separar entidades indispensables de funciones accesorias. Incluye integridad, historial operacional, publicación y auditoría sin sobreingeniería.
@@ -85,3 +86,5 @@ Confirmado por el equipo el 22/10/2026: verdes=1, amarillos=0.5, rojos=0; índic
 
 ## 9. Trabajo actual
 La revisión inicial del ERD y las fuentes está realizada. Se entrega el borrador PostgreSQL solicitado en `modelo-datos-mvp-borrador.md`, con 13 entidades, tipos, relaciones, restricciones y pendientes. `alcance-mvp.md` actualiza el MVP en Markdown y `decisiones-siip.md` registra PROP-BD-001..009 como recomendaciones por revisar. La propuesta de tablas, campos y flujo no está aprobada todavía; no se han modificado el ERD HTML, los Word ni el código, ni generado migraciones.
+
+Detalle vigente de DEC-039: [cierre y justificación en flujos de negocio](flujos-negocio.md#cierre-y-justificación--dec-039-06112026). Cierre al terminar el periodo, gris por faltantes, continuidad de revisión de envíos completos y reapertura exclusivamente documental. Implementación operativa pendiente.

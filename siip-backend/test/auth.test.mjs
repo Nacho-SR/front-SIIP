@@ -168,13 +168,24 @@ test('logout revoca la sesión en servidor y expira la cookie', async (t) => {
   assert.equal((await app.inject({ method: 'DELETE', url, headers: headers(anonymous) })).statusCode, 401);
 });
 
-test('consulta la cuenta vigente y conserva tres roles exclusivos', async (t) => {
+test('consulta la cuenta vigente y conserva cuatro roles exclusivos', async (t) => {
   const { app, account } = await fixture(t);
   const authenticated = await login(app);
-  for (const rol of ['captura', 'revision', 'administrador']) {
+  for (const rol of ['captura', 'revision', 'administrador', 'consulta']) {
     account.rol = rol;
     assert.equal((await bootstrap(app, authenticated.cookie)).usuario.rol, rol);
   }
+  account.activo = false;
+  assert.equal((await bootstrap(app, authenticated.cookie)).usuario, null);
+});
+
+test('Consulta autentica sin dependencia y desactivar su cuenta revoca la sesión', async (t) => {
+  const { app, account } = await fixture(t);
+  Object.assign(account, { rol: 'consulta', dependencia_id: null, dependencia_activa: null });
+  const authenticated = await login(app);
+  assert.equal(authenticated.usuario.rol, 'consulta');
+  assert.equal(authenticated.usuario.dependencia_id, null);
+  assert.equal((await bootstrap(app, authenticated.cookie)).usuario.rol, 'consulta');
   account.activo = false;
   assert.equal((await bootstrap(app, authenticated.cookie)).usuario, null);
 });
@@ -206,13 +217,16 @@ test('desactivar una dependencia invalida también una sesión existente', async
   assert.equal((await bootstrap(app, authenticated.cookie)).usuario, null);
 });
 
-test('Administrador no hereda permisos de Captura o Revisión', async () => {
+test('Administrador y Consulta no heredan permisos operativos', async () => {
   const capture = requireRoles('captura');
   const review = requireRoles('revision');
   await capture({ usuario: { rol: 'captura' } });
   await review({ usuario: { rol: 'revision' } });
-  await assert.rejects(capture({ usuario: { rol: 'administrador' } }), { statusCode: 403 });
-  await assert.rejects(review({ usuario: { rol: 'administrador' } }), { statusCode: 403 });
+  for (const rol of ['administrador', 'consulta']) {
+    await assert.rejects(capture({ usuario: { rol } }), { statusCode: 403 });
+    await assert.rejects(review({ usuario: { rol } }), { statusCode: 403 });
+  }
+  await assert.rejects(requireRoles('administrador')({ usuario: { rol: 'consulta' } }), { statusCode: 403 });
   await assert.rejects(capture({ usuario: null }), { statusCode: 401 });
 });
 

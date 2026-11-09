@@ -6,7 +6,7 @@ Este documento propone 13 tablas para operar el MVP con integridad, revisión, r
 
 ## 1. Fuentes y clasificación
 
-- **Confirmado por el equipo:** DEC-001..025 de [decisiones-siip.md](decisiones-siip.md). PostgreSQL, 63 indicadores iniciales, 8 agrupaciones, familias, captura municipal, tres roles exclusivos, sin borradores ni fechas límite bloqueantes, publicación tras validación y conservación de la publicación durante reapertura.
+- **Confirmado por el equipo:** DEC-001..025 de [decisiones-siip.md](decisiones-siip.md). PostgreSQL, 63 indicadores iniciales, 8 agrupaciones, familias, captura municipal, cuatro roles exclusivos (DEC-038), sin borradores y con cierre de captura (DEC-039), publicación tras validación y conservación de la publicación durante reapertura.
 - **Confirmado por el equipo:** pesos temáticos 1/0.5/0 y umbrales 0.80/0.50, consulta histórica de publicaciones actuales, PDF como evidencia y ausencia de importación.
 - **Pendiente de cliente:** asignaciones por variable, variables fijas y sus vigencias, primer periodo exigible y conciliación multidependencia de `SIIP.02.F13.002` y `SIIP.02.F16.002`. También siguen abiertos cobertura, política de cambios de reglas y detalles documentados en [pendientes-siip.md](pendientes-siip.md).
 - **Recomendación técnica:** todas las tablas, columnas, tipos, claves, estados, índices y algoritmos de operación de este borrador. La unidad de envío por dependencia y validación conjunta NO se considera aprobada.
@@ -31,7 +31,7 @@ El anexo contiene 63 códigos únicos, 54 familias con un solo padre, 6 indicado
 
 | Tipo PostgreSQL propuesto | Valores |
 |---|---|
-| `rol_usuario` | `captura`, `revision`, `administrador` |
+| `rol_usuario` | `captura`, `revision`, `administrador`, `consulta` |
 | `periodicidad_indicador` | `mensual`, `trimestral`, `semestral`, `anual` |
 | `sentido_indicador` | `ascendente`, `descendente`, `mantenimiento`, `constante` |
 | `tipo_calculo_indicador` | `directo`, `cociente`, `variacion`, `complemento`, `suma` |
@@ -92,7 +92,7 @@ Cuenta autenticada con un solo rol. La pertenencia actual no sustituye la depend
 | Campo | Tipo | Nulabilidad / regla | Significado |
 |---|---|---|---|
 | `id` | `bigint identity` | PK, NN | Identificador interno. |
-| `dependencia_id` | `bigint` | NULL solo para Administrador; FK → dependencias.id | Obligatoria para Captura y Revisión mediante CHECK (DEC-037). El backend exige dependencia activa. |
+| `dependencia_id` | `bigint` | NULL para Administrador y Consulta; FK → dependencias.id | Obligatoria para Captura y Revisión mediante CHECK (DEC-037). Consulta se crea sin dependencia (DEC-038). El backend exige dependencia activa cuando corresponde. |
 | `nombre` | `text` | NN, no vacío | Nombre mostrado. |
 | `correo` | `varchar(255)` | NN, no vacío | Unicidad sobre `lower(trim(correo))`. |
 | `password_hash` | `text` | NN | Hash creado por el mecanismo de autenticación; nunca contraseña original. |
@@ -294,7 +294,7 @@ PDF de respaldo asociado al envío concreto, no únicamente al indicador. Permit
 | `sha256` | `char(64)` | NN, CHECK hexadecimal | Hash calculado por servidor para identificar el contenido. No es UNIQUE. |
 | `subida_en` | `timestamptz` | NN, DEFAULT now() | Registro de la evidencia. |
 
-**Recomendación técnica, proveedor pendiente:** almacenamiento privado externo. El contenedor/proveedor único se configura en backend; no se construye un catálogo de proveedores. El API genera una URL temporal después de comprobar acceso a la captura. No se persisten tokens, URLs firmadas ni credenciales.
+**Proveedor seleccionado DEC-041: Cloudflare R2.** Almacenamiento privado externo recomendado. El contenedor se configura en backend; no se construye un catálogo de proveedores. URL temporal o streaming autenticado siguen como alternativas de descarga por cerrar, después de comprobar permisos. No se persisten tokens, URLs firmadas ni credenciales.
 
 Se valida contenido PDF y límite de tamaño, no solo extensión/MIME declarado. No se sobreescribe el objeto de una evidencia enviada. Un nuevo archivo usa otra clave. El PDF puede incluir el desglose por colonia como respaldo sin añadir captura territorial.
 
@@ -527,3 +527,9 @@ Esta lista es un criterio de pruebas futuras, no evidencia de ejecución. No se 
 | 23/10/2026 | Se crea alcance-mvp.md v0.3 y se registran propuestas en decisiones-siip.md. | Sin modificar el ERD HTML, Word v0.2, código o datos. |
 
 Referencias técnicas consultadas: [restricciones PostgreSQL](https://www.postgresql.org/docs/current/ddl-constraints.html), [índices parciales](https://www.postgresql.org/docs/current/indexes-partial.html), [rangos y vigencias](https://www.postgresql.org/docs/current/rangetypes.html). Las restricciones entre filas deben expresarse con FK/UNIQUE u operaciones transaccionales apropiadas, no con CHECK que consulte otras tablas. La implementación elegirá la versión PostgreSQL disponible; este documento no fija versión de servidor ni extensión obligatoria.
+
+Detalle vigente de DEC-039: [cierre y justificación en flujos de negocio](flujos-negocio.md#cierre-y-justificación--dec-039-06112026). Cierre al terminar el periodo, gris por faltantes, continuidad de revisión de envíos completos y reapertura exclusivamente documental. Implementación operativa pendiente.
+
+Impacto de DEC-038: extender el ENUM existente con `siip-backend/sql/004_rol_consulta.sql`, sin tabla genérica de roles ni cambio de las cuentas anteriores. SQL preparado, no aplicado. El gris es estado de cumplimiento independiente de `color_semaforo`; no ampliar los pesos de desempeño ni inventar captura faltante con valor cero.
+
+Actualización de alojamiento DEC-040 y DEC-041 (06/11/2026): frontend/API/PostgreSQL en Hostinger VPS KVM 1 y archivos en Cloudflare R2. Proveedores ya seleccionados, sin contratar o desplegar desde esta actualización. El proveedor no modifica la aprobación pendiente del esquema ni los permisos de archivos. [Costos vigentes](infraestructura-hostinger-r2.md).

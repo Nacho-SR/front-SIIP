@@ -58,6 +58,8 @@ src/
     evaluacion/           responsabilidad documentada; implementación pendiente
 sql/001_auth_propuesta.sql SQL de autenticación preparado, NO ejecutado
 sql/002_auditoria_configuracion.sql bitácora transaccional de altas
+sql/003_dependencia_revision.sql dependencia obligatoria para Revisión
+sql/004_rol_consulta.sql añade el rol Consulta, preparado sin ejecutar
 src/scripts/create-admin.ts bootstrap del primer administrador
 docs/SIIP-auth.postman_collection.json recorrido importable en Postman
 ```
@@ -113,7 +115,7 @@ certificado explícitamente antes de usar ese proveedor.
 Al 04/11/2026 el equipo dispone de una base PostgreSQL vacía; todavía falta configurar
 la conexión local. **No se ejecutó SQL desde este chat**. Aplicar explícitamente y en
 orden `sql/001_auth_propuesta.sql`, `sql/002_auditoria_configuracion.sql` y
-`sql/003_dependencia_revision.sql` en la base
+`sql/003_dependencia_revision.sql` y `sql/004_rol_consulta.sql` en la base
 de desarrollo autorizada (por ejemplo, desde el editor SQL de PostgreSQL).
 El primero crea dependencias, usuarios y sesiones; el segundo, auditoría administrativa.
 El tercero exige dependencia para Captura y Revisión (DEC-037). Si ya existen
@@ -161,7 +163,7 @@ No se implementaron subida PDF, registro público o recuperación de contraseña
 con Argon2id y auditoría en la misma transacción. Si ya hay cualquier cuenta de
 Administrador (incluso inactiva), falla sin cambiarla. No es un reset de contraseña.
 
-Desde PowerShell, en `siip-backend`, con `.env` configurado y los tres SQL aplicados:
+Desde PowerShell, en `siip-backend`, con `.env` configurado y los cuatro SQL aplicados:
 
 ```powershell
 $env:ADMIN_NOMBRE = Read-Host 'Nombre del administrador'
@@ -220,24 +222,48 @@ como actor inicial. Los valores de auditoría no incluyen contraseñas o hashes.
 `GET /api/v1/administracion/dependencias` devuelve el catálogo completo de dependencias
 activas como array, ordenado por nombre e ID, sin paginación. Exige sesión de
 Administrador y permite poblar el selector de ambas altas. El frontend en
-`/front-SIIP/administrador` permite crear dependencias y usuarios de Captura/Revisión;
+`/front-SIIP/administrador` permite crear dependencias y usuarios de Captura/Revisión/Consulta;
 una dependencia recién creada queda seleccionada para el alta de usuario.
 
 ## Probar el recorrido
 
 Importa `docs/SIIP-auth.postman_collection.json`. Completa las variables locales
-`adminCorreo`, `adminPassword`, `capturaPassword` y `revisionPassword`; ajusta
+`adminCorreo`, `adminPassword`, `capturaPassword`, `revisionPassword` y `consultaPassword`; ajusta
 `baseUrl`/`origin` al entorno. Las contraseñas están vacías en el archivo del repo.
-Con la API arrancada, ejecuta las 13 solicitudes en orden: bootstrap, login admin,
-alta de dependencia, altas de Captura/Revisión y login/logout de los tres roles.
-El cookie jar debe estar habilitado; la colección conserva CSRF y el ID de dependencia.
+Con la API arrancada, ejecuta las 18 solicitudes en orden: bootstrap, login admin,
+alta de dependencia, altas de Captura/Revisión/Consulta y login/logout de los cuatro roles.
+El cookie jar debe estar habilitado; la colección conserva CSRF y el ID de dependencia. Incluye el alta y la sesión de Consulta sin dependencia.
 La dependencia DEMO es sintética y solo sirve para desarrollo. Para repetir el alta,
 usa claves/correos nuevos; las cuentas existentes nunca se sobrescriben.
 
 Para verificar también SQL y persistencia real, configura `TEST_DATABASE_URL` para
 una base de pruebas separada y ejecuta `npm run test:integration`. La prueba crea
-un esquema temporal con prefijo `siip_test_`, verifica su aislamiento, aplica los tres
-SQL (incluida la dependencia obligatoria para Revisión), recorre las altas y auth,
+un esquema temporal con prefijo `siip_test_`, verifica su aislamiento, aplica los cuatro
+SQL (dependencia para Revisión y rol Consulta incluidos), recorre las altas y auth,
 comprueba auditoría y elimina únicamente ese esquema.
 Necesita permisos técnicos de crear esquemas en esa base. Sin `TEST_DATABASE_URL`
 se omite; nunca reutiliza automáticamente `DATABASE_URL` para escribir pruebas.
+
+## Rol Consulta — DEC-038, 06/11/2026
+
+Administrador puede crear múltiples cuentas `consulta`. No requieren dependencia ni una dependencia previa en el catálogo. Ejemplo de `POST /api/v1/administracion/usuarios`, con sesión administrativa, Origin y CSRF:
+
+```json
+{
+  "nombre": "Usuario de Consulta",
+  "correo": "consulta@example.test",
+  "password": "ReemplazarPorUnaClavePrivada!",
+  "rol": "consulta",
+  "dependencia_id": null
+}
+```
+
+Para Consulta, `dependencia_id` puede omitirse o ser null; un ID se rechaza. El alta conserva Argon2id, auditoría y validación de correo único. Auth acepta el rol sin dependencia. Los guards de Captura/Revisión/Administrador no lo incluyen. En la interfaz solo accede a Consulta y Estadísticas, actualmente prototipos. Las futuras consultas de negocio serán globales de lectura de fichas, resultados publicados y cumplimiento, sin expedientes o PDF internos por defecto.
+
+SQL 004 extiende el ENUM existente y debe confirmarse antes de usar el rol. **No se aplica al arrancar ni se ejecutó desde el chat.** Los SQL anteriores se conservan sin cambios para bases existentes. Si el entorno ya aplicó 001–003, solo falta aplicar 004 en la base autorizada. No se crean cuentas ni se cambian roles automáticamente.
+
+DEC-039 confirma cierre de captura, gris por faltantes y justificación exclusivamente PDF. Los módulos `indicadores`, `operacion` y `evaluacion` todavía no implementan ese flujo. Véase `../Documentacion/flujos-negocio.md` y los pendientes P-15/16.
+
+## Alojamiento seleccionado — 06/11/2026
+
+DEC-040: frontend compilado, API Node.js y PostgreSQL en el mismo Hostinger VPS KVM 1. DEC-041: evidencias y justificaciones PDF en Cloudflare R2, sustituyendo Supabase Storage. Se conserva autenticación SIIP. [Arquitectura, costos y fuentes vigentes](../Documentacion/infraestructura-hostinger-r2.md). Selección documental, sin despliegue ni integración R2 realizados.

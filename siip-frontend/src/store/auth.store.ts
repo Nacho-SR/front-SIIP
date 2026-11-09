@@ -6,7 +6,7 @@ export interface User {
   id: string;
   nombre: string;
   correo: string;
-  rol: 'captura' | 'revision' | 'administrador';
+  rol: 'captura' | 'revision' | 'administrador' | 'consulta';
   dependencia_id: string | null;
 }
 

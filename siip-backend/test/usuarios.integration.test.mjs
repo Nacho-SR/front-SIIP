@@ -13,7 +13,7 @@ import { createUsersService } from '../src/modules/administracion/services/usuar
 
 config({ quiet: true });
 
-test('PostgreSQL real: bootstrap, altas auditadas y auth de los tres roles', {
+test('PostgreSQL real: bootstrap, altas auditadas y auth de los cuatro roles', {
   skip: !process.env.TEST_DATABASE_URL, timeout: 60000,
 }, async () => {
   const schema = `siip_test_${randomUUID().replaceAll('-', '')}`;
@@ -28,7 +28,7 @@ test('PostgreSQL real: bootstrap, altas auditadas y auth de los tres roles', {
     connection.searchParams.set('options', `-c search_path=${schema}`);
     pool = createPool(connection.toString());
     assert.equal((await pool.query('SELECT current_schema() AS schema')).rows[0].schema, schema);
-    for (const file of ['001_auth_propuesta.sql', '002_auditoria_configuracion.sql', '003_dependencia_revision.sql']) {
+    for (const file of ['001_auth_propuesta.sql', '002_auditoria_configuracion.sql', '003_dependencia_revision.sql', '004_rol_consulta.sql']) {
       await pool.query(await readFile(new URL(`../sql/${file}`, import.meta.url), 'utf8'));
     }
     const users = createUsersRepository(pool);
@@ -66,26 +66,26 @@ test('PostgreSQL real: bootstrap, altas auditadas y auth de los tres roles', {
     const dependency = await app.inject({ method: 'POST', url: '/api/v1/administracion/dependencias', headers,
       payload: { clave: 'DEMO', nombre: 'Dependencia de prueba aislada' } });
     assert.equal(dependency.statusCode, 201, dependency.body);
-    for (const rol of ['captura', 'revision']) {
+    for (const rol of ['captura', 'revision', 'consulta']) {
       const payload = { nombre: `Cuenta ${rol}`, correo: `${rol}@example.test`, password, rol,
-        dependencia_id: dependency.json().id };
+        dependencia_id: rol === 'consulta' ? null : dependency.json().id };
       const response = await app.inject({ method: 'POST', url: userUrl, headers, payload });
       assert.equal(response.statusCode, 201, response.body);
       assert.equal((await app.inject({ method: 'POST', url: userUrl, headers, payload })).statusCode, 409);
     }
     assert.equal((await app.inject({ method: 'DELETE', url: sessionUrl, headers })).statusCode, 204);
-    for (const rol of ['captura', 'revision']) {
+    for (const rol of ['captura', 'revision', 'consulta']) {
       const userHeaders = await login(`${rol}@example.test`);
       const current = await app.inject({ url: sessionUrl, headers: { cookie: userHeaders.cookie } });
       assert.equal(current.json().usuario.rol, rol);
-      assert.equal(current.json().usuario.dependencia_id, dependency.json().id);
+      assert.equal(current.json().usuario.dependencia_id, rol === 'consulta' ? null : dependency.json().id);
       assert.equal((await app.inject({ method: 'POST', url: userUrl, headers: userHeaders,
         payload: { nombre: 'No autorizado', correo: 'forbidden@example.test', password, rol: 'revision' } })).statusCode, 403);
       assert.equal((await app.inject({ method: 'DELETE', url: sessionUrl, headers: userHeaders })).statusCode, 204);
     }
-    assert.equal((await pool.query('SELECT count(*)::int AS total FROM usuarios')).rows[0].total, 3);
+    assert.equal((await pool.query('SELECT count(*)::int AS total FROM usuarios')).rows[0].total, 4);
     const audit = (await pool.query('SELECT despues FROM auditoria_configuracion')).rows;
-    assert.equal(audit.length, 4);
+    assert.equal(audit.length, 5);
     assert.doesNotMatch(JSON.stringify(audit), /password|\$argon2/);
   } finally {
     await app?.close();

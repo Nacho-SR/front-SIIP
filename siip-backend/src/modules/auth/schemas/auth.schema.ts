@@ -10,7 +10,7 @@ export const userSchema = z.object({
   id: idSchema,
   nombre: z.string(),
   correo: z.email(),
-  rol: z.enum(['captura', 'revision', 'administrador']),
+  rol: z.enum(['captura', 'revision', 'administrador', 'consulta']),
   dependencia_id: idSchema.nullable(),
 });
 

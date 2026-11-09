@@ -28,7 +28,7 @@ async function fixture(t) {
       if ([...accounts.values()].some((user) => user.correo === account.correo)) {
         throw new HttpError(409, 'CORREO_YA_REGISTRADO', 'Correo duplicado.');
       }
-      if (!dependencies.get(account.dependencia_id)?.activo) {
+      if (account.dependencia_id !== null && !dependencies.get(account.dependencia_id)?.activo) {
         throw new HttpError(422, 'DEPENDENCIA_NO_DISPONIBLE', 'Dependencia no disponible.');
       }
       if (account.rol === 'captura') {
@@ -131,6 +131,35 @@ test('las altas exigen sesión administrativa, Origin y CSRF', async (t) => {
     assert.equal((await app.inject({ method: 'POST', url: usersUrl, headers, payload })).statusCode, 403);
   }
   assert.equal(accounts.size, 1);
+});
+
+test('admin crea varias cuentas Consulta sin dependencias y estas no administran', async (t) => {
+  const { app, accounts, events } = await fixture(t);
+  const headers = await login(app);
+  for (const suffix of ['presidencia', 'consulta2']) {
+    const payload = { nombre: `Consulta ${suffix}`, correo: `${suffix}@example.test`, password, rol: 'consulta' };
+    if (suffix === 'consulta2') payload.dependencia_id = null;
+    const response = await app.inject({ method: 'POST', url: usersUrl, headers, payload });
+    assert.equal(response.statusCode, 201, response.body);
+    assert.equal(response.json().dependencia_id, null);
+    assert.equal(response.json().rol, 'consulta');
+    assert.doesNotMatch(response.body, /password|\$argon2/);
+    const readOnly = await login(app, payload.correo);
+    assert.equal((await app.inject({ url: sessionUrl, headers: readOnly })).json().usuario.rol, 'consulta');
+    assert.equal((await app.inject({ url: depsUrl, headers: readOnly })).statusCode, 403);
+    assert.equal((await app.inject({ method: 'POST', url: depsUrl, headers: readOnly,
+      payload: { clave: 'NO', nombre: 'No autorizada' } })).statusCode, 403);
+    assert.equal((await app.inject({ method: 'POST', url: usersUrl, headers: readOnly, payload })).statusCode, 403);
+    assert.equal((await app.inject({ method: 'DELETE', url: sessionUrl, headers: readOnly })).statusCode, 204);
+  }
+  assert.equal(accounts.size, 3);
+  assert.equal(events.length, 2);
+  assert.deepEqual(events.map(({ actorId }) => actorId), ['1', '1']);
+  for (const dependencia_id of ['7', '', 7]) {
+    const response = await app.inject({ method: 'POST', url: usersUrl, headers,
+      payload: { nombre: 'Consulta', correo: 'invalid@example.test', password, rol: 'consulta', dependencia_id } });
+    assert.equal(response.statusCode, 422);
+  }
 });
 
 test('rechaza escalamiento a admin, contraseñas débiles, campos extra y dependencias inválidas', async (t) => {

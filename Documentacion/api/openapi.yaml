@@ -2,9 +2,9 @@ openapi: 3.1.1
 info:
   title: API del SIIP Salamanca
   version: 0.1.0
-  description: Borrador técnico del 26/10/2026, sin backend ni esquema aprobados. Los ejemplos DEMO son sintéticos
+  description: Borrador técnico del 26/10/2026, con autenticación/altas implementadas en código y esquema de negocio pendiente de aprobación. Los ejemplos DEMO son sintéticos
     y no asignaciones reales. x-estado-contrato y x-pendientes identifican lo condicionado; ningún endpoint es definitivo.
-    Se conservan DEC-001..025. Primer recorrido de una dependencia con configuración conciliada; multidependencia,
+    DEC-038 añade Consulta de lectura global. DEC-039 cierra captura al fin del periodo, conserva revisión de envíos completos y marca gris por incumplimiento; reapertura solo para PDF de justificación. El cierre y las justificaciones aún no tienen implementación operativa. Los acuerdos anteriores quedan sujetos a estas actualizaciones. Primer recorrido de una dependencia con configuración conciliada; multidependencia,
     calendario, vigencias y límites PDF pendientes. No incluye CRUD de tablas, importación, chat ni publicación
     manual.
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
@@ -169,6 +169,7 @@ paths:
       - captura
       - revision
       - administrador
+      - consulta
       x-prioridad: P0
       x-estado-contrato: condicionado
       x-pendientes:
@@ -199,8 +200,8 @@ paths:
   /administracion/usuarios:
     post:
       operationId: crearUsuario
-      summary: Crear una cuenta de Captura o Revisión
-      description: Requiere administrador vigente, Origin autorizado, cookie y CSRF. Captura y Revisión requieren dependencia activa (DEC-037). Alta y auditoría en una transacción, sin contraseñas o hashes en la respuesta ni bitácora. Requiere SQL 001/002/003 aplicado.
+      summary: Crear una cuenta de Captura, Revisión o Consulta
+      description: Requiere administrador vigente, Origin autorizado, cookie y CSRF. Captura y Revisión requieren dependencia activa (DEC-037). Consulta se crea sin dependencia (DEC-038). Alta y auditoría en una transacción, sin contraseñas o hashes en la respuesta ni bitácora. Requiere SQL 001/002/003/004 aplicado.
       tags: [Administracion]
       x-roles: [administrador]
       x-prioridad: P0
@@ -322,13 +323,14 @@ paths:
       operationId: listarIndicadores
       summary: Listar indicadores autorizados
       description: Filtrar por vínculo de dependencia antes de paginar/contar. Captura solo indicadores relacionados;
-        Revisión/Administrador global. Orden estable codigo,id. No acepta un filtro para ampliar el ámbito.
+        Revisión/Administrador/Consulta global. Consulta solo lectura de fichas y resultados publicados, sin insumos internos. Orden estable codigo,id. No acepta un filtro para ampliar el ámbito.
       tags:
       - Indicadores
       x-roles:
       - captura
       - revision
       - administrador
+      - consulta
       x-prioridad: P0
       x-estado-contrato: propuesto
       x-pendientes: []
@@ -393,6 +395,7 @@ paths:
       - captura
       - revision
       - administrador
+      - consulta
       x-prioridad: P0
       x-estado-contrato: propuesto
       x-pendientes: []
@@ -497,6 +500,7 @@ paths:
       - captura
       - revision
       - administrador
+      - consulta
       x-prioridad: P0
       x-estado-contrato: condicionado
       x-pendientes:
@@ -551,6 +555,7 @@ paths:
   /indicadores/{indicadorId}/capturas:
     post:
       operationId: enviarCaptura
+      x-regla-cierre: DEC-039. El servidor rechaza nuevos datos después de terminar el periodo natural en America/Mexico_City.
       summary: Enviar captura completa con PDF
       description: Primer recorrido propuesto para configuración conciliada de una dependencia. expediente_id null
         solo solicita ciclo original inexistente; de lo contrario exigir el ciclo abierto explícito del mismo indicador/periodo.
@@ -1411,6 +1416,7 @@ paths:
       - captura
       - revision
       - administrador
+      - consulta
       x-prioridad: P0
       x-estado-contrato: propuesto
       x-pendientes: []
@@ -1476,7 +1482,7 @@ paths:
     get:
       operationId: descargarEvidencia
       summary: Descargar PDF autorizado
-      description: Propuesta técnica de streaming autenticado, compatible con proveedor privado por definir. Autorizar
+      description: Propuesta técnica de streaming autenticado sobre Cloudflare R2, seleccionado en DEC-041. Autorizar
         el envío y dependencia, también para historia sustituida. Nunca devolver storage_key ni permitir descargar
         adjuntos ajenos. Sin endpoint de upload independiente ni enlaces públicos.
       tags:
@@ -1535,6 +1541,7 @@ paths:
       x-roles:
       - revision
       - administrador
+      - consulta
       x-prioridad: P1
       x-estado-contrato: condicionado
       x-pendientes:
@@ -1949,6 +1956,7 @@ components:
       - captura
       - revision
       - administrador
+      - consulta
     Color:
       type: string
       enum:
@@ -1993,7 +2001,7 @@ components:
     AltaUsuario:
       type: object
       additionalProperties: false
-      required: [nombre, correo, password, rol, dependencia_id]
+      required: [nombre, correo, password, rol]
       properties:
         nombre:
           type: string
@@ -2012,10 +2020,27 @@ components:
           writeOnly: true
         rol:
           type: string
-          enum: [captura, revision]
+          enum: [captura, revision, consulta]
         dependencia_id:
-          $ref: '#/components/schemas/Id'
-      description: Captura y Revisión requieren dependencia activa (DEC-037). Solo Captura se limita a una cuenta activa por dependencia. Revisión conserva consulta global. No se crean administradores mediante HTTP. Correo duplicado o Captura ya asignada devuelven 409.
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+      allOf:
+      - if:
+          properties:
+            rol:
+              enum: [captura, revision]
+          required: [rol]
+        then:
+          required: [dependencia_id]
+          properties:
+            dependencia_id:
+              $ref: '#/components/schemas/Id'
+        else:
+          properties:
+            dependencia_id:
+              type: 'null'
+      description: Captura y Revisión requieren dependencia activa (DEC-037). Consulta permite múltiples cuentas sin dependencia, omitida o null (DEC-038). Solo Captura se limita a una cuenta activa por dependencia. No se crean administradores mediante HTTP. Alta auditada. Correo duplicado o Captura ya asignada devuelven 409.
     AltaDependencia:
       type: object
       additionalProperties: false
@@ -2443,6 +2468,7 @@ components:
         sentido: ascendente
         acumulable: false
     IndicadorDetalle:
+      description: Consulta recibe ficha y resultados publicados, con variables_captura vacío y sin insumos operativos.
       type: object
       additionalProperties: false
       properties:

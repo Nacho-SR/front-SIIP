@@ -6,7 +6,7 @@ Actualización técnica del 27/10/2026: DEC-027 confirma Node.js + TypeScript; [
 
 ## 1. Conclusión
 
-**Actualización de requisitos — 30/10/2026, DEC-031..034:** se confirman regla conservada en revisión y regla del periodo para atrasos/reaperturas, envío por dependencia, validación conjunta y corrección solo de la aportación necesaria. El diseño anterior que exige envíos nuevos de todas las dependencias en cada ciclo debe revisarse: se propone referenciar versiones revisadas anteriores para entradas sin cambios. Es análisis de impacto, no un ajuste ya aprobado del esquema ni del OpenAPI. DEC-033 confirma periodos naturales, captura desde registro con asignación, zona America/Mexico_City y validación/publicación al cierre o después. No se añade bimestral. Quedan pendientes la cobertura inicial de altas intermedias y periodos anteriores al alta; Supabase Storage es la dirección elegida para evidencias. Convertir aportaciones de una misma variable en variables distintas sigue siendo una propuesta por evaluar, sin aprobar agregación automática.
+**Actualización de requisitos — 30/10/2026, DEC-031..034:** se confirman regla conservada en revisión y regla del periodo para atrasos/reaperturas, envío por dependencia, validación conjunta y corrección solo de la aportación necesaria. El diseño anterior que exige envíos nuevos de todas las dependencias en cada ciclo debe revisarse: se propone referenciar versiones revisadas anteriores para entradas sin cambios. Es análisis de impacto, no un ajuste ya aprobado del esquema ni del OpenAPI. DEC-033 confirma periodos naturales, captura desde registro con asignación, zona America/Mexico_City y validación/publicación al cierre o después. No se añade bimestral. Quedan pendientes la cobertura inicial de altas intermedias y periodos anteriores al alta; Supabase Storage fue la selección del 30/10, sustituida por Cloudflare R2 en DEC-041. Convertir aportaciones de una misma variable en variables distintas sigue siendo una propuesta por evaluar, sin aprobar agregación automática.
 
 El recorrido de dominio propuesto cabe en las 13 tablas sin nuevas entidades de negocio: autenticación usa usuarios y un mecanismo técnico de sesión; envío/revisión/validación usan expedientes, capturas, valores, evidencias y eventos. Los resultados son una proyección del mayor ciclo validado por periodo. La API no se implementa ni el esquema se ejecuta para comprobarlo.
 
@@ -65,11 +65,11 @@ La API distingue N evaluables, total configurado y denominador Y pendiente. No e
 
 ### Archivos, reportes y notificaciones
 
-El modelo guarda referencias PDF, pero proveedor, máximos, retención y política de limpieza/backup siguen pendientes. La carga externa no se integra mediante transacciones distribuidas. Reportes están en alcance pero no tienen formato contratado; no se crea un sistema de jobs. La lectura de notificaciones cabe en su tabla; no se afirma que exista un canal de correo o un scheduler configurado.
+El modelo guarda referencias PDF y DEC-041 selecciona Cloudflare R2. Máximos, retención y política de limpieza/backup siguen pendientes. La carga externa no se integra mediante transacciones distribuidas. Reportes están en alcance pero no tienen formato contratado; no se crea un sistema de jobs. La lectura de notificaciones cabe en su tabla; no se afirma que exista un canal de correo o un scheduler configurado.
 
 ## 5. Contradicciones de integración fuera del esquema
 
-- Resuelto técnicamente el 04/11/2026: auth.store.ts usa los tres roles del backend y router/index.ts restringe Captura/Revisión a sus roles exclusivos. `/seguimiento` y Consulta siguen siendo rutas/vistas, no roles.
+- Resuelto técnicamente el 04/11/2026: auth.store.ts usa los cuatro roles del backend (DEC-038) y router/index.ts restringe Captura/Revisión a sus roles exclusivos. `/seguimiento` sigue como ruta de Revisión. Consulta ahora es también un rol exclusivo (DEC-038), sin permisos operativos.
 - Resuelto técnicamente el 04/11/2026: core/api.ts envía cookies y CSRF en lugar de Bearer. Se recupera la sesión del servidor; 401 por sesión inválida limpia la identidad y 403 conserva la sesión. Las credenciales incorrectas se muestran en el formulario sin invalidar el CSRF anónimo.
 - Modelo y catálogo propuestos no son DDL ni backend existente. Los archivos se movieron a SIIP-code/Documentacion y hay un ERD v02 adicional; no se presume que ese artefacto apruebe el modelo Markdown ni cambios de negocio.
 
@@ -90,3 +90,9 @@ Se validó la estructura OpenAPI 3.1.1 con openapi-spec-validator y los esquemas
 Las comprobaciones negativas incluyen rechazo de dependencia enviada por cliente, ID numérico en lugar de cadena, NaN, precisión decimal excesiva, IDs repetidos en validación, color enviado por cliente, resultado sin color y sin motivo, e índice con cero evaluables. Se verifican también parámetros de ruta, anotaciones de roles, CSRF en escrituras, referencias locales y correspondencia catálogo/OpenAPI.
 
 Los validadores y el constructor documental se ejecutan desde almacenamiento temporal fuera del repositorio; no se añadieron dependencias al proyecto. Estas son comprobaciones del contrato, no pruebas de un servidor ni garantías de autorización o transacciones ya implementadas. No se ejecutaron migraciones y no se modificaron backend/frontend ni el modelo original.
+
+Detalle vigente de DEC-039: [cierre y justificación en flujos de negocio](flujos-negocio.md#cierre-y-justificación--dec-039-06112026). Cierre al terminar el periodo, gris por faltantes, continuidad de revisión de envíos completos y reapertura exclusivamente documental. Implementación operativa pendiente.
+
+DEC-038 exige proyectar lectura pública autenticada separada de expedientes/insumos internos. El acceso global no concede acceso a datos aún en revisión. La nueva justificación de incumplimiento no puede reutilizar sin cambios la reapertura que exige un resultado validado: debe soportar periodo sin captura previa. Adaptación de esquema/contratos pendiente, sin nuevas tablas aprobadas por este análisis.
+
+Alojamiento actualizado 06/11/2026: DEC-040 selecciona frontend/API/PostgreSQL en Hostinger VPS KVM 1 y DEC-041 selecciona archivos en Cloudflare R2. Los antecedentes sobre proveedor pendiente quedan sustituidos. [Costos, fuentes y comprobaciones pendientes](infraestructura-hostinger-r2.md). No se ha desplegado ni integrado R2.
