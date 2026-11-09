@@ -324,10 +324,7 @@ const indicadorId = computed(() =>
   String(route.params.id ?? '')
 );
 
-const puedeOperar = computed(() =>
-  auth.user?.role === 'seguimiento' ||
-  auth.user?.role === 'administrador'
-);
+const puedeOperar = computed(() => auth.isRevisor);
 
 // =====================================================
 // CARGAR EXPEDIENTE

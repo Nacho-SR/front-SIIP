@@ -42,7 +42,6 @@ const router = useRouter();
 const indicadores: Indicador[] = catalogo;
 
 const COLOR_VINO = '#70273b';
-const COLOR_DORADO = '#c69a4b';
 
 const colores = [
   '#70273b',

@@ -23,10 +23,16 @@ npm run build
 
 Las pruebas verifican store, cliente HTTP y guards reales con respuestas HTTP simuladas e historial en memoria. No conectan a PostgreSQL ni verifican cookies/CORS en un navegador.
 
-En **Administrador → Usuarios y dependencias**, crea primero la dependencia o elige
-una existente en el catálogo activo. Después registra nombre, correo, rol,
-dependencia y contraseña inicial (15–1024 caracteres). Captura y Revisión requieren
-dependencia; Revisión mantiene la consulta global. Solo Administrador accede a estas
-altas y no puede crear otros administradores por HTTP. Los duplicados se muestran
-sin sobrescribir registros; la contraseña se limpia tras cada intento de alta.
-Para persistir, el backend requiere los SQL 001/002/003 aplicados con autorización.
+Los cuatro perfiles (`captura`, `revision`, `administrador`, `consulta`) conservan
+permisos exclusivos en rutas y menú. Consulta no requiere dependencia y accede a
+Consulta, Estadísticas y su análisis. El soporte del backend se recuperó de `main`,
+incluido SQL 004 preparado para este rol; no se aplicó SQL a ninguna base.
+
+Estado de `develop`, paso 1 (09/11/2026): se recuperaron compilación, sesión real,
+cliente HTTP y permisos conservando el diseño del acceso y la barra lateral.
+Las pantallas de indicadores siguen siendo prototipos con datos locales.
+**Usuarios y dependencias aún usa el prototipo local**: conectar las altas y el
+catálogo con la API corresponde al paso 2. Las tres pruebas existentes de esas
+altas se conservan y siguen fallando hasta recuperar esa funcionalidad; `npm test`
+todavía no queda completamente verde. Las pruebas de autenticación cubren también
+el formulario de acceso, el menú por perfil y el cierre de sesión fallido.

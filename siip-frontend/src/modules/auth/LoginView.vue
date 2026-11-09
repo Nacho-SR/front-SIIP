@@ -1,6 +1,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth.store';
 
@@ -21,9 +22,12 @@ const handleLogin = async () => {
 
   try {
     await authStore.login(email.value, password.value);
+    password.value = '';
     await router.replace({ name: 'Estadisticas' });
-  } catch {
-    errorMsg.value = 'No fue posible iniciar sesión.';
+  } catch (error) {
+    errorMsg.value = axios.isAxiosError(error)
+      ? error.response?.data?.detail || 'No se pudo conectar con el servidor. Intenta de nuevo.'
+      : 'Ocurrió un error al intentar acceder.';
   } finally {
     cargando.value = false;
   }
@@ -120,6 +124,7 @@ const handleLogin = async () => {
               v-model.trim="email"
               type="email"
               autocomplete="username"
+              maxlength="255"
               placeholder="usuario@salamanca.gob.mx"
               required
             />
@@ -138,6 +143,7 @@ const handleLogin = async () => {
                   mostrarPassword ? 'text' : 'password'
                 "
                 autocomplete="current-password"
+                maxlength="1024"
                 placeholder="Ingresa tu contraseña"
                 required
               />

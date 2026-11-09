@@ -12,7 +12,7 @@ const usuario = {
 };
 const anonymous = { usuario: null, csrf_token: 'csrf-anonimo-de-prueba' };
 const authenticated = { usuario, csrf_token: 'csrf-autenticado-de-prueba' };
-let vite, api, router, useAuthStore, auth, requests, responses, AdminView;
+let vite, api, router, useAuthStore, auth, requests, responses, AdminView, MainLayout, LoginView;
 
 before(async () => {
   vite = await createServer({
@@ -32,6 +32,8 @@ before(async () => {
   ({ default: api } = await vite.ssrLoadModule('/src/core/api.ts'));
   ({ default: router } = await vite.ssrLoadModule('/src/router/index.ts'));
   ({ default: AdminView } = await vite.ssrLoadModule('/src/modules/admin/AdminView.vue'));
+  ({ default: MainLayout } = await vite.ssrLoadModule('/src/layouts/MainLayout.vue'));
+  ({ default: LoginView } = await vite.ssrLoadModule('/src/modules/auth/LoginView.vue'));
   for (const route of router.getRoutes()) {
     if (route.components) route.components.default = { render: () => null };
   }
@@ -104,7 +106,7 @@ test('sesión anónima o backend sin configurar no habilitan rutas protegidas', 
 
 test('rutas de captura, revisión y administración mantienen roles exclusivos', async () => {
   auth.initialized = true;
-  for (const rol of ['captura', 'revision', 'administrador']) {
+  for (const rol of ['captura', 'revision', 'administrador', 'consulta']) {
     auth.user = { ...usuario, rol };
     assert.equal(auth.isCapturista, rol === 'captura');
     assert.equal(auth.isRevisor, rol === 'revision');
@@ -112,11 +114,94 @@ test('rutas de captura, revisión y administración mantienen roles exclusivos',
     for (const [path, allowed] of [
       ['/captura', 'captura'], ['/seguimiento', 'revision'],
       ['/seguimiento/7', 'revision'], ['/administrador', 'administrador'],
+      ['/administrador/indicadores/nuevo', 'administrador'],
     ]) {
       await router.replace(path);
       assert.equal(router.currentRoute.value.path, rol === allowed ? path : '/');
     }
   }
+});
+
+test('Consulta recupera su sesión sin dependencia y accede a las rutas de lectura', async () => {
+  responses.push({ data: { ...authenticated, usuario: { ...usuario, rol: 'consulta', dependencia_id: null } } });
+  for (const path of ['/', '/estadisticas', '/estadisticas/analisis']) {
+    await router.replace(path);
+    assert.equal(router.currentRoute.value.path, path);
+  }
+  assert.equal(requests.length, 1);
+  assert.equal(auth.user.rol, 'consulta');
+  assert.equal(auth.user.dependencia_id, null);
+  assert.equal(auth.isCapturista || auth.isRevisor || auth.isAdmin, false);
+});
+
+async function renderComponent(component) {
+  let state;
+  const app = createSSRApp(component).use(router);
+  app.mixin({ created() { if (!this.$parent) state = this.$.setupState; } });
+  const html = await renderToString(app);
+  return { state, html };
+}
+
+test('el menú lateral conserva el diseño y muestra solo las opciones del perfil', async () => {
+  auth.initialized = true;
+  for (const rol of ['captura', 'revision', 'administrador', 'consulta']) {
+    auth.user = { ...usuario, rol, dependencia_id: rol === 'consulta' ? null : '7' };
+    const { state, html } = await renderComponent(MainLayout);
+    const expected = ['Estadísticas', 'Consulta'];
+    if (rol === 'captura') expected.push('Captura');
+    if (rol === 'revision') expected.push('Seguimiento');
+    if (rol === 'administrador') expected.push('Administrador');
+    assert.deepEqual(state.opcionesVisibles.map(({ label }) => label), expected);
+    assert.match(html, /class="sidebar-nav"/);
+    assert.match(html, /Cuenta de prueba/);
+    for (const label of ['Captura', 'Seguimiento', 'Administrador']) {
+      assert.equal(html.includes(`>${label}</span>`), expected.includes(label));
+    }
+  }
+});
+
+test('el formulario visual muestra el error del backend y permite reintentar sin acceso simulado', async () => {
+  auth.initialized = true;
+  const { state: form } = await renderComponent(LoginView);
+  form.email = usuario.correo;
+  form.password = 'incorrecta';
+  responses.push({ data: anonymous }, {
+    status: 401, data: { codigo: 'CREDENCIALES_INVALIDAS', detail: 'Correo o contraseña incorrectos.' },
+  });
+  await form.handleLogin();
+  assert.equal(form.errorMsg, 'Correo o contraseña incorrectos.');
+  assert.equal(form.cargando, false);
+  assert.equal(auth.isAuthenticated, false);
+  assert.equal(router.currentRoute.value.name, 'Login');
+  form.password = 'contraseña-de-prueba';
+  responses.push({ data: anonymous }, { data: authenticated });
+  await form.handleLogin();
+  assert.equal(auth.isAuthenticated, true);
+  assert.equal(form.password, '');
+  assert.equal(form.errorMsg, '');
+  assert.equal(router.currentRoute.value.name, 'Estadisticas');
+});
+
+test('Salir espera al servidor, evita duplicados y permite reintentar un cierre fallido', async () => {
+  auth.initialized = true;
+  auth.user = usuario;
+  await router.replace('/captura');
+  const { state: layout } = await renderComponent(MainLayout);
+  responses.push({ data: authenticated }, { status: 503, data: { detail: 'Servicio no disponible.' } });
+  const pending = layout.handleLogout();
+  assert.equal(layout.isLoggingOut, true);
+  await layout.handleLogout();
+  await pending;
+  assert.equal(requests.length, 2);
+  assert.equal(layout.logoutError, 'Servicio no disponible.');
+  assert.equal(layout.isLoggingOut, false);
+  assert.equal(auth.isAuthenticated, true);
+  assert.equal(router.currentRoute.value.name, 'Captura');
+  responses.push({ data: authenticated }, { status: 204 }, { data: anonymous });
+  await layout.handleLogout();
+  assert.equal(layout.logoutError, '');
+  assert.equal(auth.isAuthenticated, false);
+  assert.equal(router.currentRoute.value.name, 'Login');
 });
 
 test('403 de permisos o CSRF conserva la sesión y no intenta logout', async () => {

@@ -1,6 +1,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import axios from 'axios';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../store/auth.store';
 
@@ -11,6 +12,8 @@ const authStore = useAuthStore();
 // Menú expandido en escritorio, cerrado en móvil.
 const menuContraido = ref(false);
 const menuMovilAbierto = ref(false);
+const isLoggingOut = ref(false);
+const logoutError = ref('');
 
 interface MenuItem {
   label: string;
@@ -36,13 +39,13 @@ const menuItems = computed<MenuItem[]>(() => [
     label: 'Captura',
     path: '/captura',
     icono: '✎',
-    visible: authStore.isCapturista || authStore.isAdmin
+    visible: authStore.isCapturista
   },
   {
     label: 'Seguimiento',
     path: '/seguimiento',
     icono: '◎',
-    visible: authStore.isRevisor || authStore.isAdmin
+    visible: authStore.isRevisor
   },
   {
     label: 'Administrador',
@@ -77,7 +80,7 @@ const tituloActual = computed(() => {
 });
 
 const inicialesUsuario = computed(() => {
-  const nombre = authStore.user?.name || 'Usuario';
+  const nombre = authStore.user?.nombre || 'Usuario';
 
   return nombre
     .trim()
@@ -96,9 +99,20 @@ const cerrarMenuMovil = () => {
 };
 
 const handleLogout = async () => {
+  if (isLoggingOut.value) return;
   cerrarMenuMovil();
-  authStore.logout();
-  await router.replace({ name: 'Login' });
+  isLoggingOut.value = true;
+  logoutError.value = '';
+  try {
+    await authStore.logout();
+    await router.replace({ name: 'Login' });
+  } catch (error) {
+    logoutError.value = axios.isAxiosError(error)
+      ? error.response?.data?.detail || 'No se pudo cerrar la sesión. Intenta de nuevo.'
+      : 'No se pudo cerrar la sesión. Intenta de nuevo.';
+  } finally {
+    isLoggingOut.value = false;
+  }
 };
 
 watch(
@@ -252,11 +266,11 @@ watch(
         <div class="topbar-right">
           <div class="user-details">
             <strong>
-              {{ authStore.user?.name || 'Usuario' }}
+              {{ authStore.user?.nombre || 'Usuario' }}
             </strong>
 
             <span>
-              {{ authStore.user?.role || 'Sin rol' }}
+              {{ authStore.user?.rol || 'Sin rol' }}
             </span>
           </div>
 
@@ -267,9 +281,10 @@ watch(
           <button
             type="button"
             class="logout-button"
+            :disabled="isLoggingOut"
             @click="handleLogout"
           >
-            <span>Salir</span>
+            <span>{{ isLoggingOut ? 'Cerrando sesión…' : 'Salir' }}</span>
             <span aria-hidden="true">↗</span>
           </button>
         </div>
@@ -277,6 +292,7 @@ watch(
 
       <!-- Vistas actuales -->
       <main class="main-content">
+        <p v-if="logoutError" role="alert" class="mb-4 text-red-600">{{ logoutError }}</p>
         <router-view />
       </main>
     </div>

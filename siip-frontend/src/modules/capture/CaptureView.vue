@@ -427,18 +427,6 @@ const resultado = computed<{
   };
 });
 
-const resultadoFormateado = computed(() => {
-  if (resultado.value.valor === null) {
-    return '—';
-  }
-
-  const valor = new Intl.NumberFormat('es-MX', {
-    maximumFractionDigits: 4
-  }).format(resultado.value.valor);
-
-  return `${valor} ${indicadorActivo.value?.unidad ?? ''}`;
-});
-
 // ==================================================
 // BANDEJA DE REVISIÓN
 // ==================================================
