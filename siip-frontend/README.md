@@ -2,6 +2,12 @@
 
 Estado de la integración visual, límites operativos y verificación del 09/11/2026: [informe](../Documentacion/verificacion-integracion-visual-2026-11-09.md).
 
+Corrección posterior al merge (09/11/2026): Administración carga las cuentas guardadas
+mediante `GET /administracion/usuarios`, muestra rol, dependencia y estado, y permite
+actualizar el listado. Ya no se limita a las altas realizadas mientras la vista está
+abierta. Consulta requiere que SQL 004 esté aplicado en la base del backend; un
+correo ya registrado devuelve 409 y no cambia el rol de la cuenta existente.
+
 Vue 3, TypeScript y Pinia. Desde esta carpeta:
 
 ```powershell

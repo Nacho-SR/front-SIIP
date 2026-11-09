@@ -40,7 +40,7 @@ Revisar [modelo-datos-mvp-borrador.md](modelo-datos-mvp-borrador.md), entregado 
 
 ## Actualización 06/11/2026 — DEC-038 y DEC-039
 
-- **Resuelto:** existe rol Consulta, varias cuentas sin dependencia y lectura global de fichas, resultados publicados y estadísticas. Auth y altas implementadas; SQL 004 preparado, no aplicado. Exportaciones y acceso a PDF/expedientes internos no se conceden por defecto.
+- **Resuelto:** existe rol Consulta, varias cuentas sin dependencia y lectura global de fichas, resultados publicados y estadísticas. Auth y altas implementadas; SQL 004 aplicado con autorización expresa el 09/11/2026 solo en la base local `SIIP` de `localhost:5432`, con los cuatro valores del ENUM verificados y sin modificar cuentas. Otros entornos requieren comprobación y autorización propias. Exportaciones y acceso a PDF/expedientes internos no se conceden por defecto.
 - **Resuelto con el director:** cierre de captura al fin del periodo natural, gris por faltantes/incompletos, continuidad de revisión para envíos completos y reapertura solo para adjuntar justificación PDF conservando gris. Sustituye la captura tardía sin bloqueo.
 - **P-15:** precisar correcciones de envíos observados después del cierre. Conservar la revisión no autoriza automáticamente completar o cambiar datos fuera de plazo.
 - **P-16:** precisar destinatarios/visibilidad del PDF de justificación, si requiere revisión/aprobación y condiciones para dar por terminada la apertura documental. No afecta la permanencia del gris.

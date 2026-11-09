@@ -73,6 +73,12 @@ test('PostgreSQL real: bootstrap, altas auditadas y auth de los cuatro roles', {
       assert.equal(response.statusCode, 201, response.body);
       assert.equal((await app.inject({ method: 'POST', url: userUrl, headers, payload })).statusCode, 409);
     }
+    const listed = await app.inject({ url: userUrl, headers });
+    assert.equal(listed.statusCode, 200, listed.body);
+    assert.equal(listed.json().length, 4);
+    assert.doesNotMatch(listed.body, /password|\$argon2/);
+    assert.equal(listed.json().find(({ rol }) => rol === 'consulta').dependencia_nombre, null);
+    assert.equal(listed.json().find(({ rol }) => rol === 'captura').dependencia_nombre, 'Dependencia de prueba aislada');
     assert.equal((await app.inject({ method: 'DELETE', url: sessionUrl, headers })).statusCode, 204);
     for (const rol of ['captura', 'revision', 'consulta']) {
       const userHeaders = await login(`${rol}@example.test`);

@@ -198,6 +198,35 @@ paths:
         '500':
           $ref: '#/components/responses/ErrorInterno'
   /administracion/usuarios:
+    get:
+      operationId: listarUsuarios
+      summary: Consultar las cuentas registradas
+      description: Solo Administrador con sesión vigente. Devuelve todas las cuentas, activas e inactivas, ordenadas por nombre e ID, como array sin paginación. Incluye nombre de dependencia aunque esté inactiva; no devuelve contraseñas, hashes ni datos de sesión. Lectura sin CSRF.
+      tags: [Administracion]
+      x-roles: [administrador]
+      x-prioridad: P0
+      responses:
+        '200':
+          description: Cuentas registradas, vacío si no hay cuentas.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsuarioAdministrado'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/NoPermitido'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+        '503':
+          $ref: '#/components/responses/AutenticacionNoConfigurada'
     post:
       operationId: crearUsuario
       summary: Crear una cuenta de Captura, Revisión o Consulta
@@ -2097,6 +2126,28 @@ components:
         correo: captura@example.test
         rol: captura
         dependencia_id: '7'
+    UsuarioAdministrado:
+      type: object
+      additionalProperties: false
+      required: [id, nombre, correo, rol, dependencia_id, activo, dependencia_nombre]
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        nombre:
+          type: string
+        correo:
+          type: string
+          format: email
+        rol:
+          $ref: '#/components/schemas/Rol'
+        dependencia_id:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+        activo:
+          type: boolean
+        dependencia_nombre:
+          type: [string, 'null']
     Sesion:
       type: object
       additionalProperties: false

@@ -227,6 +227,19 @@ Administrador y permite poblar el selector de ambas altas. El frontend en
 `/front-SIIP/administrador` permite crear dependencias y usuarios de Captura/Revisión/Consulta;
 una dependencia recién creada queda seleccionada para el alta de usuario.
 
+`GET /api/v1/administracion/usuarios` lista todas las cuentas persistidas, incluidas
+las inactivas, solo para Administrador con sesión vigente. Responde un array sin
+paginación, ordenado por nombre e ID, con los campos públicos del usuario más
+`activo` y `dependencia_nombre` (nullable). Conserva el nombre de dependencias
+inactivas. No incluye contraseñas, hashes ni datos de sesión; `Cache-Control: no-store`.
+No habilita edición ni desactivación de cuentas.
+
+Si el alta de Consulta devuelve `500`, comprueba que el tipo PostgreSQL `rol_usuario`
+incluya `consulta`: el código actualizado no aplica migraciones automáticamente.
+El archivo `sql/004_rol_consulta.sql` debe aplicarse y confirmarse en la base concreta
+autorizada antes del alta. Un `409 CORREO_YA_REGISTRADO` es distinto: el correo ya
+pertenece a una cuenta, incluso de otro rol o inactiva; no se sobrescribe.
+
 ## Probar el recorrido
 
 Importa `docs/SIIP-auth.postman_collection.json`. Completa las variables locales
@@ -262,7 +275,7 @@ Administrador puede crear múltiples cuentas `consulta`. No requieren dependenci
 
 Para Consulta, `dependencia_id` puede omitirse o ser null; un ID se rechaza. El alta conserva Argon2id, auditoría y validación de correo único. Auth acepta el rol sin dependencia. Los guards de Captura/Revisión/Administrador no lo incluyen. En la interfaz solo accede a Consulta y Estadísticas, actualmente prototipos. Las futuras consultas de negocio serán globales de lectura de fichas, resultados publicados y cumplimiento, sin expedientes o PDF internos por defecto.
 
-SQL 004 extiende el ENUM existente y debe confirmarse antes de usar el rol. **No se aplica al arrancar ni se ejecutó desde el chat.** Los SQL anteriores se conservan sin cambios para bases existentes. Si el entorno ya aplicó 001–003, solo falta aplicar 004 en la base autorizada. No se crean cuentas ni se cambian roles automáticamente.
+SQL 004 extiende el ENUM existente y debe confirmarse antes de usar el rol. **No se aplica al arrancar.** Con autorización expresa se aplicó el 09/11/2026 únicamente en la base local `SIIP` de `localhost:5432` y se verificaron los cuatro valores del ENUM. No se crearon cuentas ni se cambiaron roles de cuentas existentes. Los SQL anteriores se conservan sin cambios. En otros entornos que ya aplicaron 001–003, comprobar y aplicar 004 solo en la base autorizada.
 
 DEC-039 confirma cierre de captura, gris por faltantes y justificación exclusivamente PDF. Los módulos `indicadores`, `operacion` y `evaluacion` todavía no implementan ese flujo. Véase `../Documentacion/flujos-negocio.md` y los pendientes P-15/16.
 

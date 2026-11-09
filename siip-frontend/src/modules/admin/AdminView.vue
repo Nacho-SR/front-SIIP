@@ -14,6 +14,10 @@ interface Dependency {
   nombre: string;
   activo: boolean;
 }
+interface ManagedUser extends User {
+  activo: boolean;
+  dependencia_nombre: string | null;
+}
 
 const router = useRouter();
 const dependencies = ref<Dependency[]>([]);
@@ -33,8 +37,9 @@ const userError = ref('');
 const dependencyError = ref('');
 const userSuccess = ref('');
 const dependencySuccess = ref('');
-// shortcut: solo altas confirmadas en esta vista; incorporar el catálogo al existir GET de usuarios.
-const createdUsers = ref<User[]>([]);
+const users = ref<ManagedUser[]>([]);
+const loadingUsers = ref(false);
+const usersError = ref('');
 const busqueda = ref('');
 const modalAbierto = ref(false);
 const modalDialog = ref<HTMLElement | null>(null);
@@ -44,6 +49,20 @@ function errorMessage(error: unknown) {
   return axios.isAxiosError(error)
     ? error.response?.data?.detail || 'No se pudo conectar con el servidor. Intenta de nuevo.'
     : 'No se pudo completar la solicitud. Intenta de nuevo.';
+}
+
+async function loadUsers() {
+  if (loadingUsers.value || savingUser.value) return;
+  loadingUsers.value = true;
+  usersError.value = '';
+  try {
+    const { data } = await api.get<ManagedUser[]>('/administracion/usuarios');
+    users.value = data;
+  } catch (error) {
+    usersError.value = errorMessage(error);
+  } finally {
+    loadingUsers.value = false;
+  }
 }
 
 async function loadDependencies() {
@@ -64,7 +83,7 @@ async function loadDependencies() {
 }
 
 async function createUser() {
-  if (savingUser.value || (requiresDependency.value && (loadingDependencies.value || dependenciesError.value))) return;
+  if (savingUser.value || loadingUsers.value || (requiresDependency.value && (loadingDependencies.value || dependenciesError.value))) return;
   userError.value = '';
   userSuccess.value = '';
   if (requiresDependency.value && !dependencies.value.some(({ id, activo }) => activo && id === userForm.dependencia_id)) {
@@ -76,7 +95,8 @@ async function createUser() {
     const { data } = await api.post<User>('/administracion/usuarios', {
       ...userForm, dependencia_id: requiresDependency.value ? userForm.dependencia_id : null,
     });
-    createdUsers.value.unshift(data);
+    users.value.unshift({ ...data, activo: true,
+      dependencia_nombre: dependencies.value.find(({ id }) => id === data.dependencia_id)?.nombre ?? null });
     userSuccess.value = `Usuario ${data.nombre} creado. Ya puede iniciar sesión con su correo.`;
     userForm.nombre = '';
     userForm.correo = '';
@@ -116,8 +136,8 @@ function dependencyName(id: string | null) {
 
 const usuariosFiltrados = computed(() => {
   const termino = busqueda.value.trim().toLocaleLowerCase('es');
-  return createdUsers.value.filter(usuario =>
-    [usuario.nombre, usuario.correo, dependencyName(usuario.dependencia_id), nombreRol(usuario.rol)]
+  return users.value.filter(usuario =>
+    [usuario.nombre, usuario.correo, usuario.dependencia_nombre ?? dependencyName(usuario.dependencia_id), nombreRol(usuario.rol)]
       .some(valor => valor.toLocaleLowerCase('es').includes(termino)));
 });
 const totalIndicadoresNuevos = computed(() => adminState.indicadores.length);
@@ -149,6 +169,7 @@ watch(() => userForm.rol, (rol) => {
 
 onMounted(() => {
   refrescarAdmin();
+  void loadUsers();
   void loadDependencies();
 });
 
@@ -173,9 +194,9 @@ function editarIndicador(id: string) {
 
     <section class="resumen">
       <article class="tarjeta">
-        <span>Usuarios creados en esta sesión</span>
-        <strong>{{ createdUsers.length }}</strong>
-        <small>Altas confirmadas</small>
+        <span>Usuarios registrados</span>
+        <strong>{{ loadingUsers || usersError ? '—' : users.length }}</strong>
+        <small>Cuentas guardadas en el sistema</small>
       </article>
       <article class="tarjeta">
         <span>Dependencias activas</span>
@@ -211,28 +232,34 @@ function editarIndicador(id: string) {
         </button>
       </div>
 
-      <p class="nota">Se muestran solo las altas realizadas desde que abriste esta pantalla.</p>
+      <p class="nota">Se muestran las cuentas registradas, incluidas las inactivas. El correo es único entre todos los roles.</p>
+      <button type="button" class="btn-secundario" :disabled="loadingUsers || savingUser" @click="loadUsers">
+        {{ loadingUsers ? 'Cargando usuarios…' : 'Actualizar usuarios' }}
+      </button>
+      <p v-if="loadingUsers" class="nota" role="status">Cargando usuarios…</p>
+      <p v-else-if="usersError" class="error" role="alert">{{ usersError }}</p>
       <div class="busqueda">
-        <input v-model="busqueda" type="search" aria-label="Buscar usuarios creados en esta sesión"
+        <input v-model="busqueda" type="search" aria-label="Buscar usuarios registrados"
           placeholder="Buscar por nombre, correo, dependencia o rol..." />
       </div>
-      <div class="tabla-scroll">
+      <div v-if="!loadingUsers && !usersError" class="tabla-scroll">
         <table>
-          <thead><tr><th>Nombre</th><th>Correo electrónico</th><th>Dependencia</th><th>Rol</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Correo electrónico</th><th>Dependencia</th><th>Rol</th><th>Estado</th></tr></thead>
           <tbody>
             <tr v-for="usuario in usuariosFiltrados" :key="usuario.id">
               <td class="nombre-usuario"><strong>{{ usuario.nombre }}</strong></td>
               <td class="correo-usuario">{{ usuario.correo }}</td>
               <td class="dependencia-usuario">
                 <span :class="usuario.dependencia_id === null ? 'sin-dependencia' : 'dependencia-etiqueta'">
-                  {{ dependencyName(usuario.dependencia_id) }}
+                  {{ usuario.dependencia_nombre ?? dependencyName(usuario.dependencia_id) }}
                 </span>
               </td>
               <td><span class="rol">{{ nombreRol(usuario.rol) }}</span></td>
+              <td><span class="estado" :class="usuario.activo ? 'activo' : 'inactivo'">{{ usuario.activo ? 'Activo' : 'Inactivo' }}</span></td>
             </tr>
             <tr v-if="usuariosFiltrados.length === 0">
-              <td colspan="4" class="vacio">
-                {{ createdUsers.length ? 'No hay usuarios que coincidan con la búsqueda.' : 'Todavía no has creado usuarios en esta sesión.' }}
+              <td colspan="5" class="vacio">
+                {{ users.length ? 'No hay usuarios que coincidan con la búsqueda.' : 'No hay usuarios registrados.' }}
               </td>
             </tr>
           </tbody>
@@ -467,7 +494,7 @@ function editarIndicador(id: string) {
             <p v-if="userError" class="error" role="alert">{{ userError }}</p>
             <footer class="modal-acciones">
               <button type="button" class="btn-secundario" :disabled="savingUser" @click="cerrarModal">Cancelar</button>
-              <button type="submit" class="btn-principal btn-guardar-usuario" :disabled="savingUser || dependencyUnavailable">
+              <button type="submit" class="btn-principal btn-guardar-usuario" :disabled="savingUser || loadingUsers || dependencyUnavailable">
                 {{ savingUser ? 'Creando usuario…' : 'Registrar usuario' }}
               </button>
             </footer>

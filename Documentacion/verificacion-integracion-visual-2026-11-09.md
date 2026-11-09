@@ -1,5 +1,22 @@
 # Verificación de la integración visual — 09/11/2026
 
+**Actualización posterior al merge, 09/11/2026:** se añadió `GET /administracion/usuarios`
+y su carga en Administración para mostrar también las cuentas anteriores, activas
+e inactivas, con nombre de dependencia y sin secretos. Esto sustituye el límite de
+«solo altas en esta vista» descrito más abajo como parte de la aceptación original.
+Se confirmó por lectura de metadatos que la base local `SIIP` en `localhost:5432`
+no contenía `consulta` en `rol_usuario`. Con autorización expresa del usuario se
+aplicó únicamente SQL 004 y se comprobó que el tipo ya incluye los cuatro roles.
+No se crearon ni modificaron cuentas para esa comprobación.
+
+Validación posterior: 46 pruebas del frontend y 46 del backend aprobadas, con la
+integración de PostgreSQL omitida (`TEST_DATABASE_URL=''`); ambas
+compilaciones correctas. OpenAPI comprobado como YAML sin claves duplicadas.
+La prueba enfocada de Chrome cubre carga al montar, cuentas anteriores e inactivas,
+búsqueda por dependencia histórica, alta de Consulta, permanencia al recargar y
+duplicado 409, a 1440/390/320 px. Usa repositorios sintéticos; el único cambio en
+la base real fue SQL 004. [Evidencia](../../QA-final-2026-11-09/usuarios-smoke/resultado.json).
+
 **Resultado:** comprobación visual y funcional superada para integrar el diseño. No habilita los módulos operativos ni acredita un despliegue de producción. No se hizo merge, commit, push, despliegue ni ejecución de SQL.
 
 ## Evidencia de aceptación

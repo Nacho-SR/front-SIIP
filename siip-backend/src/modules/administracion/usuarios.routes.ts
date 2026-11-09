@@ -6,7 +6,7 @@ import { userSchema } from '../auth/schemas/auth.schema.js';
 import { createUsersController } from './controllers/usuarios.controller.js';
 import type { UsersRepository } from './repositories/usuarios.repository.js';
 import { createUsersService } from './services/usuarios.service.js';
-import { createDependencySchema, createUserSchema, dependencySchema } from './schemas/usuarios.schema.js';
+import { createDependencySchema, createUserSchema, dependencySchema, managedUserSchema } from './schemas/usuarios.schema.js';
 import type { CreateDependency, CreateUser } from './schemas/usuarios.schema.js';
 
 export async function usersRoutes(app: FastifyInstance, options: { repository?: UsersRepository }) {
@@ -14,8 +14,8 @@ export async function usersRoutes(app: FastifyInstance, options: { repository?: 
   app.addHook('onRequest', requireRoles('administrador'));
   if (!options.repository) {
     app.route({
-      method: 'POST', url: '/usuarios',
-      handler: async () => { throw new HttpError(503, 'ADMINISTRACION_NO_CONFIGURADA', 'Falta configurar PostgreSQL para las altas.'); },
+      method: ['GET', 'POST'], url: '/usuarios',
+      handler: async () => { throw new HttpError(503, 'ADMINISTRACION_NO_CONFIGURADA', 'Falta configurar PostgreSQL para administrar usuarios.'); },
     });
     app.route({
       method: ['GET', 'POST'], url: '/dependencias',
@@ -24,6 +24,9 @@ export async function usersRoutes(app: FastifyInstance, options: { repository?: 
     return;
   }
   const controller = createUsersController(createUsersService(options.repository));
+  app.get('/usuarios', {
+    schema: { response: { 200: z.array(managedUserSchema) } },
+  }, controller.listUsers);
   app.get('/dependencias', {
     schema: { response: { 200: z.array(dependencySchema) } },
   }, controller.listDependencies);

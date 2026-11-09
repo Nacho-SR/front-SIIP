@@ -388,11 +388,14 @@ test('Consulta se crea sin dependencia incluso si falla el catálogo y no se gua
     nombre: consulta.nombre, correo: consulta.correo, password: 'contraseña-sintética-2026',
     rol: 'consulta', dependencia_id: null,
   });
-  assert.deepEqual(form.createdUsers, [consulta]);
-  assert.equal(form.createdUsers[0].id, usuario.id);
+  assert.deepEqual(form.users, [{ ...consulta, activo: true, dependencia_nombre: null }]);
+  assert.equal(form.users[0].id, usuario.id);
   assert.equal(form.userForm.password, '');
   assert.match(form.userSuccess, /creado/);
-  assert.deepEqual((await adminForm()).createdUsers, []);
+  const reopened = await adminForm();
+  responses.push({ data: form.users });
+  await reopened.loadUsers();
+  assert.deepEqual(reopened.users, form.users);
 });
 
 test('el alta pendiente evita duplicados y solo el éxito del servidor cierra el modal', async () => {
@@ -415,13 +418,13 @@ test('el alta pendiente evita duplicados y solo el éxito del servidor cierra el
   assert.equal(form.userSuccess, '');
   assert.equal(form.userForm.nombre, usuario.nombre);
   assert.equal(form.userForm.password, '');
-  assert.equal(form.createdUsers.length, 0);
+  assert.equal(form.users.length, 0);
 
   form.userForm.password = 'otra-contraseña-sintética';
   responses.push({ status: 201, data: { ...usuario, rol: 'revision' } });
   await form.createUser();
   assert.equal(form.modalAbierto, false);
-  assert.equal(form.createdUsers.length, 1);
+  assert.equal(form.users.length, 1);
   assert.equal(form.userError, '');
 });
 
@@ -440,7 +443,7 @@ test('reintentar el catálogo invalida una selección eliminada o inactiva', asy
   form.userForm.dependencia_id = '7';
   await form.createUser();
   assert.equal(requests.length, 2);
-  assert.equal(form.createdUsers.length, 0);
+  assert.equal(form.users.length, 0);
 });
 
 test('cancelar el modal borra la contraseña sin registrar una cuenta', async () => {
@@ -471,6 +474,64 @@ test('el modal muestra contraseña inicial y dependencia solo para Captura y Rev
     assert.match(modal, /value="revision"/);
     assert.doesNotMatch(modal, /value="seguimiento"|Usuario activo|Editar usuario/);
     assert.equal(modal.includes('Selecciona una dependencia activa del catálogo institucional.'), rol !== 'consulta');
-    assert.match(html, /Se muestran solo las altas realizadas desde que abriste esta pantalla/);
+    assert.match(html, /Se muestran las cuentas registradas, incluidas las inactivas/);
   }
+});
+
+test('carga cuentas anteriores desde la API, conserva IDs y filtra por rol y dependencia histórica', async () => {
+  const form = await adminForm();
+  const previous = { ...usuario, activo: false, dependencia_nombre: 'Dependencia histórica' };
+  const consulta = { ...usuario, id: '9007199254740994', rol: 'consulta',
+    dependencia_id: null, activo: true, dependencia_nombre: null };
+  responses.push({ data: [previous, consulta] });
+  await form.loadUsers();
+  assert.equal(requests.at(-1).url, '/administracion/usuarios');
+  assert.equal(requests.at(-1).method, 'get');
+  assert.deepEqual(form.users, [previous, consulta]);
+  form.busqueda = 'histórica';
+  assert.deepEqual(form.usuariosFiltrados, [previous]);
+  form.busqueda = 'consulta';
+  assert.deepEqual(form.usuariosFiltrados, [consulta]);
+  const reopened = await adminForm();
+  responses.push({ data: [previous, consulta] });
+  await reopened.loadUsers();
+  assert.deepEqual(reopened.users, form.users);
+});
+
+test('el listado informa un fallo, permite reintentar y no duplica peticiones pendientes', async () => {
+  const form = await adminForm();
+  responses.push({ status: 503, data: { detail: 'Listado no disponible.' } });
+  const pending = form.loadUsers();
+  assert.equal(form.loadingUsers, true);
+  await form.loadUsers();
+  await form.createUser();
+  await pending;
+  assert.equal(requests.length, 1);
+  assert.equal(form.usersError, 'Listado no disponible.');
+  assert.equal(form.loadingUsers, false);
+  responses.push({ data: [{ ...usuario, activo: true, dependencia_nombre: 'Planeación' }] });
+  await form.loadUsers();
+  assert.equal(form.usersError, '');
+  assert.equal(form.users.length, 1);
+});
+
+test('el formulario de Consulta conserva datos ante correo duplicado y permite otro correo sin dependencia', async () => {
+  const form = await adminForm();
+  Object.assign(form.userForm, { nombre: 'Consulta', correo: 'existe@example.test',
+    password: 'contraseña-sintética-2026', rol: 'consulta' });
+  form.modalAbierto = true;
+  responses.push({ status: 409, data: { codigo: 'CORREO_YA_REGISTRADO', detail: 'Ya existe una cuenta con ese correo.' } });
+  await form.createUser();
+  assert.equal(form.userError, 'Ya existe una cuenta con ese correo.');
+  assert.equal(form.modalAbierto, true);
+  assert.equal(form.userForm.correo, 'existe@example.test');
+  assert.equal(form.userForm.rol, 'consulta');
+  assert.equal(form.userForm.password, '');
+  assert.equal(form.users.length, 0);
+  Object.assign(form.userForm, { correo: 'nueva@example.test', password: 'contraseña-sintética-2026' });
+  responses.push({ status: 201, data: { ...usuario, correo: form.userForm.correo, rol: 'consulta', dependencia_id: null } });
+  await form.createUser();
+  assert.equal(form.users.length, 1);
+  assert.equal(form.modalAbierto, false);
+  assert.equal(JSON.parse(requests.at(-1).data).dependencia_id, null);
 });

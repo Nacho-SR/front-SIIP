@@ -6,6 +6,7 @@ import {
 
 export function createUsersService(repository: UsersRepository) {
   return {
+    listUsers: () => repository.listUsers(),
     listDependencies: () => repository.listDependencies(),
     async createUser(data: unknown, actorId: string) {
       const { password, ...account } = createUserSchema.parse(data);

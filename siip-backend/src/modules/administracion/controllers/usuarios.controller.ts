@@ -4,6 +4,9 @@ import type { UsersService } from '../services/usuarios.service.js';
 
 export function createUsersController(service: UsersService) {
   return {
+    async listUsers() {
+      return service.listUsers();
+    },
     async listDependencies() {
       return service.listDependencies();
     },

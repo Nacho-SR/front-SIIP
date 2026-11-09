@@ -89,3 +89,15 @@ test('el catálogo consulta solo dependencias activas y usa un orden estable', a
   assert.match(query, /id::text/);
   assert.match(query, /WHERE activo ORDER BY nombre, id/);
 });
+
+test('el listado selecciona solo datos administrativos sin excluir cuentas o dependencias inactivas', async () => {
+  let query;
+  const expected = [{ ...publicUser, activo: false, dependencia_nombre: 'Dependencia anterior' }];
+  const repository = createUsersRepository({ async query(sql) { query = sql; return { rows: expected }; } });
+  assert.deepEqual(await repository.listUsers(), expected);
+  assert.match(query, /u.id::text/);
+  assert.match(query, /u.dependencia_id::text/);
+  assert.match(query, /LEFT JOIN dependencias/);
+  assert.match(query, /ORDER BY u.nombre, u.id/);
+  assert.doesNotMatch(query, /password|SELECT\s+\*|WHERE/i);
+});

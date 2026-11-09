@@ -1,11 +1,12 @@
 import type { Pool, PoolClient } from 'pg';
 import { HttpError } from '../../../shared/http-error.js';
 import type { User } from '../../auth/schemas/auth.schema.js';
-import type { CreateDependency, Dependency } from '../schemas/usuarios.schema.js';
+import type { CreateDependency, Dependency, ManagedUser } from '../schemas/usuarios.schema.js';
 
 type NewAccount = Omit<User, 'id'> & { password_hash: string };
 
 export interface UsersRepository {
+  listUsers(): Promise<ManagedUser[]>;
   listDependencies(): Promise<Dependency[]>;
   createUser(account: NewAccount, actorId: string): Promise<User>;
   createInitialAdmin(account: NewAccount): Promise<User>;
@@ -74,6 +75,15 @@ export function createUsersRepository(pool: Pool): UsersRepository {
   }
 
   return {
+    async listUsers() {
+      const result = await pool.query<ManagedUser>(`
+        SELECT u.id::text, u.nombre, u.correo, u.rol, u.dependencia_id::text,
+               u.activo, d.nombre AS dependencia_nombre
+        FROM usuarios u LEFT JOIN dependencias d ON d.id = u.dependencia_id
+        ORDER BY u.nombre, u.id
+      `);
+      return result.rows;
+    },
     async listDependencies() {
       const result = await pool.query<Dependency>(`
         SELECT id::text, clave, nombre, activo FROM dependencias

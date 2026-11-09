@@ -23,6 +23,10 @@ async function fixture(t) {
   const events = [];
   const publicUser = ({ password_hash, activo, dependencia_activa, ...user }) => user;
   const users = {
+    async listUsers() {
+      return [...accounts.values()].map((user) => ({ ...user,
+        dependencia_nombre: dependencies.get(user.dependencia_id)?.nombre ?? null }));
+    },
     async listDependencies() { return [...dependencies.values()].filter((item) => item.activo); },
     async createUser(account, actorId) {
       if ([...accounts.values()].some((user) => user.correo === account.correo)) {
@@ -231,6 +235,38 @@ test('solo administrador consulta dependencias activas y el catálogo incluye la
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.json(), [created.json()]);
   assert.equal(response.headers['cache-control'], 'no-store');
+});
+
+test('solo Administrador lista las cuentas persistidas, incluidas Consulta e inactivas, sin secretos', async (t) => {
+  const { app, accounts, dependencies } = await fixture(t);
+  assert.equal((await app.inject(usersUrl)).statusCode, 401);
+  const admin = await login(app);
+  dependencies.set('7', { id: '7', clave: 'ANT', nombre: 'Dependencia anterior', activo: false });
+  accounts.set('2', { ...accounts.get('1'), id: '2', nombre: 'Cuenta anterior',
+    correo: 'anterior@example.test', rol: 'revision', dependencia_id: '7', activo: false });
+  const payload = { nombre: 'Consulta', correo: 'consulta@example.test', password, rol: 'consulta' };
+  const created = await app.inject({ method: 'POST', url: usersUrl, headers: admin, payload });
+  assert.equal(created.statusCode, 201, created.body);
+  const response = await app.inject({ url: usersUrl, headers: { cookie: admin.cookie } });
+  assert.equal(response.statusCode, 200, response.body);
+  assert.equal(response.headers['cache-control'], 'no-store');
+  assert.equal(response.json().length, 3);
+  assert.deepEqual(response.json().find(({ id }) => id === '2'), {
+    id: '2', nombre: 'Cuenta anterior', correo: 'anterior@example.test', rol: 'revision',
+    dependencia_id: '7', activo: false, dependencia_nombre: 'Dependencia anterior',
+  });
+  assert.deepEqual(response.json().find(({ id }) => id === created.json().id), {
+    ...created.json(), activo: true, dependencia_nombre: null,
+  });
+  assert.doesNotMatch(response.body, /password|argon2|dependencia_activa/);
+  assert.deepEqual((await app.inject({ url: usersUrl, headers: admin })).json(), response.json());
+  for (const rol of ['captura', 'revision', 'consulta']) {
+    dependencies.set('8', { id: '8', clave: 'ACT', nombre: 'Activa', activo: true });
+    accounts.set('4', { ...accounts.get('1'), id: '4', correo: 'other@example.test', rol,
+      dependencia_id: rol === 'consulta' ? null : '8' });
+    const other = await login(app, 'other@example.test');
+    assert.equal((await app.inject({ url: usersUrl, headers: other })).statusCode, 403);
+  }
 });
 
 test('Revisión exige dependencia activa y su desactivación invalida la sesión', async (t) => {

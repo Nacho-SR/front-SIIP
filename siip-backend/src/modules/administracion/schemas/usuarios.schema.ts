@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { credentialsSchema, idSchema } from '../../auth/schemas/auth.schema.js';
+import { credentialsSchema, idSchema, userSchema } from '../../auth/schemas/auth.schema.js';
 
 const accountFields = {
   nombre: z.string().trim().min(1).max(200),
@@ -8,6 +8,9 @@ const accountFields = {
 };
 
 export const initialAdminSchema = z.strictObject(accountFields);
+export const managedUserSchema = userSchema.extend({
+  activo: z.boolean(), dependencia_nombre: z.string().nullable(),
+});
 export const createUserSchema = z.discriminatedUnion('rol', [
   z.strictObject({ ...accountFields, rol: z.enum(['captura', 'revision']), dependencia_id: idSchema }),
   z.strictObject({ ...accountFields, rol: z.literal('consulta'), dependencia_id: z.null().default(null) }),
@@ -25,3 +28,4 @@ export type CreateUser = z.infer<typeof createUserSchema>;
 export type InitialAdmin = z.infer<typeof initialAdminSchema>;
 export type CreateDependency = z.infer<typeof createDependencySchema>;
 export type Dependency = z.infer<typeof dependencySchema>;
+export type ManagedUser = z.infer<typeof managedUserSchema>;
