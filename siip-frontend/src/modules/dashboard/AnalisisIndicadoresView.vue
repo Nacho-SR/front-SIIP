@@ -316,7 +316,7 @@ const regresar = () => {
         </div>
 
         <div class="filtro-controles">
-          <select v-model="agrupacionSeleccionada">
+          <select v-model="agrupacionSeleccionada" aria-label="Agrupación temática del análisis">
             <option value="">Todas las agrupaciones</option>
 
             <option
@@ -624,6 +624,11 @@ const regresar = () => {
   background: white;
   color: #272b32;
   font-size: 12px;
+}
+
+.filtro-controles select:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
 }
 
 .filtro-controles button {

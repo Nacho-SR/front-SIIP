@@ -3,14 +3,12 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth.store';
+import { MOTIVO_OPERACION_PENDIENTE, estadoPeriodo } from '../../core/operacion-pendiente';
 
 import catalogo from '../consulta/data/indicadores-siip.json';
 import configuraciones from '../capture/data/campos-captura-siip.json';
 
-import {
-  buscarExpediente,
-  actualizarExpediente
-} from './data/seguimiento.store';
+import { buscarExpediente } from './data/seguimiento.store';
 
 import type {
   AccionSeguimiento,
@@ -48,7 +46,7 @@ type ColorSemaforo =
   | 'verde'
   | 'amarillo'
   | 'rojo'
-  | 'gris';
+  | 'sin-color';
 
 interface ReglaNumerica {
   tipo: 'ascendente' | 'descendente';
@@ -318,7 +316,6 @@ const expediente = ref<ExpedienteSeguimiento | null>(
 const comentario = ref('');
 const error = ref('');
 const exito = ref('');
-const procesando = ref(false);
 
 const indicadorId = computed(() =>
   String(route.params.id ?? '')
@@ -414,7 +411,7 @@ const evaluacion = computed<{
 }>(() => {
   if (!expediente.value || resultado.value === null) {
     return {
-      color: 'gris',
+      color: 'sin-color',
       titulo: 'Sin resultado',
       descripcion:
         'Todavía no existe un resultado numérico para evaluar.'
@@ -428,7 +425,7 @@ const evaluacion = computed<{
   // pendientes de confirmar.
   if (configuracion.value?.advertencia) {
     return {
-      color: 'gris',
+      color: 'sin-color',
       titulo: 'Por determinar',
       descripcion:
         'La fórmula presenta una advertencia metodológica. Debe revisarse antes de asignar un semáforo.'
@@ -439,7 +436,7 @@ const evaluacion = computed<{
 
   if (!regla) {
     return {
-      color: 'gris',
+      color: 'sin-color',
       titulo: 'Por determinar',
       descripcion:
         'La valoración de este indicador requiere datos históricos, metas adicionales o revisión de su criterio específico.'
@@ -520,56 +517,21 @@ const puedeValidar = computed(() =>
 // ACCIONES DE SEGUIMIENTO
 // =====================================================
 
-function ejecutarAccion(accion: AccionSeguimiento) {
-  if (!expediente.value || !puedeOperar.value) {
-    return;
-  }
-
-  if (
-    accion === 'observar' &&
-    comentario.value.trim() === ''
-  ) {
-    error.value =
-      'Debes escribir una observación antes de continuar.';
-    return;
-  }
-
-  procesando.value = true;
-  error.value = '';
+function ejecutarAccion(_accion: AccionSeguimiento) {
+  error.value = MOTIVO_OPERACION_PENDIENTE;
   exito.value = '';
-
-  try {
-    actualizarExpediente(
-      expediente.value.id,
-      accion,
-      comentario.value
-    );
-
-    cargarExpediente();
-
-    comentario.value = '';
-
-    const mensajes: Record<
-      AccionSeguimiento,
-      string
-    > = {
-      revisar:
-        'El expediente fue marcado como Revisada.',
-      observar:
-        'Se emitió la observación. Captura podrá corregir el expediente.',
-      validar:
-        'El expediente fue marcado como Validada.'
-    };
-
-    exito.value = mensajes[accion];
-  } catch (e) {
-    error.value = e instanceof Error
-      ? e.message
-      : 'No fue posible completar la operación.';
-  } finally {
-    procesando.value = false;
-  }
 }
+
+const avisoValidacion = computed(() => {
+  if (!expediente.value) return MOTIVO_OPERACION_PENDIENTE;
+  const estadoCalendario = estadoPeriodo(expediente.value.frecuencia, expediente.value.periodo);
+  if (estadoCalendario === 'invalido') return 'Falta confirmar el periodo y la frecuencia del expediente.';
+  if (estadoCalendario !== 'cerrado') {
+    return 'No se puede validar antes de que termine el periodo natural en America/Mexico_City.';
+  }
+  if (configuracion.value?.advertencia) return 'La metodología presenta advertencias pendientes de conciliación.';
+  return MOTIVO_OPERACION_PENDIENTE;
+});
 
 // =====================================================
 // NAVEGACIÓN
@@ -645,6 +607,12 @@ function formatearFecha(fecha: string) {
           {{ expediente.estado }}
         </span>
       </header>
+
+      <section class="panel" role="status">
+        <strong>{{ MOTIVO_OPERACION_PENDIENTE }}</strong>
+        <p>Los datos y cálculos son ejemplos locales, sin conciliación metodológica ni validación oficial.</p>
+        <p>Las correcciones deberán conservar el envío anterior, sus variables, evidencia y configuración; la justificación al cierre será un flujo distinto.</p>
+      </section>
 
       <!-- MENSAJES -->
       <div
@@ -951,8 +919,7 @@ function formatearFecha(fecha: string) {
           </h2>
 
           <p>
-            Selecciona una operación conforme
-            al estado actual del expediente.
+            Acciones del diseño pendientes de habilitación operativa.
           </p>
         </div>
 
@@ -963,6 +930,7 @@ function formatearFecha(fecha: string) {
             v-model="comentario"
             rows="4"
             placeholder="Escribe tus observaciones, aclaraciones o comentarios..."
+            disabled
           ></textarea>
         </label>
 
@@ -971,7 +939,8 @@ function formatearFecha(fecha: string) {
             v-if="puedeRevisar"
             type="button"
             class="btn-secundario"
-            :disabled="procesando"
+            disabled
+            :title="MOTIVO_OPERACION_PENDIENTE"
             @click="ejecutarAccion('revisar')"
           >
             Marcar como revisada
@@ -981,7 +950,8 @@ function formatearFecha(fecha: string) {
             v-if="puedeObservar"
             type="button"
             class="btn-observar"
-            :disabled="procesando"
+            disabled
+            :title="MOTIVO_OPERACION_PENDIENTE"
             @click="ejecutarAccion('observar')"
           >
             Emitir observación
@@ -991,12 +961,15 @@ function formatearFecha(fecha: string) {
             v-if="puedeValidar"
             type="button"
             class="btn-principal"
-            :disabled="procesando"
+            disabled
+            :title="avisoValidacion"
             @click="ejecutarAccion('validar')"
           >
             Validar expediente
           </button>
         </div>
+
+        <p class="nota">{{ avisoValidacion }}</p>
 
         <p
           v-if="
@@ -1016,6 +989,11 @@ function formatearFecha(fecha: string) {
 </template>
 
 <style scoped>
+.resultado-panel.sin-color {
+  background: #eaf3f9;
+  color: #245a81;
+}
+
 .revision-detalle {
   --wine: #70273b;
   --deep: #431c2a;

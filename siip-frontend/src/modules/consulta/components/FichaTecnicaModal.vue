@@ -2,12 +2,11 @@
 <script setup lang="ts">
 import {
   computed,
-  onMounted,
-  onUnmounted,
   ref,
   watch
 } from 'vue';
 import type { ColorSemaforo } from '../data/consulta';
+import { useDialogFocus } from '../../../core/useDialogFocus';
 
 interface Indicador {
   clave: string;
@@ -51,6 +50,8 @@ const emit = defineEmits<{
 }>();
 
 const seccionActiva = ref<Seccion>('identificacion');
+const dialogo = ref<HTMLElement | null>(null);
+useDialogFocus(dialogo, ref(true), cerrar);
 
 const secciones: {
   id: Seccion;
@@ -110,11 +111,6 @@ function cerrar() {
   emit('cerrar');
 }
 
-function manejarTecla(evento: KeyboardEvent) {
-  if (evento.key === 'Escape') {
-    cerrar();
-  }
-}
 
 watch(
   () => props.indicador.clave,
@@ -123,13 +119,6 @@ watch(
   }
 );
 
-onMounted(() => {
-  window.addEventListener('keydown', manejarTecla);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', manejarTecla);
-});
 </script>
 
 <template>
@@ -139,6 +128,8 @@ onUnmounted(() => {
       @click.self="cerrar"
     >
       <section
+        ref="dialogo"
+        tabindex="-1"
         class="ficha-modal"
         role="dialog"
         aria-modal="true"
@@ -224,7 +215,7 @@ onUnmounted(() => {
         <!-- CONTENIDO -->
         <!-- ================================= -->
 
-        <div class="ficha-body">
+        <div class="ficha-body" tabindex="0" role="region" aria-label="Contenido de la ficha">
 
           <!-- ============================== -->
           <!-- 01. IDENTIFICACIÓN -->
@@ -842,6 +833,11 @@ onUnmounted(() => {
 
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.ficha-body:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
 }
 
 .contenido-seccion {

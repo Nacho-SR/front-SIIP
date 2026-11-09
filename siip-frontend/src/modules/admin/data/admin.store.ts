@@ -1,4 +1,10 @@
 import { reactive } from 'vue';
+import catalogo from '../../consulta/data/indicadores-siip.json';
+
+export function familiasDeAgrupacion(agrupacion: string): string[] {
+  return [...new Set(catalogo.filter(indicador => indicador.agrupacion === agrupacion)
+    .map(indicador => indicador.familia))].sort((a, b) => a.localeCompare(b, 'es'));
+}
 
 export interface IndicadorAdmin {
   id: string;
@@ -75,6 +81,10 @@ export function guardarIndicador(
     );
   }
 
+  if (!familiasDeAgrupacion(normalizados.agrupacion ?? '').includes(normalizados.familia ?? '')) {
+    throw new Error('Selecciona una familia que pertenezca a la agrupación temática.');
+  }
+
   const claveDuplicada = adminState.indicadores.some(
     indicador =>
       indicador.campos.clave.toLowerCase() ===
@@ -89,13 +99,14 @@ export function guardarIndicador(
   }
 
   const fecha = new Date().toISOString();
+  const actualizados = [...adminState.indicadores];
 
   // -------------------------------------------------
   // EDITAR INDICADOR
   // -------------------------------------------------
 
   if (id) {
-    const indice = adminState.indicadores.findIndex(
+    const indice = actualizados.findIndex(
       indicador => indicador.id === id
     );
 
@@ -105,9 +116,9 @@ export function guardarIndicador(
       );
     }
 
-    const actual = adminState.indicadores[indice];
+    const actual = actualizados[indice];
 
-    adminState.indicadores[indice] = {
+    actualizados[indice] = {
       ...actual,
       campos: normalizados,
       actualizadoEn: fecha
@@ -118,7 +129,7 @@ export function guardarIndicador(
   // -------------------------------------------------
 
   } else {
-    adminState.indicadores.unshift({
+    actualizados.unshift({
       id: crypto.randomUUID(),
       campos: normalizados,
       creadoEn: fecha,
@@ -129,8 +140,9 @@ export function guardarIndicador(
   // Persistir los datos.
   guardar(
     INDICADORES_KEY,
-    adminState.indicadores
+    actualizados
   );
+  adminState.indicadores = actualizados;
 }
 
 // =====================================================

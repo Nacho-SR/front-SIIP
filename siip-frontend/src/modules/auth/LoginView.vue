@@ -197,8 +197,8 @@ const handleLogin = async () => {
           </button>
 
           <p class="demo-note">
-            Entorno de demostración.
-            La autenticación real se integrará posteriormente.
+            Acceso con cuenta registrada.
+            Las funciones operativas están en vista previa.
           </p>
         </form>
 

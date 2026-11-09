@@ -1,9 +1,10 @@
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../store/auth.store';
+import { useDialogFocus } from '../core/useDialogFocus';
 
 const router = useRouter();
 const route = useRoute();
@@ -12,6 +13,9 @@ const authStore = useAuthStore();
 // Menú expandido en escritorio, cerrado en móvil.
 const menuContraido = ref(false);
 const menuMovilAbierto = ref(false);
+const esMovil = ref(false);
+const barraLateral = ref<HTMLElement | null>(null);
+const dialogoMovil = computed(() => esMovil.value && menuMovilAbierto.value);
 const isLoggingOut = ref(false);
 const logoutError = ref('');
 
@@ -98,6 +102,19 @@ const cerrarMenuMovil = () => {
   menuMovilAbierto.value = false;
 };
 
+useDialogFocus(barraLateral, dialogoMovil, cerrarMenuMovil);
+let mediaMovil: MediaQueryList | null = null;
+function actualizarTamano() {
+  esMovil.value = mediaMovil?.matches ?? false;
+  if (!esMovil.value) cerrarMenuMovil();
+}
+onMounted(() => {
+  mediaMovil = window.matchMedia('(max-width: 850px)');
+  actualizarTamano();
+  mediaMovil.addEventListener('change', actualizarTamano);
+});
+onUnmounted(() => mediaMovil?.removeEventListener('change', actualizarTamano));
+
 const handleLogout = async () => {
   if (isLoggingOut.value) return;
   cerrarMenuMovil();
@@ -141,7 +158,12 @@ watch(
     <!-- BARRA LATERAL -->
     <aside
       id="siip-sidebar"
+      ref="barraLateral"
       class="sidebar"
+      :inert="esMovil && !menuMovilAbierto"
+      :role="dialogoMovil ? 'dialog' : undefined"
+      :aria-modal="dialogoMovil ? true : undefined"
+      tabindex="-1"
       aria-label="Navegación principal"
     >
       <!-- Marca institucional -->
@@ -167,6 +189,7 @@ watch(
       <button
         type="button"
         class="sidebar-toggle"
+        aria-controls="siip-sidebar"
         :aria-label="
           menuContraido
             ? 'Expandir menú lateral'
@@ -237,7 +260,7 @@ watch(
     </aside>
 
     <!-- CONTENIDO PRINCIPAL -->
-    <div class="main-area">
+    <div class="main-area" :inert="dialogoMovil">
       <!-- Barra superior -->
       <header class="topbar">
         <div class="topbar-left">
@@ -281,6 +304,7 @@ watch(
           <button
             type="button"
             class="logout-button"
+            :aria-label="isLoggingOut ? 'Cerrando sesión' : 'Cerrar sesión'"
             :disabled="isLoggingOut"
             @click="handleLogout"
           >

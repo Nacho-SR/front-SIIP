@@ -151,7 +151,7 @@ const porcentajeAgrupacion = (cantidad: number): number => {
         </option>
 
         <option
-          v-for="agrupacion in agrupacionesFiltradas"
+          v-for="agrupacion in agrupacionesTematicas"
           :key="agrupacion.id"
           :value="agrupacion.id"
         >

@@ -9,6 +9,7 @@ import {
 } from 'vue';
 
 import { useRouter } from 'vue-router';
+import { MOTIVO_OPERACION_PENDIENTE } from '../../core/operacion-pendiente';
 
 import {
   obtenerBandeja,
@@ -326,6 +327,7 @@ function etiquetaAccion(estado: string): string {
 
 <template>
   <div class="seguimiento">
+    <p class="nota" role="status">{{ MOTIVO_OPERACION_PENDIENTE }} Los expedientes visibles son datos locales de demostración.</p>
 
     <!-- ====================================== -->
     <!-- ENCABEZADO -->

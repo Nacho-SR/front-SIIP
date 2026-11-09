@@ -2,8 +2,8 @@
 <script setup lang="ts">
 import {
   computed,
-  nextTick,
   onMounted,
+  onUnmounted,
   ref,
   watch
 } from 'vue';
@@ -11,10 +11,7 @@ import {
 import catalogo from '../consulta/data/indicadores-siip.json';
 import configuraciones from './data/campos-captura-siip.json';
 
-import {
-  obtenerExpedientes,
-  reenviarCorreccion
-} from '../review/data/seguimiento.store';
+import { MOTIVO_OPERACION_PENDIENTE, estadoPeriodo, mesMexico } from '../../core/operacion-pendiente';
 
 import type {
   IndicadorCaptura,
@@ -36,7 +33,7 @@ interface Configuracion {
 
 type Vista = 'captura' | 'revision';
 
-const STORAGE_KEY = 'siip-capturas-prototipo-v1';
+const reloj = ref(new Date());
 
 const errorCaptura = ref('');
 
@@ -56,7 +53,7 @@ const familiaSeleccionada = ref('');
 const indicadorSeleccionado = ref('');
 
 // Periodo
-const anio = ref(2026);
+const anio = ref(Number(mesMexico().slice(0, 4)));
 const periodoSeleccionado = ref('');
 
 // Captura
@@ -77,31 +74,19 @@ const tipoMensaje = ref<'exito' | 'error'>('exito');
 // REGISTROS LOCALES
 // ==================================================
 
-function cargarRegistros(): RegistroCaptura[] {
-  try {
-    const guardado = sessionStorage.getItem(STORAGE_KEY);
-
-    const datos: unknown = guardado
-      ? JSON.parse(guardado)
-      : [];
-
-    return Array.isArray(datos)
-      ? datos as RegistroCaptura[]
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-const registros = ref<RegistroCaptura[]>(
-  cargarRegistros()
-);
+// La bandeja propia necesita asignaciones e identidad verificadas por el servidor.
+const registros = ref<RegistroCaptura[]>([]);
 
 function actualizarRegistros() {
-  registros.value = cargarRegistros();
+  registros.value = [];
+  reloj.value = new Date();
 }
+onMounted(() => {
+  actualizarRegistros();
+  window.addEventListener('focus', actualizarRegistros);
+});
+onUnmounted(() => window.removeEventListener('focus', actualizarRegistros));
 
-onMounted(actualizarRegistros);
 
 // ==================================================
 // CATÁLOGO DE INDICADORES
@@ -150,7 +135,7 @@ const campos = computed(() =>
 // PERIODOS
 // ==================================================
 
-const periodosDisponibles = computed(() => {
+const periodosDelEjercicio = computed(() => {
   const frecuencia = indicadorActivo.value?.frecuencia
     .trim()
     .toLowerCase();
@@ -204,6 +189,15 @@ const periodosDisponibles = computed(() => {
   return [];
 });
 
+const periodosDisponibles = computed(() => periodosDelEjercicio.value.map(periodo => ({
+  ...periodo,
+  estado: estadoPeriodo(indicadorActivo.value?.frecuencia ?? '', periodo.valor, reloj.value),
+})));
+
+function etiquetaEstado(estado: string) {
+  return { abierto: 'En curso', cerrado: 'Cerrado', futuro: 'Futuro', invalido: 'No válido' }[estado] ?? 'No válido';
+}
+
 // ==================================================
 // SELECTORES DEPENDIENTES
 // ==================================================
@@ -247,185 +241,12 @@ function avisar(
 // ==================================================
 
 function seleccionarArchivo(evento: Event) {
-  const input = evento.target as HTMLInputElement;
-  const archivo = input.files?.[0] ?? null;
-
-  const pdf =
-    archivo &&
-    archivo.name.toLowerCase().endsWith('.pdf') &&
-    (
-      !archivo.type ||
-      archivo.type === 'application/pdf'
-    ) &&
-    archivo.size <= 10 * 1024 * 1024;
-
-  if (archivo && !pdf) {
-    archivoEvidencia.value = null;
-    input.value = '';
-
-    avisar(
-      'Selecciona un archivo PDF válido de máximo 10 MB.',
-      'error'
-    );
-    return;
-  }
-
-  archivoEvidencia.value = archivo;
+  archivoEvidencia.value = null;
+  (evento.target as HTMLInputElement).value = '';
+  avisar(MOTIVO_OPERACION_PENDIENTE, 'error');
 }
 
-// ==================================================
-// VALIDACIÓN DE VARIABLES
-// ==================================================
 
-
-const entradaValida = computed(() =>
-  campos.value.length > 0 &&
-  campos.value.every(campo => {
-    const valor = variables.value[campo.clave];
-
-    const texto = String(valor ?? '').trim();
-
-    return (
-      texto !== '' &&
-      Number.isFinite(Number(texto))
-    );
-  })
-);
-
-
-// ==================================================
-// CÁLCULO AUTOMÁTICO DEL INDICADOR
-// ==================================================
-
-const resultado = computed<{
-  valor: number | null;
-  error: string;
-}>(() => {
-  const conf = configuracion.value;
-
-  if (!conf || !entradaValida.value) {
-    return {
-      valor: null,
-      error:
-        'Completa las variables para calcular el resultado.'
-    };
-  }
-
-  const v = Object.fromEntries(
-    campos.value.map(campo => [
-      campo.clave,
-      Number(variables.value[campo.clave])
-    ])
-  ) as Record<string, number>;
-
-  const valores = campos.value.map(campo =>
-    v[campo.clave]
-  );
-
-  let calculado: number | null = null;
-
-  // Valor directo
-  if (conf.tipo === 'direct') {
-    calculado = valores[0] ?? null;
-  }
-
-  // Suma
-  else if (conf.tipo === 'sum') {
-    calculado = valores.reduce(
-      (total, actual) => total + actual,
-      0
-    );
-  }
-
-  // Cocientes, porcentajes, tasas y promedios
-  else if (
-    [
-      'ratio',
-      'ratio100',
-      'ratio1000',
-      'ratio100000',
-      'average'
-    ].includes(conf.tipo)
-  ) {
-    const numerador = valores[0];
-    const denominador = valores[1];
-
-    if (!denominador) {
-      return {
-        valor: null,
-        error:
-          'El denominador debe ser distinto de cero.'
-      };
-    }
-
-    const factores: Record<string, number> = {
-      ratio: 1,
-      average: 1,
-      ratio100: 100,
-      ratio1000: 1000,
-      ratio100000: 100000
-    };
-
-    calculado =
-      (numerador / denominador) *
-      factores[conf.tipo];
-  }
-
-  // Porcentaje de pérdidas
-  else if (conf.tipo === 'loss_pct') {
-    const producido = valores[0];
-    const facturado = valores[1];
-
-    if (!producido) {
-      return {
-        valor: null,
-        error:
-          'El volumen producido debe ser distinto de cero.'
-      };
-    }
-
-    calculado =
-      ((producido - facturado) / producido) * 100;
-  }
-
-  // Variación porcentual
-  else if (conf.tipo === 'variation') {
-    const actual = conf.actual
-      ? v[conf.actual]
-      : valores[0];
-
-    const anterior = conf.anterior
-      ? v[conf.anterior]
-      : valores[1];
-
-    if (!anterior) {
-      return {
-        valor: null,
-        error:
-          'El valor del periodo anterior debe ser distinto de cero.'
-      };
-    }
-
-    calculado =
-      ((actual - anterior) / anterior) * 100;
-  }
-
-  if (
-    calculado !== null &&
-    Number.isFinite(calculado)
-  ) {
-    return {
-      valor: calculado,
-      error: ''
-    };
-  }
-
-  return {
-    valor: null,
-    error:
-      'No se pudo calcular. Revisa la metodología.'
-  };
-});
 
 // ==================================================
 // BANDEJA DE REVISIÓN
@@ -462,7 +283,7 @@ function limpiarFormulario() {
   familiaSeleccionada.value = '';
   indicadorSeleccionado.value = '';
 
-  anio.value = 2026;
+  anio.value = Number(mesMexico().slice(0, 4));
   periodoSeleccionado.value = '';
 
   variables.value = {};
@@ -482,106 +303,8 @@ function limpiarFormulario() {
 // CORREGIR EXPEDIENTE OBSERVADO
 // ==================================================
 
-async function corregirObservado(
-  registro: RegistroCaptura
-) {
-  const expediente = obtenerExpedientes().find(
-    item => item.id === registro.id
-  );
-
-  if (
-    !expediente ||
-    expediente.estado !== 'Observada'
-  ) {
-    actualizarRegistros();
-
-    avisar(
-      'Este expediente ya no está observado.',
-      'error'
-    );
-
-    return;
-  }
-
-  const indicador = indicadores.find(
-    item =>
-      item.clave === expediente.indicadorClave
-  );
-
-  if (!indicador) {
-    avisar(
-      'Indicador no encontrado en el catálogo.',
-      'error'
-    );
-    return;
-  }
-
-  vista.value = 'captura';
-
-  agrupacionSeleccionada.value =
-    indicador.agrupacion;
-
-  await nextTick();
-
-  familiaSeleccionada.value =
-    indicador.familia;
-
-  await nextTick();
-
-  indicadorSeleccionado.value =
-    indicador.clave;
-
-  await nextTick();
-
-  anio.value = Number(
-    expediente.periodo.slice(0, 4)
-  );
-
-  await nextTick();
-
-  periodoSeleccionado.value =
-    expediente.periodo;
-
-  const valores =
-    expediente.variablesCaptura ?? {};
-
-  variables.value = Object.fromEntries(
-    campos.value.map(campo => [
-      campo.clave,
-      valores[campo.clave] === undefined
-        ? ''
-        : String(valores[campo.clave])
-    ])
-  );
-
-  descripcion.value =
-    expediente.descripcion;
-
-  correccionId.value =
-    expediente.id;
-
-  observacionPendiente.value =
-    [...(expediente.historial ?? [])]
-      .reverse()
-      .find(
-        evento => evento.accion === 'observar'
-      )?.comentario ??
-    'Sin detalle de observación.';
-
-  archivoEvidencia.value = null;
-
-  if (archivoInput.value) {
-    archivoInput.value.value = '';
-  }
-
-  avisar(
-    'Expediente recuperado. Verifica las variables y selecciona nuevamente el PDF.'
-  );
-
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
-  });
+function corregirObservado(_registro: RegistroCaptura) {
+  avisar(MOTIVO_OPERACION_PENDIENTE, 'error');
 }
 
 // ==================================================
@@ -590,223 +313,8 @@ async function corregirObservado(
 
 
 function guardarCaptura() {
-  mensaje.value = '';
-  errorCaptura.value = '';
-
-  const fallar = (texto: string) => {
-    errorCaptura.value = texto;
-    avisar(texto, 'error');
-  };
-
-  const indicador = indicadorActivo.value;
-
-  // 1. INDICADOR
-  if (!indicador) {
-    return fallar('Debes seleccionar un indicador.');
-  }
-
-  // 2. EJERCICIO
-  if (
-    !Number.isInteger(anio.value) ||
-    anio.value < 2000 ||
-    anio.value > 2100
-  ) {
-    return fallar('Selecciona un ejercicio válido.');
-  }
-
-  // 3. PERIODO
-  if (
-    !periodosDisponibles.value.some(
-      p => p.valor === periodoSeleccionado.value
-    )
-  ) {
-    return fallar(
-      'Debes seleccionar un periodo de captura.'
-    );
-  }
-
-  // 4. CONFIGURACIÓN DEL ALGORITMO
-  if (!configuracion.value || campos.value.length === 0) {
-    return fallar(
-      'Este indicador todavía no tiene configurados sus campos de captura.'
-    );
-  }
-
-  // 5. VARIABLES OBLIGATORIAS
-  for (const campo of campos.value) {
-    const valorOriginal = variables.value[campo.clave];
-
-  // Convertir de forma segura a texto.
-  const texto = String(valorOriginal ?? '').trim();
-
-  if (texto === '') {
-    return fallar(
-      `Debes ingresar el dato correspondiente a ${campo.clave}.`
-    );
-  }
-
-  const numero = Number(texto);
-
-  if (!Number.isFinite(numero)) {
-    return fallar(
-      `El campo ${campo.clave} debe contener un número válido.`
-    );
-  }
-}
-
-  // 6. CÁLCULO INTERNO
-  // No se muestra al capturista.
-  if (resultado.value.valor === null) {
-    return fallar(
-      resultado.value.error ||
-      'No fue posible procesar las variables. Revisa los datos ingresados.'
-    );
-  }
-
-  // 7. EVIDENCIA PDF
-  if (!archivoEvidencia.value) {
-    return fallar(
-      'Debes adjuntar una evidencia documental en PDF.'
-    );
-  }
-
-  const variablesNumericas = Object.fromEntries(
-    campos.value.map(campo => [
-      campo.clave,
-      Number(variables.value[campo.clave])
-    ])
-  ) as Record<string, number>;
-
-  // 8. CORRECCIÓN DE EXPEDIENTE OBSERVADO
-  if (correccionId.value) {
-    try {
-      const actual = obtenerExpedientes().find(
-        item => item.id === correccionId.value
-      );
-
-      if (
-        !actual ||
-        actual.estado !== 'Observada'
-      ) {
-        throw new Error(
-          'El expediente ya no está disponible para corrección.'
-        );
-      }
-
-      if (
-        actual.indicadorClave !== indicador.clave ||
-        actual.periodo !== periodoSeleccionado.value
-      ) {
-        throw new Error(
-          'No se permite modificar el indicador ni el periodo original.'
-        );
-      }
-
-      reenviarCorreccion(correccionId.value, {
-        valor: resultado.value.valor,
-        variablesCaptura: variablesNumericas,
-        descripcion: descripcion.value,
-        evidenciaNombre: archivoEvidencia.value.name
-      });
-
-      actualizarRegistros();
-      limpiarFormulario();
-
-      vista.value = 'revision';
-
-      avisar(
-        'Corrección reenviada correctamente a Seguimiento.'
-      );
-    } catch (error) {
-      fallar(
-        error instanceof Error
-          ? error.message
-          : 'No se pudo reenviar la corrección.'
-      );
-    }
-
-    return;
-  }
-
-  // 9. COMPROBAR DUPLICADOS
-  const existentes = cargarRegistros();
-
-  const duplicado = existentes.some(
-    item =>
-      item.indicadorClave === indicador.clave &&
-      item.periodo === periodoSeleccionado.value &&
-      item.estado !== 'Borrador'
-  );
-
-  if (duplicado) {
-    return fallar(
-      'Ya existe un reporte de este indicador y periodo. Revisa su estado en la pestaña Revisión.'
-    );
-  }
-
-  // 10. CREAR EXPEDIENTE
-  const nuevo: RegistroCaptura = {
-    id: crypto.randomUUID(),
-
-    indicadorClave: indicador.clave,
-    indicadorNombre: indicador.nombre,
-    agrupacion: indicador.agrupacion,
-
-    periodo: periodoSeleccionado.value,
-    frecuencia: indicador.frecuencia,
-
-    valor: resultado.value.valor,
-    unidad: indicador.unidad,
-
-    variablesCaptura: variablesNumericas,
-
-    descripcion: descripcion.value.trim(),
-    evidenciaNombre: archivoEvidencia.value.name,
-
-    estado: 'En revisión',
-    actualizadoEn: new Date().toISOString()
-  };
-
-  // 11. GUARDAR EN SESSIONSTORAGE
-  try {
-    const actualizados = [
-      nuevo,
-      ...existentes
-    ];
-
-    sessionStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(actualizados)
-    );
-
-    // Comprobar que realmente se guardó.
-    const verificado = cargarRegistros().some(
-      item => item.id === nuevo.id
-    );
-
-    if (!verificado) {
-      throw new Error(
-        'El navegador no confirmó el almacenamiento del expediente.'
-      );
-    }
-
-    actualizarRegistros();
-    limpiarFormulario();
-
-    // Abrir automáticamente la bandeja.
-    vista.value = 'revision';
-
-    avisar(
-      'Reporte guardado correctamente y enviado a revisión.'
-    );
-
-  } catch (error) {
-    fallar(
-      error instanceof Error
-        ? error.message
-        : 'No se pudo guardar el reporte.'
-    );
-  }
+  errorCaptura.value = MOTIVO_OPERACION_PENDIENTE;
+  avisar(MOTIVO_OPERACION_PENDIENTE, 'error');
 }
 
 // ==================================================
@@ -840,8 +348,7 @@ function formatearFecha(fecha: string) {
         <h1>Captura de información</h1>
 
         <p>
-          Registro de variables del algoritmo,
-          cálculo preliminar y seguimiento de expedientes.
+          Vista previa de campos y calendario municipal. Sin registro de envíos.
         </p>
       </div>
 
@@ -885,19 +392,25 @@ function formatearFecha(fecha: string) {
                 v-for="periodo in periodosDisponibles"
                 :key="periodo.valor"
                 :value="periodo.valor"
+                :disabled="periodo.estado !== 'abierto'"
               >
-                {{ periodo.etiqueta }}
+                {{ periodo.etiqueta }} · {{ etiquetaEstado(periodo.estado) }}
               </option>
             </select>
           </label>
         </div>
 
         <small>
-          La disponibilidad depende de la frecuencia
-          del indicador.
+          Calendario de referencia en America/Mexico_City; no confirma alta ni asignación.
         </small>
       </div>
     </header>
+
+    <section class="panel" role="status">
+      <strong>{{ MOTIVO_OPERACION_PENDIENTE }}</strong>
+      <p>El catálogo se muestra para revisar el diseño. No representa los indicadores ni las variables asignados a tu dependencia.</p>
+      <p>El cierre incluye el último día del periodo. Después solo se podrá justificar con PDF, sin completar datos ni quitar el gris. Su aplicación corresponde al servidor.</p>
+    </section>
 
     <!-- NAVEGACIÓN CAPTURA / REVISIÓN -->
     <nav
@@ -974,8 +487,7 @@ function formatearFecha(fecha: string) {
               <h2>Seleccionar indicador</h2>
 
               <p>
-                Elige agrupación, familia e indicador
-                del catálogo oficial.
+                Explora agrupación, familia e indicador del catálogo de referencia.
               </p>
             </div>
 
@@ -1107,9 +619,7 @@ function formatearFecha(fecha: string) {
               </h2>
 
               <p>
-                Completa las variables que correspondan
-                al algoritmo. El resultado se calcula
-                automáticamente.
+                Ejemplo de campos metodológicos. La conciliación de fórmulas y las asignaciones siguen pendientes; no se ejecuta un cálculo operativo.
               </p>
             </div>
 
@@ -1139,6 +649,7 @@ function formatearFecha(fecha: string) {
               novalidate
               @submit.prevent="guardarCaptura"
             >
+              <fieldset disabled class="campos-previa">
 
               <!-- OBSERVACIÓN PENDIENTE -->
               <div
@@ -1202,12 +713,8 @@ function formatearFecha(fecha: string) {
                 </strong>
 
                 <p>
-                  Ingresa los datos correspondientes al indicador
-                  y adjunta la evidencia documental.
-
-                  El sistema procesará la información y
-                  la enviará al área de Seguimiento para
-                  su revisión.
+                  Los campos se muestran como referencia. Los envíos por dependencia,
+                  la evidencia y las correcciones se habilitarán con autorización del servidor.
                 </p>
               </div>
 
@@ -1240,8 +747,7 @@ function formatearFecha(fecha: string) {
                   'No has seleccionado un PDF'
                 }}
 
-                · Máximo 10 MB. El PDF no se guarda
-                en esta demo.
+                · Carga documental no habilitada. Límites de PDF pendientes de definición.
               </div>
 
               
@@ -1268,6 +774,8 @@ function formatearFecha(fecha: string) {
                 <button
                   type="submit"
                   class="btn-principal"
+                  disabled
+                  :title="MOTIVO_OPERACION_PENDIENTE"
                 >
                   {{
                     correccionId
@@ -1276,7 +784,7 @@ function formatearFecha(fecha: string) {
                   }}
                 </button>
               </div>
-
+              </fieldset>
             </form>
           </section>
         </main>
@@ -1303,9 +811,9 @@ function formatearFecha(fecha: string) {
           </h2>
 
           <p>
-            Consulta el estado de los expedientes.
-            Las decisiones de revisión y validación
-            pertenecen al rol Seguimiento.
+            La bandeja propia requiere asignaciones verificadas por dependencia.
+            No se muestran los expedientes del almacenamiento compartido de la demostración.
+            Revisar y validar corresponden exclusivamente al rol Revisión.
           </p>
         </div>
 
@@ -1408,6 +916,8 @@ function formatearFecha(fecha: string) {
                   v-if="registro.estado === 'Observada'"
                   type="button"
                   class="link-corregir"
+                  disabled
+                  :title="MOTIVO_OPERACION_PENDIENTE"
                   @click="corregirObservado(registro)"
                 >
                   Corregir
@@ -1422,7 +932,7 @@ function formatearFecha(fecha: string) {
                 colspan="6"
                 class="vacio-tabla"
               >
-                No hay envíos en esta sesión.
+                La consulta autorizada de tus envíos todavía no está habilitada.
               </td>
             </tr>
           </tbody>
@@ -1442,6 +952,15 @@ function formatearFecha(fecha: string) {
 </template>
 
 <style scoped>
+.campos-previa {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .captura {
   --wine: #70273b;
   --deep: #431c2a;

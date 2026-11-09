@@ -3,6 +3,7 @@ import type {
   RegistroCaptura
 } from '../../capture/data/captura.types';
 import { proyectarResultadoConsulta, type PublicacionConsulta } from '../../consulta/data/consulta';
+import { MOTIVO_OPERACION_PENDIENTE } from '../../../core/operacion-pendiente';
 
 const STORAGE_KEY = 'siip-capturas-prototipo-v1';
 
@@ -81,90 +82,15 @@ export function buscarExpediente(
   );
 }
 
-// Transiciones permitidas
-const transiciones: Record<
-  AccionSeguimiento,
-  {
-    desde: EstadoSeguimiento[];
-    hacia: EstadoSeguimiento;
-  }
-> = {
-  revisar: {
-    desde: ['En revisión'],
-    hacia: 'Revisada'
-  },
-  observar: {
-    desde: ['En revisión', 'Revisada'],
-    hacia: 'Observada'
-  },
-  validar: {
-    desde: ['Revisada'],
-    hacia: 'Validada'
-  }
-};
-
-// Revisar, observar o validar un expediente
+// Las escrituras locales no representan envíos versionados ni auditoría del servidor.
 export function actualizarExpediente(
-  id: string,
-  accion: AccionSeguimiento,
-  comentario: string
+  _id: string,
+  _accion: AccionSeguimiento,
+  _comentario: string
 ): ExpedienteSeguimiento {
-  const expedientes = obtenerExpedientes();
-
-  const indice = expedientes.findIndex(
-    expediente => expediente.id === id
-  );
-
-  if (indice === -1) {
-    throw new Error('No se encontró el expediente.');
-  }
-
-  const actual = expedientes[indice];
-  const regla = transiciones[accion];
-
-  if (!regla.desde.includes(actual.estado)) {
-    throw new Error(
-      `No es posible ${accion} un expediente con estado "${actual.estado}".`
-    );
-  }
-
-  const observacion = comentario.trim();
-
-  if (accion === 'observar' && !observacion) {
-    throw new Error(
-      'Debes escribir una observación para continuar.'
-    );
-  }
-
-  const fecha = new Date().toISOString();
-
-  const actualizado: ExpedienteSeguimiento = {
-    ...actual,
-    estado: regla.hacia,
-    actualizadoEn: fecha,
-    historial: [
-      ...(actual.historial ?? []),
-      {
-        accion,
-        estadoAnterior: actual.estado,
-        estadoNuevo: regla.hacia,
-        comentario: observacion,
-        fecha
-      }
-    ]
-  };
-
-  expedientes[indice] = actualizado;
-
-  sessionStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(expedientes)
-  );
-
-  return actualizado;
+  throw new Error(MOTIVO_OPERACION_PENDIENTE);
 }
 
-// Datos que pueden modificarse al corregir
 export interface DatosCorreccion {
   valor: number;
   descripcion: string;
@@ -172,76 +98,9 @@ export interface DatosCorreccion {
   variablesCaptura?: Record<string, number>;
 }
 
-// Reenviar expediente observado
 export function reenviarCorreccion(
-  id: string,
-  datos: DatosCorreccion
+  _id: string,
+  _datos: DatosCorreccion
 ): ExpedienteSeguimiento {
-  const expedientes = obtenerExpedientes();
-
-  const indice = expedientes.findIndex(
-    expediente => expediente.id === id
-  );
-
-  if (indice === -1) {
-    throw new Error(
-      'El expediente ya no existe en esta sesión.'
-    );
-  }
-
-  const actual = expedientes[indice];
-
-  if (actual.estado !== 'Observada') {
-    throw new Error(
-      'Solo se pueden corregir expedientes observados.'
-    );
-  }
-
-  if (
-    !Number.isFinite(datos.valor) ||
-    !datos.evidenciaNombre.trim()
-  ) {
-    throw new Error(
-      'Es obligatorio indicar un valor y seleccionar un nuevo PDF.'
-    );
-  }
-
-  const fecha = new Date().toISOString();
-
-  const actualizado: ExpedienteSeguimiento = {
-    ...actual,
-
-    valor: datos.valor,
-    descripcion: datos.descripcion.trim(),
-    evidenciaNombre: datos.evidenciaNombre,
-
-    // Conservar las variables del cálculo
-    variablesCaptura:
-      datos.variablesCaptura ?? actual.variablesCaptura,
-
-    estado: 'En revisión',
-    actualizadoEn: fecha,
-
-    // Mantener historial anterior y agregar corrección
-    historial: [
-      ...(actual.historial ?? []),
-      {
-        accion: 'corregir',
-        estadoAnterior: 'Observada',
-        estadoNuevo: 'En revisión',
-        comentario:
-          'Corrección reenviada por Captura (simulación local).',
-        fecha
-      }
-    ]
-  };
-
-  expedientes[indice] = actualizado;
-
-  sessionStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(expedientes)
-  );
-
-  return actualizado;
+  throw new Error(MOTIVO_OPERACION_PENDIENTE);
 }

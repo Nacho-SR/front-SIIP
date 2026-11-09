@@ -4,7 +4,8 @@ import {
   computed,
   onMounted,
   reactive,
-  ref
+  ref,
+  watch
 } from 'vue';
 
 import {
@@ -18,7 +19,8 @@ import {
   adminState,
   guardarIndicador,
   obtenerIndicadorAdmin,
-  refrescarAdmin
+  refrescarAdmin,
+  familiasDeAgrupacion
 } from './data/admin.store';
 
 type Seccion =
@@ -196,8 +198,7 @@ const grupos: GrupoCampos[] = [
         etiqueta: 'Familia',
         columna: 12,
         tipo: 'select',
-        requerido: true,
-        opciones: opcionesUnicas('familia')
+        requerido: true
       }
     ]
   },
@@ -418,6 +419,11 @@ const formulario = reactive<Record<string, string>>({
   ...datosIniciales
 });
 
+const familiasDisponibles = computed(() => familiasDeAgrupacion(formulario.agrupacion ?? ''));
+watch(() => formulario.agrupacion, () => {
+  if (!familiasDisponibles.value.includes(formulario.familia ?? '')) formulario.familia = '';
+}, { flush: 'sync' });
+
 // ======================================================
 // INICIALIZAR NUEVO O EDICIÓN
 // ======================================================
@@ -531,6 +537,12 @@ function validarFormulario(): boolean {
     return false;
   }
 
+  if (!familiasDisponibles.value.includes(formulario.familia ?? '')) {
+    seccionActiva.value = 'identificacion';
+    error.value = 'Selecciona una familia que pertenezca a la agrupación temática.';
+    return false;
+  }
+
   return true;
 }
 
@@ -551,13 +563,11 @@ function guardar() {
     );
 
     mensaje.value = idEdicion.value
-      ? 'Indicador actualizado correctamente.'
-      : 'Nuevo indicador registrado correctamente.';
+      ? 'Ficha de demostración actualizada; el indicador no está activado.'
+      : 'Ficha de demostración guardada; el indicador no está activado.';
 
-    // Regresar al módulo Administrador.
-    router.push({
-      name: 'Administrador'
-    });
+    router.push({ name: 'Administrador' });
+
   } catch (e) {
     error.value = e instanceof Error
       ? e.message
@@ -594,8 +604,8 @@ function volver() {
       <h1>
         {{
           idEdicion
-            ? 'Editar indicador'
-            : 'Registrar nuevo indicador'
+            ? 'Editar ficha de demostración'
+            : 'Crear ficha de demostración'
         }}
       </h1>
 
@@ -604,6 +614,14 @@ function volver() {
         a las columnas del Anexo 3.4 del SIIP.
       </p>
     </header>
+
+    <p class="nota" role="status">
+      Esta ficha se conserva solo como demostración en este navegador. No activa un indicador
+      ni lo incorpora al catálogo operativo de Consulta, Captura o Estadísticas.
+      La metodología, variables, asignaciones y vigencias necesitan validación antes de habilitarse.
+    </p>
+
+    <p v-if="mensaje" class="nota" role="status">{{ mensaje }}</p>
 
     <!-- PROGRESO -->
     <section class="progreso-panel">
@@ -724,13 +742,14 @@ function volver() {
               <select
                 v-else-if="campo.tipo === 'select'"
                 v-model="formulario[campo.clave]"
+                :disabled="campo.clave === 'familia' && !formulario.agrupacion"
               >
                 <option value="">
                   Selecciona una opción
                 </option>
 
                 <option
-                  v-for="opcion in campo.opciones"
+                  v-for="opcion in (campo.clave === 'familia' ? familiasDisponibles : campo.opciones)"
                   :key="opcion"
                   :value="opcion"
                 >
@@ -778,8 +797,8 @@ function volver() {
             guardando
               ? 'Guardando...'
               : idEdicion
-                ? 'Guardar cambios'
-                : 'Registrar indicador'
+                ? 'Guardar cambios de la ficha'
+                : 'Guardar ficha de demostración'
           }}
         </button>
       </footer>

@@ -1,6 +1,6 @@
 # Catálogo de endpoints del SIIP
 
-Versión 0.1 · 26/10/2026 · API propuesta, sin backend implementado. Base relativa `/api/v1`. Se conserva la carpeta real `Documentacion`; las rutas HTTP son independientes de esa capitalización.
+Versión 0.1 · 26/10/2026 · API de negocio propuesta; autenticación y altas iniciales implementadas en código. Base relativa `/api/v1`. Se conserva la carpeta real `Documentacion`; las rutas HTTP son independientes de esa capitalización.
 
 P0: primer recorrido con configuración conciliada de una dependencia. P1: observaciones/corrección, reapertura, evaluación temática y avisos. P2: administración y reportes después de cerrar contratos específicos; diferidos no significa fuera de MVP.
 
@@ -12,7 +12,7 @@ Todos los contratos son borradores. `T` = propuesta técnica; `C` = contrato con
 |---|---|---|---|---|---|
 | GET | /auth/sesion | Bootstrap CSRF y usuario actual o null. | Público técnico / sesión propia | P0 | T; transporte por revisar |
 | POST | /auth/sesion | Autenticar y rotar sesión/CSRF. | Público técnico con CSRF/origen válido | P0 | T |
-| DELETE | /auth/sesion | Invalidar sesión propia. | Tres roles | P0 | T |
+| DELETE | /auth/sesion | Invalidar sesión propia. | Cuatro roles | P0 | T |
 
 Cookie opaca HttpOnly/Secure/SameSite y token CSRF son la alternativa propuesta. No se añaden JWT, refresh, registro público o CRUD de sesiones. El almacén técnico de sesiones depende del framework/hosting y no es una entidad de negocio confirmada.
 
@@ -20,13 +20,13 @@ Cookie opaca HttpOnly/Secure/SameSite y token CSRF son la alternativa propuesta.
 
 | Método | Ruta | Propósito | Roles | Prioridad | Estado |
 |---|---|---|---|---|---|
-| GET | /indicadores | Listar catálogo visible; Captura solo asignados. | Tres roles | P0 | T; alcance por DEC-010 |
-| GET | /indicadores/{indicadorId} | Ficha y entradas visibles del indicador. | Tres roles | P0 | T |
-| GET | /indicadores/{indicadorId}/periodos | Calendario conocido o configuración pendiente. | Tres roles | P0 | C: P-07/P-12 |
+| GET | /indicadores | Listar catálogo visible; Captura solo asignados. | Cuatro roles | P0 | T; alcance por DEC-010 |
+| GET | /indicadores/{indicadorId} | Ficha visible; Consulta sin entradas operativas. | Cuatro roles | P0 | T |
+| GET | /indicadores/{indicadorId}/periodos | Calendario y cumplimiento al cierre, o configuración pendiente. | Cuatro roles | P0 | C: P-07/P-12 |
 | POST | /indicadores/{indicadorId}/capturas | Enviar todos los valores y PDF de su ámbito. | Captura | P0 | C: PROP-BD-003, asignaciones, calendario y PDF |
 | GET | /capturas/{capturaId} | Consultar envío, valores y evidencia autorizados. | Tres roles | P0 | T; segregación por dependencia |
 | POST | /capturas/{capturaId}/correcciones | Nuevo envío completo y respuestas a observaciones. | Captura | P1 | C: unidad de envío / PDF |
-| GET | /evidencias/{evidenciaId}/descarga | Entregar PDF tras autorización por objeto. | Tres roles | P0 | T; streaming propuesto / proveedor pendiente |
+| GET | /evidencias/{evidenciaId}/descarga | Entregar PDF tras autorización por objeto. | Tres roles | P0 | T; streaming propuesto / R2 seleccionado DEC-041 |
 
 ## Revisión, validación y reapertura
 
@@ -44,8 +44,8 @@ Cookie opaca HttpOnly/Secure/SameSite y token CSRF son la alternativa propuesta.
 
 | Método | Ruta | Propósito | Roles | Prioridad | Estado |
 |---|---|---|---|---|---|
-| GET | /indicadores/{indicadorId}/resultados | Historia con la última publicación actual por intervalo. | Tres roles, alcance autorizado | P0 | T; DEC-011/016/022 |
-| GET | /agrupaciones/{agrupacionId}/evaluacion | Corte mensual, fuentes y evaluación sin arrastre. | Revisión, Administrador | P1 | C: P-07/10/12/13; sin acceso global de Captura |
+| GET | /indicadores/{indicadorId}/resultados | Historia con la última publicación actual por intervalo. | Cuatro roles, alcance autorizado | P0 | T; DEC-011/016/022 |
+| GET | /agrupaciones/{agrupacionId}/evaluacion | Corte mensual, fuentes y evaluación sin arrastre. | Revisión, Administrador, Consulta | P1 | C: P-07/10/12/13; sin acceso global de Captura |
 | GET | /notificaciones | Avisos del destinatario autenticado. | Tres roles | P1 | C: bandeja interna y P-14 |
 | POST | /notificaciones/{notificacionId}/lectura | Marcar como leída una notificación propia. | Tres roles | P1 | C: P-14; repetición devuelve el mismo estado |
 
@@ -53,7 +53,7 @@ Cookie opaca HttpOnly/Secure/SameSite y token CSRF son la alternativa propuesta.
 
 | Método | Ruta | Propósito | Acceso | Estado |
 |---|---|---|---|---|
-| POST | /administracion/usuarios | Crear Captura o Revisión con dependencia activa obligatoria; contraseña Argon2id y alta auditada. | Administrador con sesión, Origin y CSRF | Implementado en código/UI; preparar SQL 001/002/003 y configurar BD. |
+| POST | /administracion/usuarios | Crear Captura/Revisión con dependencia activa o Consulta sin dependencia; contraseña Argon2id y alta auditada. | Administrador con sesión, Origin y CSRF | Implementado en código/UI; preparar SQL 001/002/003/004 y configurar BD. |
 | GET | /administracion/dependencias | Catálogo completo de dependencias activas para el selector de altas, ordenado por nombre e ID; array sin paginación. | Administrador con sesión | Implementado; no concede acceso a otros roles. |
 | POST | /administracion/dependencias | Registrar dependencia para asignar usuarios de Captura o Revisión. | Administrador con sesión, Origin y CSRF | Implementado en código/UI; alta y auditoría atómicas. |
 
@@ -101,3 +101,11 @@ La parte `datos`, con Content-Type application/json, contiene:
 Se adjuntan los PDF reales en `evidencias`; no cadenas de URL ni un archivo falso de ejemplo. Respuesta 201: un CapturaDetalle con IDs asignados, estado en_revision y evidencia. Después Revisión envía `{"observaciones_resueltas_ids": []}` a la acción revision. Validación posterior: `{"capturas_revisadas_ids": ["101"]}`. La respuesta contiene el resultado calculado y publicado, nunca suministrado por cliente. Las correspondencias de datos de ejemplo están en [api/openapi.yaml](api/openapi.yaml).
 
 Ver [flujos](flujos-negocio.md), [permisos](matriz-permisos.md) e [impacto sobre el modelo](impacto-api-modelo-datos.md).
+
+## Ajustes del 06/11/2026
+
+DEC-038: Consulta no se agrega a los permisos de expedientes, capturas, eventos o descargas PDF privadas. Las menciones «Tres roles» de esos recursos se refieren exclusivamente a Captura/Revisión/Administrador, con sus restricciones previas. Los reportes y avisos de Consulta requieren definición de alcance.
+
+DEC-039: el servidor deberá rechazar nuevos datos después del cierre, incluso con formulario abierto previamente. La revisión de envíos completos continúa. Se requieren contratos nuevos para abrir y adjuntar una justificación de incumplimiento por indicador/periodo, aun sin captura previa. Están pendientes de diseño operativo y se documentan en flujos; no se reutiliza la reapertura de una publicación validada ni se declaran endpoints implementados.
+
+Actualización de alojamiento DEC-040 y DEC-041 (06/11/2026): frontend/API/PostgreSQL en Hostinger VPS KVM 1 y archivos en Cloudflare R2. Proveedores ya seleccionados, sin contratar o desplegar desde esta actualización. El proveedor no modifica la aprobación pendiente del esquema ni los permisos de archivos. [Costos vigentes](infraestructura-hostinger-r2.md).

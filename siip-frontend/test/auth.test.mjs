@@ -12,7 +12,7 @@ const usuario = {
 };
 const anonymous = { usuario: null, csrf_token: 'csrf-anonimo-de-prueba' };
 const authenticated = { usuario, csrf_token: 'csrf-autenticado-de-prueba' };
-let vite, api, router, useAuthStore, auth, requests, responses, AdminView, MainLayout, LoginView;
+let vite, api, router, useAuthStore, auth, requests, responses, AdminView, MainLayout, LoginView, DashboardView;
 
 before(async () => {
   vite = await createServer({
@@ -34,6 +34,7 @@ before(async () => {
   ({ default: AdminView } = await vite.ssrLoadModule('/src/modules/admin/AdminView.vue'));
   ({ default: MainLayout } = await vite.ssrLoadModule('/src/layouts/MainLayout.vue'));
   ({ default: LoginView } = await vite.ssrLoadModule('/src/modules/auth/LoginView.vue'));
+  ({ default: DashboardView } = await vite.ssrLoadModule('/src/modules/dashboard/DashboardView.vue'));
   for (const route of router.getRoutes()) {
     if (route.components) route.components.default = { render: () => null };
   }
@@ -134,13 +135,24 @@ test('Consulta recupera su sesión sin dependencia y accede a las rutas de lectu
   assert.equal(auth.isCapturista || auth.isRevisor || auth.isAdmin, false);
 });
 
-async function renderComponent(component) {
+async function renderComponent(component, preparar) {
   let state;
   const app = createSSRApp(component).use(router);
-  app.mixin({ created() { if (!this.$parent) state = this.$.setupState; } });
+  app.mixin({ created() {
+    if (!this.$parent) { state = this.$.setupState; preparar?.(state); }
+  } });
   const html = await renderToString(app);
   return { state, html };
 }
+
+test('seleccionar una agrupación conserva las otras ocho opciones del selector', async () => {
+  const { state, html } = await renderComponent(DashboardView, state => { state.agrupacionSeleccionada = 1; });
+  assert.equal(state.agrupacionesFiltradas.length, 1);
+  const selector = html.match(/<select[^>]*id="filtro-agrupacion"[^>]*>[\s\S]*?<\/select>/)?.[0];
+  assert.ok(selector);
+  assert.equal((selector.match(/<option\b/g) ?? []).length, 9);
+  assert.match(selector, /value="2"/);
+});
 
 test('el menú lateral conserva el diseño y muestra solo las opciones del perfil', async () => {
   auth.initialized = true;
@@ -162,7 +174,9 @@ test('el menú lateral conserva el diseño y muestra solo las opciones del perfi
 
 test('el formulario visual muestra el error del backend y permite reintentar sin acceso simulado', async () => {
   auth.initialized = true;
-  const { state: form } = await renderComponent(LoginView);
+  const { state: form, html } = await renderComponent(LoginView);
+  assert.match(html, /Acceso con cuenta registrada/);
+  assert.doesNotMatch(html, /autenticación real se integrará/);
   form.email = usuario.correo;
   form.password = 'incorrecta';
   responses.push({ data: anonymous }, {

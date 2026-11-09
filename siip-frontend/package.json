@@ -14,7 +14,6 @@
     "date-fns": "^4.4.0",
     "echarts": "^6.1.0",
     "pinia": "^4.1.0",
-    "primevue": "^5.0.2",
     "vue": "^3.5.42",
     "vue-echarts": "^8.3.2",
     "vue-router": "^5.4.0"

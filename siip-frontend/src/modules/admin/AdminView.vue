@@ -1,9 +1,10 @@
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 import api from '../../core/api';
+import { useDialogFocus } from '../../core/useDialogFocus';
 import type { User } from '../../store/auth.store';
 import { adminState, refrescarAdmin } from './data/admin.store';
 
@@ -37,7 +38,7 @@ const createdUsers = ref<User[]>([]);
 const busqueda = ref('');
 const modalAbierto = ref(false);
 const modalDialog = ref<HTMLElement | null>(null);
-let previousFocus: HTMLElement | null = null;
+useDialogFocus(modalDialog, modalAbierto, cerrarModal);
 
 function errorMessage(error: unknown) {
   return axios.isAxiosError(error)
@@ -125,44 +126,20 @@ function nombreRol(rol: User['rol']) {
   return { administrador: 'Administrador', captura: 'Captura', revision: 'Revisión', consulta: 'Consulta' }[rol];
 }
 
-async function nuevoUsuario() {
+function nuevoUsuario() {
   const dependencia_id = dependencies.value.some(({ id, activo }) => activo && id === userForm.dependencia_id)
     ? userForm.dependencia_id : '';
   Object.assign(userForm, { nombre: '', correo: '', password: '', dependencia_id, rol: 'captura' });
   userError.value = '';
   userSuccess.value = '';
-  previousFocus = typeof document === 'undefined' ? null : document.activeElement as HTMLElement;
   modalAbierto.value = true;
-  await nextTick();
-  modalDialog.value?.querySelector('input')?.focus();
 }
 
-async function cerrarModal() {
+function cerrarModal() {
   if (savingUser.value) return;
   modalAbierto.value = false;
   userError.value = '';
   userForm.password = '';
-  await nextTick();
-  if (previousFocus?.isConnected) previousFocus.focus();
-}
-
-function manejarTeclado(evento: KeyboardEvent) {
-  if (!modalAbierto.value) return;
-  if (evento.key === 'Escape') void cerrarModal();
-  if (evento.key !== 'Tab') return;
-  const elementos = modalDialog.value?.querySelectorAll<HTMLElement>('button:enabled, input:enabled, select:enabled, [tabindex="0"]');
-  const primero = elementos?.[0];
-  const ultimo = elementos?.[elementos.length - 1];
-  if (!primero || !ultimo) {
-    evento.preventDefault();
-    modalDialog.value?.focus();
-  } else if (evento.shiftKey && (document.activeElement === primero || !modalDialog.value?.contains(document.activeElement))) {
-    evento.preventDefault();
-    ultimo.focus();
-  } else if (!evento.shiftKey && (document.activeElement === ultimo || !modalDialog.value?.contains(document.activeElement))) {
-    evento.preventDefault();
-    primero.focus();
-  }
 }
 
 watch(() => userForm.rol, (rol) => {
@@ -173,9 +150,7 @@ watch(() => userForm.rol, (rol) => {
 onMounted(() => {
   refrescarAdmin();
   void loadDependencies();
-  window.addEventListener('keydown', manejarTeclado);
 });
-onUnmounted(() => window.removeEventListener('keydown', manejarTeclado));
 
 function nuevoIndicador() {
   router.push({ name: 'AdministradorNuevoIndicador' });
@@ -330,12 +305,11 @@ function editarIndicador(id: string) {
             CATÁLOGO METODOLÓGICO
           </span>
 
-          <h2>Administración de indicadores</h2>
+          <h2>Fichas de indicadores (demostración)</h2>
 
           <p>
-            Registra indicadores con los campos
-            metodológicos establecidos en el Excel
-            del SIIP Salamanca.
+            Conserva fichas metodológicas locales para revisar el diseño.
+            Guardarlas no activa indicadores ni los incorpora al catálogo operativo.
           </p>
         </div>
 
@@ -344,7 +318,7 @@ function editarIndicador(id: string) {
           class="btn-principal"
           @click="nuevoIndicador"
         >
-          + Nuevo indicador
+          + Nueva ficha de demostración
         </button>
       </div>
 

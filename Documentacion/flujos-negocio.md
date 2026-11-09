@@ -1,12 +1,12 @@
 # Flujos de negocio del SIIP
 
-Versión 0.1 · 26/10/2026 · Borrador para revisión. No autoriza implementación, migraciones ni aprobación del modelo.
+Versión 0.2 · 06/11/2026 · Borrador de flujos operativos con DEC-038/039. Auth y altas están implementadas; el esquema de negocio sigue pendiente de aprobación.
 
 Nota técnica del 27/10/2026: DEC-027 confirma Node.js + TypeScript para la API; véase [arquitectura-tecnologica.md](arquitectura-tecnologica.md). Este ajuste no cambia estados, transiciones ni reglas funcionales.
 
 ## 1. Fuentes, contradicciones y estado de los acuerdos
 
-**Acuerdos posteriores — 30/10/2026, DEC-030..034:** no se recalculan publicaciones por cambios de regla; una captura en revisión conserva su regla y atrasos/reaperturas usan la del periodo. Se confirman envío por dependencia, validación conjunta y reenvío solo de la aportación necesaria en reapertura. Las referencias a versiones anteriores sin cambios son propuesta técnica; el modelo/contratos aún requieren adaptación y aprobación. DEC-033 precisa periodos calendario naturales, captura desde alta con asignación, zona America/Mexico_City y validación/publicación al cierre o después. Un trimestral dado de alta el 10 de febrero corta el 31 de marzo. No se añade bimestral; falta definir cobertura del primer periodo con alta intermedia y periodos anteriores al alta. Supabase Storage queda elegido como dirección para PDF; límites y descarga final pendientes. Estas decisiones actualizan los pendientes de las secciones anteriores en fecha; no aprueban automáticamente campos, sumas de variables ni el YAML.
+**Acuerdos posteriores — 30/10/2026, DEC-030..034:** no se recalculan publicaciones por cambios de regla; una captura en revisión conserva su regla y atrasos/reaperturas usan la del periodo. Se confirman envío por dependencia, validación conjunta y reenvío solo de la aportación necesaria en reapertura. Las referencias a versiones anteriores sin cambios son propuesta técnica; el modelo/contratos aún requieren adaptación y aprobación. DEC-033 precisa periodos calendario naturales, captura desde alta con asignación, zona America/Mexico_City y validación/publicación al cierre o después. Un trimestral dado de alta el 10 de febrero corta el 31 de marzo. No se añade bimestral; falta definir cobertura del primer periodo con alta intermedia y periodos anteriores al alta. Supabase Storage fue elegido el 30/10 y quedó sustituido por Cloudflare R2 el 06/11 (DEC-041); límites y descarga final pendientes. Estas decisiones actualizan los pendientes de las secciones anteriores en fecha; no aprueban automáticamente campos, sumas de variables ni el YAML.
 
 Se leyeron AGENTS.md y los archivos actuales decisiones-siip.md, alcance-mvp.md, pendientes-siip.md y modelo-datos-mvp-borrador.md. La documentación se encuentra ahora en `SIIP-code/Documentacion`, dentro del repositorio Git. Se conserva esa carpeta; no se crea otra paralela con diferente capitalización.
 
@@ -18,16 +18,28 @@ Se leyeron AGENTS.md y los archivos actuales decisiones-siip.md, alcance-mvp.md,
 | C-04 | DEC-002 y el auxiliar contradicen la consolidación de PA/PO en SIIP.02.F13.002 y de IE/IP en SIIP.02.F16.002. | Mantener DEC-002. Asignaciones y modalidad de estos indicadores pendientes de cliente; sin sumas entre dependencias ni asignaciones de ejemplo tomadas como reales. |
 | C-05 | Pesos/umbrales aprobados; cobertura, N pequeño y primer periodo siguen pendientes. | Diferenciar índice, color y cobertura. No inventar Y ni exigir fechas ficticias; informar configuración pendiente. |
 | C-06 | DEC-022 elige publicaciones actuales para cortes históricos; P-08 sigue abierto. | No filtrar validado_en por fecha del corte. Conservar color/configuración de cada publicación; no aplicar una regla nueva a historia sin decisión. |
-| C-07 | El modelo recomienda enlaces temporales para PDF; proveedor y modalidad no están aprobados. | API propone descarga autenticada por streaming, sin exponer storage_key. Es una alternativa técnica documentada en impacto, no un cambio silencioso del modelo. |
-| C-08 | El frontend usaba seguimiento y consulta como roles, permitía captura/revisión al administrador y simulaba sesión; Axios trataba 403 como cierre de sesión. | Resuelto técnicamente el 04/11/2026: tres roles exclusivos, sesión real con cookie/CSRF, recuperación al recargar y logout del servidor. 401 por sesión inválida redirige a login; 403 conserva la sesión. |
+| C-07 | El modelo recomienda enlaces temporales para PDF; Cloudflare R2 queda seleccionado por DEC-041 y la modalidad final sigue pendiente. | API propone descarga autenticada por streaming, sin exponer storage_key. Es una alternativa técnica documentada en impacto, no un cambio silencioso del modelo. |
+| C-08 | El frontend usaba seguimiento y consulta como roles, permitía captura/revisión al administrador y simulaba sesión; Axios trataba 403 como cierre de sesión. | Resuelto técnicamente el 04/11/2026: cuatro roles exclusivos (DEC-038), sesión real con cookie/CSRF, recuperación al recargar y logout del servidor. 401 por sesión inválida redirige a login; 403 conserva la sesión. |
 | C-09 | Backend Node.js + TypeScript confirmado en DEC-027; framework y autenticación/almacén aún sin elegir. Las 13 tablas no incluyen sesiones. | Sesión opaca con cookie y CSRF es propuesta técnica; persistencia separada del dominio, pendiente de framework/hosting. No prometer logout revocable con un JWT sin estado. |
 | C-10 | Derivar participantes de variables actuales puede reinterpretar ciclos anteriores. | Autorización a indicador según vínculo vigente; envíos según dependencia del actor y asignaciones aplicadas al ciclo. Reasignaciones e historia pendientes de detalle; no dar acceso a insumos ajenos por leer un expediente compartido. |
 
-**Confirmado por equipo:** DEC-001..025, tres roles, captura completa municipal, revisión distinta de validación, publicación automática, reapertura conservando la publicación, mezcla de frecuencias según DEC-013 y exclusión de no evaluables.
+**Confirmado por equipo:** DEC-001..025 con ajustes DEC-038/039, cuatro roles, captura completa municipal, revisión distinta de validación, publicación automática, reapertura conservando la publicación, mezcla de frecuencias según DEC-013 y exclusión de no evaluables.
 
 **Propuesta técnica:** transporte de autenticación, estados del esquema, agrupamiento por dependencia, validación conjunta, multipart, códigos HTTP, paginación y descarga por streaming. El YAML entero es v0.1; ningún contrato es definitivo.
 
 **Pendiente de cliente/equipo:** P-07/08/10/12/13/14, responsables por variable, unidad multidependencia, variables fijas, límites PDF, reportes y canales. **Fuera de MVP:** importación, chat, captura submunicipal, editor de fórmulas, roles múltiples y CRUD genérico de tablas.
+
+## Cierre y justificación — DEC-039, 06/11/2026
+
+Acuerdo con el director comunicado por el usuario. Sustituye la captura tardía sin bloqueo de DEC-009/017. Se conservan los periodos naturales y America/Mexico_City de DEC-033. La fecha final es inclusiva: el primer trimestre admite envíos hasta terminar el 31 de marzo; a partir del 1 de abril queda cerrado. El servidor debe comprobar la fecha al recibir la escritura, incluso si el formulario se abrió antes del cierre.
+
+- Si al cierre faltan aportaciones completas requeridas, el indicador/periodo queda **gris por incumplimiento**. No se crean capturas parciales ni valores cero para representarlo. En multidependencia basta una aportación requerida faltante para que el conjunto quede incompleto.
+- Los envíos completos recibidos en plazo conservan su estado de revisión y pueden validarse/publicarse después. No se confunde falta de validación con falta de captura. Los envíos recibidos conservan su historial aunque falte otra dependencia.
+- Administrador puede reabrir el incumplimiento con motivo y trazabilidad. Captura adjunta únicamente el PDF de justificación de su dependencia. No se habilitan valores, correcciones tardías ni publicación por esta acción. El gris permanece y se distingue si hay justificación adjunta.
+- Esta reapertura es distinta de corregir un resultado validado (DEC-012/016). No modifica resultados de otros periodos ni borra una publicación anterior. El gris no es desempeño rojo, no vale cero y no entra en N evaluables del índice temático. Los valores validados sin antecedentes suficientes siguen siendo otro caso distinto.
+- La definición de correcciones a envíos observados después del cierre sigue pendiente. Tampoco se presupone quién aprueba una justificación, un plazo adicional o acceso del rol Consulta a PDF internos.
+
+**Estado técnico:** especificación confirmada. Aún no existen tablas/endpoints operativos de captura, cierre ni justificaciones. El borrador debe adaptar el registro del incumplimiento y del PDF sin exigir que exista una captura o publicación previa. No se crea ni aplica SQL de negocio en esta actualización.
 
 ## 2. Vocabulario y estados
 
@@ -42,6 +54,7 @@ Se leyeron AGENTS.md y los archivos actuales decisiones-siip.md, alcance-mvp.md,
 | Expediente | validado | Resultado y configuración conservados; publicación automática y ciclo cerrado. |
 | Publicación | Derivada | Mayor ciclo validado del mismo indicador e intervalo; no se añade columna publicado. |
 | Desempeño | verde/amarillo/rojo o sin color | Valoración distinta del estado de captura. Sin color no equivale a pendiente de validación. |
+| Cumplimiento al cierre | gris, con o sin justificación | Faltan aportaciones completas al terminar el periodo. No equivale a desempeño, cero ni ausencia de historia. |
 
 ## 3. Transiciones propuestas
 
@@ -69,7 +82,7 @@ Propuesta: cookie opaca `siip_session`, HttpOnly, Secure en HTTPS y SameSite=Lax
 
 ### F-02 Indicadores y periodos
 
-GET /indicadores filtra primero por permisos y después pagina. Captura obtiene únicamente indicadores vinculados a su dependencia; Revisión y Administrador tienen consulta global. El detalle ofrece ficha y las variables capturables de su ámbito; no expone configuracion_aplicada cruda ni entradas ajenas.
+GET /indicadores filtra primero por permisos y después pagina. Captura obtiene únicamente indicadores vinculados a su dependencia; Revisión, Administrador y Consulta tienen consulta global. Consulta recibe ficha/resultados publicados y variables_captura vacío, sin acceso a expedientes, eventos o insumos de revisión. El detalle ofrece ficha y las variables capturables de su ámbito; no expone configuracion_aplicada cruda ni entradas ajenas.
 
 GET /indicadores/{id}/periodos recibe un intervalo de consulta y devuelve periodos conocidos y estado del calendario. Si falta primer periodo o apertura acordada, informa `pendiente` y los pendientes P-07/P-12. No genera atrasos ni declara habilitados intervalos supuestos. Los registros históricos autorizados siguen consultables. Una escritura cuyo periodo no pueda comprobarse devuelve 409 CONFIGURACION_PENDIENTE, sin decidir unilateralmente un calendario.
 
@@ -93,7 +106,7 @@ Revisión usa POST /capturas/{id}/revision con la lista explícita de observacio
 
 ### F-05 Validación y publicación
 
-DEC-033: no validar ni publicar antes del cierre del periodo natural en America/Mexico_City, aunque ya exista captura revisada. Capturar desde el alta con asignación y permitir atrasos no elimina esta condición temporal. No se agrega frecuencia bimestral.
+DEC-033: no validar ni publicar antes del cierre del periodo natural en America/Mexico_City, aunque ya exista captura revisada. Capturar desde el alta con asignación no elimina esta condición temporal. DEC-039 cierra nuevos envíos al fin del periodo; las aportaciones completas recibidas en plazo conservan revisión/validación posterior. No se agrega frecuencia bimestral.
 
 POST /expedientes/{id}/validacion recibe `capturas_revisadas_ids`, el conjunto de envíos que el revisor efectivamente consultó. Bajo bloqueo del expediente, exigir coincidencia exacta con el conjunto efectivo actual y estados revisada. Si cambió un envío desde la lectura, 409 ENVIO_VIGENTE_MODIFICADO; no validar datos nuevos sin revisión.
 
@@ -107,7 +120,7 @@ GET /indicadores/{id}/resultados devuelve como máximo una versión publicada po
 
 Para corte mensual, identificar primero el periodo completo/exigible; después buscar la publicación de ESE periodo. Nunca elegir primero el último resultado disponible. No filtrar por validado_en <= corte: DEC-022 exige las publicaciones actuales. Un anual 2025 puede ser fuente válida de sep-2026; un mensual agosto no sustituye septiembre ausente.
 
-GET /agrupaciones/{id}/evaluacion?corte=2026-09 se propone solo para Revisión/Administrador: una agrupación completa puede revelar indicadores ajenos a Captura. No se inventa un índice de subconjunto para concederle acceso. Definir esa visibilidad si se solicita.
+GET /agrupaciones/{id}/evaluacion?corte=2026-09 se propone para Revisión/Administrador/Consulta: una agrupación completa puede revelar indicadores ajenos a Captura. No se inventa un índice de subconjunto para concederle acceso. Definir esa visibilidad si se solicita.
 
 El índice aprobado usa N evaluables; no confundirlo con Y de cobertura. Si todos los calendarios necesarios están definidos y N>0, se puede informar el índice, pero con política de cobertura pendiente el color permanece null y estado politica_cobertura_pendiente. Si no se conoce el universo temporal, indice/color/cobertura quedan null y se informa calendario_pendiente. Con N=0: sin índice/color. Estos estados de respuesta son propuestas técnicas que no fijan cobertura mínima. La respuesta conserva el periodo fuente y motivo de exclusión de cada indicador.
 
@@ -145,3 +158,5 @@ Usar application/problem+json con codigo, detail y errores por campo, sin trazas
 8. Los ejemplos de la API son sintéticos: no atribuyen responsables reales a los 63 indicadores.
 
 Referencias técnicas: [OpenAPI 3.1.1](https://spec.openapis.org/oas/v3.1.1.html), [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html), [autorización por objeto OWASP](https://api-security.owasp.org/editions/2023/en/0xa1-broken-object-level-authorization/). Las decisiones del SIIP proceden de los documentos locales, no de estas referencias.
+
+Alojamiento actualizado 06/11/2026: DEC-040 selecciona frontend/API/PostgreSQL en Hostinger VPS KVM 1 y DEC-041 selecciona archivos en Cloudflare R2. Los antecedentes sobre proveedor pendiente quedan sustituidos. [Costos, fuentes y comprobaciones pendientes](infraestructura-hostinger-r2.md). No se ha desplegado ni integrado R2.

@@ -178,19 +178,6 @@ const opcionesDona = computed<EChartsOption>(() => ({
 <template>
   <section class="charts-section">
 
-    <div class="charts-heading">
-      <span class="charts-eyebrow">
-        ANÁLISIS DEL CATÁLOGO
-      </span>
-
-      <h2>Distribución de los indicadores</h2>
-
-      <p>
-        Visualización de la composición de las ocho
-        agrupaciones temáticas del SIIP Salamanca.
-      </p>
-    </div>
-
     <div class="charts-grid">
 
       <!-- Barras horizontales -->
@@ -237,7 +224,7 @@ const opcionesDona = computed<EChartsOption>(() => ({
 
         <div class="chart-legend">
           <div
-            v-for="item in props.agrupaciones""
+            v-for="item in props.agrupaciones"
             :key="item.id"
             class="legend-item"
           >
@@ -271,26 +258,6 @@ const opcionesDona = computed<EChartsOption>(() => ({
   margin-top: 26px;
 }
 
-.charts-heading {
-  margin-bottom: 22px;
-}
-
-.charts-eyebrow {
-  font-size: 11px;
-  font-weight: 800;
-  color: #70273b;
-  letter-spacing: 0.12em;
-}
-
-.charts-heading h2 {
-  font-family: Georgia, serif;
-  font-size: 27px;
-  font-weight: 500;
-  margin: 8px 0;
-  color: #272b32;
-}
-
-.charts-heading p,
 .chart-header p {
   color: #777d85;
   font-size: 13px;

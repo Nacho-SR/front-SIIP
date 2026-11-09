@@ -1,6 +1,5 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import PrimeVue from 'primevue/config'
 import router from './router'
 
 import './style.css' 
@@ -11,8 +10,5 @@ const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
-app.use(PrimeVue, {
-    unstyled: true
-})
 
 app.mount('#app')

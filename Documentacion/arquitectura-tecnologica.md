@@ -1,6 +1,6 @@
 # Arquitectura tecnológica y entornos del SIIP Salamanca
 
-**Versión:** 0.1 · **Fecha:** 27/10/2026 · **Estado:** stack indicado por el equipo y estrategia operativa propuesta para revisión. No autoriza contratación, creación de recursos, implementación ni migraciones.
+**Versión:** 0.2 · **Fecha:** 06/11/2026 · **Estado:** incorpora la selección de alojamiento DEC-040 y DEC-041 y precios verificados. No autoriza contratación, creación de recursos, implementación ni migraciones.
 
 ## 1. Decisiones vigentes y alcance de esta actualización
 
@@ -8,24 +8,24 @@
 |---|---|---|
 | Frontend | Confirmado por el equipo, DEC-027 | Vue + TypeScript. El repositorio ya contiene Vue, Vite y Pinia; no se cambian dependencias. |
 | Backend | Confirmado por el equipo, DEC-027 | Node.js + TypeScript. Sustituye Laravel de DEC-026; PHP/Composer dejan de ser requisitos del backend previsto. |
-| Base de datos | Motor propuesto, DEC-028 | PostgreSQL. El borrador de 13 tablas sigue sin aprobación definitiva. |
-| Desarrollo remoto | Propuesta del equipo, PROP-TEC-001 | Neon Free, utilizando PostgreSQL convencional y conservando la posibilidad de cambiar de proveedor para producción. No hay autorización para crear recursos. |
-| Hosting definitivo | Pendiente | Elegir alojamiento de API, frontend, PostgreSQL y PDF con los criterios de la sección 8. Neon Free no queda elegido para producción. |
-| Framework HTTP, acceso a datos y migraciones | Pendiente técnico | Node.js + TypeScript no selecciona automáticamente framework, ORM ni herramienta de migraciones. |
+| Base de datos | PostgreSQL, alojamiento seleccionado DEC-040 | Instancia autoadministrada en Hostinger VPS KVM 1. El borrador de 13 tablas sigue sin aprobación definitiva. |
+| Desarrollo remoto | Modalidad por concretar | La propuesta Neon Free queda histórica por DEC-040. Usar datos sintéticos y una base separada si se habilita desarrollo compartido. |
+| Hosting seleccionado | Confirmado por el usuario, DEC-040 y DEC-041 | Frontend, API y PostgreSQL en un Hostinger VPS KVM 1; archivos en Cloudflare R2. [Costos y fuentes vigentes](infraestructura-hostinger-r2.md). No acredita contratación o despliegue. |
+| Framework HTTP y acceso a datos | Implementado en código, DEC-029/035 | Fastify 5, pg, Drizzle ORM y Drizzle Kit instalados. SQL preparado sin aplicación automática; esquema de negocio y procedimiento de migración pendientes. |
 
-Se mantienen las decisiones funcionales DEC-001..025 y el [alcance del MVP](alcance-mvp.md): tres roles con restricciones por dependencia, revisión y validación separadas, publicación automática, disponibilidad del resultado publicado durante reapertura y corte mensual con periodicidades mixtas. No se resuelven unilateralmente calendario, cobertura, vigencias ni unidad multidependencia.
+Se mantienen las decisiones funcionales DEC-001..025 y el [alcance del MVP](alcance-mvp.md): cuatro roles exclusivos (DEC-038), Consulta global sin dependencia y restricciones de dependencia para Captura/Revisión, revisión y validación separadas, publicación automática, disponibilidad del resultado publicado durante reapertura y corte mensual con periodicidades mixtas. No se resuelven unilateralmente calendario, cobertura, vigencias ni unidad multidependencia.
 
 Este documento es la referencia tecnológica actual. Los Word del consultor y de acuerdos v0.2 se conservan como antecedentes; no se editan ni se consideran arquitectura ejecutable. El [modelo PostgreSQL](modelo-datos-mvp-borrador.md) y [OpenAPI](api/openapi.yaml) siguen siendo borradores.
 
 ## 2. Estructura mínima propuesta
 
-**Dirección de almacenamiento — 30/10/2026, DEC-034:** preparar evidencias para Supabase Storage. Se recomienda bucket privado, autorización por la API SIIP y objetos nuevos por versión en lugar de sobrescritura. Límites de PDF, retención, permisos finales y modalidad de descarga siguen pendientes. No se crea ningún recurso ni se adopta Supabase Auth; la sesión propia de DEC-029 se mantiene. El uso del PostgreSQL de Supabase en lugar de la propuesta Neon es una decisión adicional por concretar.
+**Alojamiento vigente — 06/11/2026, DEC-040 y DEC-041:** frontend, backend y PostgreSQL en el mismo Hostinger VPS KVM 1; evidencias y justificaciones PDF en Cloudflare R2. Sustituye la propuesta de Neon y la dirección de Supabase Storage de DEC-034. Se mantiene la sesión propia SIIP. Se recomienda bucket privado y claves nuevas para conservar archivos anteriores. Límites PDF, retención, permisos finales y descarga siguen pendientes. [Detalle, costos y compatibilidad](infraestructura-hostinger-r2.md).
 
-**Actualización de implementación — 30/10/2026, DEC-029:** el equipo autorizó y ya dispone de una base Node.js 22 + TypeScript + Fastify 5 en `siip-backend`. Están instalados `pg`, Drizzle ORM y Drizzle Kit. DEC-035 incorpora código de autenticación Argon2id, cookie/CSRF y adaptador PostgreSQL con compare-and-set. El SQL mínimo está propuesto para revisión, sin ejecutarlo; aún no hay BD y las pruebas usan dobles sintéticos. El resto del modelo continúa pendiente de aprobación. El arranque valida el entorno y registra Helmet, CORS y un límite inicial de 100 solicitudes por IP por minuto, en memoria por proceso. `GET /api/v1/salud` comprueba únicamente respuesta HTTP. No se conecta PostgreSQL, crean tablas ni ejecutan migraciones. El [README del backend](../siip-backend/README.md) describe los comandos y límites actuales. Las referencias siguientes al estado del 27/10 se conservan como antecedente; DEC-029 actualiza las selecciones técnicas pendientes de esa fecha.
+**Actualización de implementación — 30/10/2026, DEC-029:** el equipo autorizó y ya dispone de una base Node.js 22 + TypeScript + Fastify 5 en `siip-backend`. Están instalados `pg`, Drizzle ORM y Drizzle Kit. DEC-035 incorpora código de autenticación Argon2id, cookie/CSRF y adaptador PostgreSQL con compare-and-set. El SQL mínimo está propuesto para revisión, sin ejecutarlo desde el chat. El equipo comunicó una BD vacía el 04/11; la conexión real sigue sin acreditarse aquí y las pruebas usan dobles sintéticos. El resto del modelo continúa pendiente de aprobación. El arranque valida el entorno y registra Helmet, CORS y un límite inicial de 100 solicitudes por IP por minuto, en memoria por proceso. `GET /api/v1/salud` comprueba únicamente respuesta HTTP. No se conecta PostgreSQL, crean tablas ni ejecutan migraciones. El [README del backend](../siip-backend/README.md) describe los comandos y límites actuales. Las referencias siguientes al estado del 27/10 se conservan como antecedente; DEC-029 actualiza las selecciones técnicas pendientes de esa fecha.
 
 Un frontend Vue consume una API REST Node.js escrita en TypeScript. La API concentra autenticación, permisos por objeto/dependencia, transacciones, validación y cálculos delimitados. Solo la API accede a PostgreSQL durante la operación; las tareas técnicas autorizadas usan credenciales separadas. El navegador nunca recibe credenciales de BD.
 
-Una sola aplicación backend con módulos de negocio y una instancia inicial es suficiente como propuesta para el MVP. No se añaden microservicios, Redis, colas ni motor genérico de fórmulas. Las evidencias PDF conservan la propuesta de almacenamiento externo privado; proveedor, descarga y retención siguen pendientes. Ningún servicio adicional de Neon se adopta por elegir su PostgreSQL.
+Una sola aplicación backend con módulos de negocio y una instancia inicial es suficiente como propuesta para el MVP. No se añaden microservicios, Redis, colas ni motor genérico de fórmulas. Las evidencias y justificaciones PDF se alojarán en R2 (DEC-041); descarga y retención siguen pendientes. No se añade otro proveedor de PostgreSQL a lo seleccionado en DEC-040.
 
 Para staging/producción se recomienda un mismo origen HTTPS para frontend y `/api/v1`, mediante el alojamiento o un proxy sencillo. Reduce configuración de cookies/orígenes, pero no elimina CSRF ni autorización. DEC-029/035 eligen sesión revocable con cookie/CSRF y preparan un almacén PostgreSQL para Fastify; falta aplicar/aprobar el SQL y probarlo con una BD real. No existe fallback a memoria de proceso en la aplicación; ese almacén se usa exclusivamente como doble de prueba. Una tabla técnica de sesiones, si resulta necesaria, se justificará aparte de las 13 entidades de negocio.
 
@@ -42,13 +42,13 @@ Son tres entornos. El desarrollo remoto es una modalidad de desarrollo compartid
 | Entorno / modalidad | Ejecución de aplicaciones | Base propuesta | Datos y acceso |
 |---|---|---|---|
 | Desarrollo local | Vue y API en la computadora del desarrollador | PostgreSQL local, `siip_local`, una copia independiente por desarrollador | Datos sintéticos; credenciales locales. PostgreSQL ligado a localhost. Instalación nativa o contenedor, sin exigir ambos. |
-| Desarrollo compartido remoto | API local conectada por TLS; frontend consume esa API | `siip_desarrollo` en un proyecto Neon Free propuesto | Datos sintéticos. Integración del equipo, sin ejecutar cambios de esquema simultáneos ni pruebas destructivas. |
+| Desarrollo compartido remoto | API local conectada por TLS; frontend consume esa API | `siip_desarrollo` separada, si se habilita infraestructura compartida Hostinger | Datos sintéticos. Integración del equipo, sin ejecutar cambios de esquema simultáneos ni pruebas destructivas. |
 | Staging | Vue y API desplegados para pruebas previas | `siip_staging`, distinta de todas las bases de desarrollo y producción | Datos sintéticos o anonimizados; acceso del equipo y personas autorizadas para aceptación. Nunca credenciales de producción. |
-| Producción | Aplicación destinada a usuarios reales | `siip_produccion`, en proveedor pendiente | Datos oficiales y acceso operativo. Credenciales, respaldos y almacenamiento PDF independientes. |
+| Producción | Aplicación destinada a usuarios reales | `siip_produccion`, en el VPS Hostinger KVM 1 seleccionado | Datos oficiales y acceso operativo. Credenciales, respaldos y almacenamiento PDF independientes. |
 
 Separar bases, usuarios de BD, secretos, cookies y ubicaciones de PDF por entorno. Dos esquemas dentro de una misma base no satisfacen esta separación. Desarrollo y staging podrían compartir infraestructura si el proveedor permite bases y permisos independientes; producción debería usar proyecto/instancia separada para limitar errores y fallos compartidos. Es recomendación, no contratación aprobada.
 
-No clonar producción hacia Neon Free o laptops con datos personales/evidencias reales. La anonimización y autorización deben definirse antes de cualquier copia. Las ramas de Neon son opcionales y no forman parte del flujo requerido; no sustituyen el aislamiento ni los respaldos.
+No clonar producción a desarrollo o laptops con datos personales/evidencias reales. La anonimización y autorización deben definirse antes de cualquier copia. No se incorpora branching de Neon. Compartir un VPS no equivale a aislar fallos de producción y pruebas.
 
 Se propone fijar la misma versión mayor soportada de PostgreSQL en los entornos, cuando se elija el servicio. No se establece una versión a partir del nombre del proveedor. Mantener nombres de base en configuración, nunca en SQL de negocio. El frontend debe identificar claramente staging/desarrollo para evitar capturas accidentales en producción.
 
@@ -64,16 +64,16 @@ Convención documental para el futuro backend; no son archivos de configuración
 | `PGSSLROOTCERT` | Ruta de CA para herramientas libpq cuando el proveedor lo requiera. No asumir que el driver Node lee esta variable automáticamente. |
 | `VITE_API_BASE_URL` | Dirección pública de la API, no un secreto. Nunca incluir una cadena PostgreSQL en variables `VITE_*`. |
 
-Propuesta de acceso a datos: usar un driver PostgreSQL convencional, como `pg`, con consultas parametrizadas y un pool pequeño por proceso. Es una recomendación, no una dependencia instalada. Empezar con un máximo de cinco conexiones por proceso como valor por comprobar frente al cupo del proveedor; sumar todas las instancias y herramientas. Migraciones y respaldos usan conexión directa; un endpoint agrupado del proveedor para ejecución es opcional y exige comprobar compatibilidad transaccional. Neon documenta diferencias entre conexiones [agrupadas y directas](https://neon.com/docs/connect/connection-pooling).
+Propuesta de acceso a datos: usar un driver PostgreSQL convencional, como `pg`, con consultas parametrizadas y un pool pequeño por proceso. El driver pg ya está instalado; el tamaño del pool sigue siendo un valor técnico por medir. Empezar con un máximo de cinco conexiones por proceso como valor por comprobar frente al cupo del proveedor; sumar todas las instancias y herramientas. Migraciones y respaldos usan conexiones directas al PostgreSQL del VPS. No se añade un pooler externo por anticipación; la API ya utiliza el pool de pg.
 
 Toda conexión remota requiere TLS con validación de certificado y nombre del servidor. La forma exacta depende del driver; no desactivar validación con `rejectUnauthorized: false`. Si se elige `pg`, evitar mezclar opciones SSL de la URL y un objeto `ssl` que puedan sobrescribirse; comprobar la configuración con la [documentación del driver](https://node-postgres.com/features/ssl). Usar conexión sin TLS solo para PostgreSQL local ligado a localhost. No publicar una BD local en Internet.
 
-- En local, `.env` privado fuera de Git; `.env.example` futuro con nombres y valores ficticios. Antes de crear secretos, añadir/verificar exclusiones de `.env`, dumps y certificados privados; actualmente no hay `.gitignore` raíz que cubra el backend. No se modifica en esta entrega.
+- En local, `.env` privado fuera de Git; `.env.example` futuro con nombres y valores ficticios. Antes de crear secretos, añadir/verificar exclusiones de `.env`, dumps y certificados privados; el backend ya dispone de exclusión de .env y de .env.example. No se modifican secretos en esta actualización.
 - En staging/producción, usar el almacén de secretos o variables protegidas del hosting/CI. Nunca cadenas completas en código, chat, logs, artefactos frontend o comandos guardados en historial.
-- Usuario de ejecución: solo operaciones necesarias sobre tablas/secuencias; sin permisos de crear/eliminar esquema, administrar roles o superusuario. Las cuentas de Captura/Revisión/Administrador son roles de aplicación, no credenciales PostgreSQL para cada persona.
+- Usuario de ejecución: solo operaciones necesarias sobre tablas/secuencias; sin permisos de crear/eliminar esquema, administrar roles o superusuario. Las cuentas de Captura/Revisión/Administrador/Consulta son roles de aplicación, no credenciales PostgreSQL para cada persona.
 - Usuario de migraciones separado y limitado a la base/esquema del entorno. Cuenta de respaldo con permisos suficientes para todos los datos del alcance; no reutilizar el usuario privilegiado del proveedor como credencial diaria de la API.
 - Credenciales distintas por entorno; cuentas personales para la consola del proveedor y MFA si está disponible. Compartir secretos mediante un gestor seguro y revocar/rotar ante exposición, salida de integrantes o cambio de proveedor.
-- Permitir conectividad solo desde los hosts técnicos necesarios cuando el plan soporte restricciones de red. Verificar esa capacidad antes de contratar; no asumir que Neon Free incluye listas de IP o red privada.
+- En el VPS seleccionado, PostgreSQL debe escuchar en localhost para la API del mismo servidor. Acceso técnico remoto solo mediante un canal controlado; no publicar el puerto 5432. Usar TLS verificado en conexiones PostgreSQL remotas. Las credenciales R2 permanecen únicamente en el backend o tareas técnicas, nunca en VITE_*.
 
 El contrato ya representa `bigint` y `numeric` como cadenas JSON. Mantener esa precisión al integrar Node.js: no convertir indiscriminadamente a `Number`; elegir aritmética decimal exacta para cálculos y conservar reglas de redondeo por indicador. Es un requisito de integración, no un cambio del esquema.
 
@@ -109,7 +109,7 @@ Mantener al menos una copia cifrada fuera del proveedor principal, con acceso re
 
 Una restauración se ensaya en una base aislada. Verificar esquema, conteos, última versión validada, auditoría, hashes y referencias PDF; medir tiempo real, registrar resultado y solo después considerar cumplido el objetivo. Coordinar el punto de recuperación de BD y archivos para no dejar evidencia referenciada pero perdida. Nunca probar restauración sobrescribiendo producción.
 
-Neon Free se propone para desarrollo por su costo inicial, no como política de continuidad. Sus cupos, suspensión por inactividad y ventana de restauración dependen del plan; comprobarlos al provisionar. La [tarifa oficial consultada el 27/10/2026](https://neon.com/pricing) ofrece Free sin tarjeta y muestra límites de recursos/recuperación. No se asumen disponibilidad garantizada ni respaldos suficientes para producción.
+Hostinger KVM 1 y Cloudflare R2 están seleccionados por DEC-040 y DEC-041. Sus [costos vigentes y condiciones](infraestructura-hostinger-r2.md) incluyen la diferencia entre promoción, pago inicial, renovación y uso de R2. Los respaldos semanales anunciados del VPS no demuestran RPO de una hora ni RTO de cuatro horas. La conservación de PDF en R2 no equivale por sí sola a un respaldo independiente o recuperación puntual de PostgreSQL.
 
 ## 7. Revisión de portabilidad del borrador PostgreSQL
 
@@ -123,7 +123,7 @@ Neon Free se propone para desarrollo por su costo inicial, no como política de 
 | Índices únicos parciales y de expresión `lower(trim(correo))` | Funciones nativas | Preservar predicados, collation y normalización al restaurar; no necesitan `citext`. |
 | Transacciones y bloqueo de filas | Mecanismos de PostgreSQL | Todas las consultas de una operación usan la misma conexión/transacción; no depender de estado de sesión persistente al usar pool transaccional. |
 | Extensión futura de referencias con vigencia | Fuera de las 13 tablas; aún condicional | Rangos/exclusión son PostgreSQL nativo; combinar igualdad por variable en GiST puede requerir `btree_gist`, extensión no exclusiva pero a verificar. La alternativa serializada ya prevista evita imponerla ahora. |
-| Clave y metadatos de evidencia | No vinculan el esquema a una API de almacenamiento | No guardar como referencia única una URL temporal ni acoplar reglas de negocio a un servicio de Neon. Proveedor de PDF sigue pendiente. |
+| Clave y metadatos de evidencia | No vinculan el esquema a una API de almacenamiento | No guardar como referencia única una URL temporal ni acoplar reglas de negocio a un servicio de Neon. Proveedor de PDF seleccionado: R2. Acceso y retención siguen pendientes. |
 | Sesiones y notificaciones | Ninguna exige Neon Auth, Realtime, Functions o branching | Mantener autenticación en la API; las notificaciones de negocio no requieren `LISTEN/NOTIFY` ni un servicio propietario. |
 
 Se contrastó el borrador con la documentación oficial de [tipos](https://www.postgresql.org/docs/current/datatype.html), [identity](https://www.postgresql.org/docs/current/ddl-identity-columns.html), [restricciones](https://www.postgresql.org/docs/current/ddl-constraints.html), [índices parciales](https://www.postgresql.org/docs/current/indexes-partial.html) y [rangos](https://www.postgresql.org/docs/current/rangetypes.html). No requiere extensiones obligatorias en su núcleo actual. Falta comprobarlo mediante migración y restauración reales después de aprobar el esquema.
@@ -135,9 +135,9 @@ Ruta de salida propuesta al cambiar de proveedor:
 3. Para el MVP, proponer ventana de mantenimiento con escrituras detenidas, exportación final, restauración y comprobación. Duración por medir; no prometer migración sin interrupción ni añadir replicación por anticipación.
 4. Cambiar secretos/configuración de la API y probar acceso autorizado. Conservar el origen protegido para reversión antes de reanudar escrituras; si ya hubo escrituras en destino, volver al origen exige reconciliación, no solo cambiar una URL. Revocar credenciales antiguas al cerrar la transición.
 
-## 8. Criterios para el hosting definitivo — PROP-TEC-006
+## 8. Comprobaciones del hosting seleccionado — DEC-040 y DEC-041
 
-Evaluar API, PostgreSQL y archivos juntos, aunque se contraten por separado. Antes de decidir, comparar al menos dos alternativas usando cotización/condiciones vigentes y una prueba pequeña autorizada.
+La selección de proveedores está cerrada: un VPS Hostinger KVM 1 para frontend/API/PostgreSQL y Cloudflare R2 para archivos. Conservar las siguientes comprobaciones antes de contratar y operar; no reabrir la comparación de proveedores sin motivo. [Presupuesto vigente](infraestructura-hostinger-r2.md).
 
 | Criterio | Qué registrar y comprobar |
 |---|---|
@@ -149,15 +149,17 @@ Evaluar API, PostgreSQL y archivos juntos, aunque se contraten por separado. Ant
 | Recuperación ante fallos | Responsables, contactos, tiempo y procedimiento de restauración/reemplazo, disponibilidad regional, prueba de RTO y acceso a respaldos si cae o se suspende la cuenta principal. |
 | Compatibilidad y salida | Node.js soportado con proceso persistente, HTTPS, límites de PDF/tiempos, tareas programadas para avisos, conectividad PostgreSQL, versión compatible y exportación completa sin SDK obligatorio. |
 
-**Hostinger actual:** el equipo informó Web Premium y ningún VPS. La [documentación vigente sobre Node.js](https://www.hostinger.com/support/node-js-hosting-options-at-hostinger/) ofrece aplicaciones Node.js en Business/Cloud o VPS; Premium no figura como opción para la API propuesta. Su [documentación de bases](https://www.hostinger.com/support/which-databases-and-data-tools-are-supported-at-hostinger/) indica que PostgreSQL no se aloja en Web/Cloud. No se presupone una ampliación del plan ni que un hosting de frontend también aloje el backend.
+**Hostinger seleccionado:** KVM 1 es un VPS y admite la configuración Node.js/PostgreSQL, verificada en las fuentes oficiales enlazadas en el presupuesto. El antecedente Web Premium no prueba que el VPS ya esté comprado ni representa su costo de ampliación. Una sola instancia comparte memoria/CPU/disco y requiere una prueba de carga.
 
-No escoger producción solo por costo cero. Propuesta: priorizar una API y PostgreSQL administrados si el presupuesto cubre requisitos, para reducir trabajo operativo del equipo junior; un VPS sigue siendo alternativa si se asigna quién actualizará, vigilará y recuperará el servidor. Proveedor, presupuesto, SLA, región y objetivos RPO/RTO requieren revisión antes de contratar.
+El equipo deberá asignar quién instala, actualiza, vigila y recupera el VPS y PostgreSQL. Proveedores seleccionados; presupuesto final, región, dominio, SLA y objetivos RPO/RTO aún requieren concreción. No se afirma alta disponibilidad ni servicio de PostgreSQL administrado.
 
 ## 9. Trazabilidad y próximos pasos autorizables
 
 - DEC-027 sustituye DEC-026; DEC-028 aclara PostgreSQL como motor propuesto. PROP-TEC-001..006 documentan las propuestas de este archivo en [decisiones](decisiones-siip.md).
 - Se actualizan contexto y pendientes, además de referencias técnicas obsoletas en flujos/impacto de API. No se cambia OpenAPI, permisos, alcance funcional ni el borrador de tablas.
-- Antes de implementar: aprobar esquema/ajustes API, elegir framework/driver/herramienta de migración y almacén de sesión, fijar versiones y coordinar inicialización del backend Node.js. La infraestructura puede revisarse en paralelo sin inventar datos o reglas del cliente.
+- Antes de completar el negocio: aprobar esquema/ajustes API y el procedimiento de migración. Auth ya usa Fastify, pg y sesiones PostgreSQL. Antes del despliegue: probar conexión real, elegir región/dominio y configurar operación y recuperación en el alojamiento seleccionado.
 - Antes de provisionar: autorizar expresamente el recurso/plan, definir accesos, región y datos permitidos. Antes de producción: aprobar presupuesto, RPO/RTO, retención y prueba de recuperación.
 
 Esta entrega es documental: no instala dependencias, crea servicios/bases remotas, genera migraciones ni modifica código o secretos.
+
+Actualización 06/11/2026: DEC-039 incorpora cierre de captura al fin del periodo, gris de incumplimiento y reapertura exclusivamente documental. No requiere contratar un proveedor para especificarlo. La implementación operativa debe comprobar fecha/estado en servidor, incluso con formularios abiertos antes del cierre. No asumir que un cron o una interfaz bloqueada sustituyen esa comprobación.
