@@ -1,5 +1,6 @@
 
 <script setup lang="ts">
+import axios from 'axios';
 import {
   computed,
   onMounted,
@@ -16,10 +17,8 @@ import {
 import catalogo from '../consulta/data/indicadores-siip.json';
 
 import {
-  adminState,
   guardarIndicador,
   obtenerIndicadorAdmin,
-  refrescarAdmin,
   familiasDeAgrupacion
 } from './data/admin.store';
 
@@ -60,10 +59,11 @@ const seccionActiva = ref<Seccion>('identificacion');
 const error = ref('');
 const mensaje = ref('');
 const guardando = ref(false);
+const cargandoFicha = ref(false);
 
 const idEdicion = computed(() =>
-  typeof route.query.editar === 'string'
-    ? route.query.editar
+  typeof route.query.ver === 'string'
+    ? route.query.ver
     : undefined
 );
 
@@ -123,7 +123,7 @@ const grupos: GrupoCampos[] = [
         etiqueta: 'Consecutivo',
         columna: 1,
         tipo: 'text',
-        ayuda: 'Asignado automáticamente.'
+        ayuda: 'Se asigna en el servidor al guardar. Puede haber saltos de numeración.'
       },
       {
         clave: 'ipsm',
@@ -428,32 +428,17 @@ watch(() => formulario.agrupacion, () => {
 // INICIALIZAR NUEVO O EDICIÓN
 // ======================================================
 
-onMounted(() => {
-  refrescarAdmin();
-
+onMounted(async () => {
   if (idEdicion.value) {
-    const existente = obtenerIndicadorAdmin(
-      idEdicion.value
-    );
-
-    if (!existente) {
-      error.value =
-        'No se encontró el indicador solicitado.';
-      return;
-    }
-
-    Object.assign(formulario, existente.campos);
-  } else {
-    // Consecutivo provisional para la demo.
-    const consecutivosNuevos =
-      adminState.indicadores.map(
-        indicador =>
-          Number(indicador.campos.consecutivo)
-      ).filter(Number.isFinite);
-
-    formulario.consecutivo = String(
-      Math.max(129, ...consecutivosNuevos) + 1
-    );
+    cargandoFicha.value = true;
+    try {
+      const existente = await obtenerIndicadorAdmin(idEdicion.value);
+      Object.assign(formulario, existente.campos);
+    } catch (e) {
+      error.value = axios.isAxiosError(e)
+        ? e.response?.data?.detail || 'No se pudo cargar la ficha. Recarga para reintentar.'
+        : 'No se pudo cargar la ficha.';
+    } finally { cargandoFicha.value = false; }
   }
 });
 
@@ -550,26 +535,23 @@ function validarFormulario(): boolean {
 // GUARDAR INDICADOR
 // ======================================================
 
-function guardar() {
+async function guardar() {
+  if (guardando.value || cargandoFicha.value || idEdicion.value) return;
   if (!validarFormulario()) return;
 
   guardando.value = true;
   error.value = '';
 
   try {
-    guardarIndicador(
-      { ...formulario },
-      idEdicion.value
-    );
-
-    mensaje.value = idEdicion.value
-      ? 'Ficha de demostración actualizada; el indicador no está activado.'
-      : 'Ficha de demostración guardada; el indicador no está activado.';
-
-    router.push({ name: 'Administrador' });
+    const creado = await guardarIndicador({ ...formulario });
+    Object.assign(formulario, creado.campos);
+    mensaje.value = `Indicador ${creado.campos.clave} guardado en la base. Estado: inactivo.`;
+    await router.push({ name: 'AdministradorNuevoIndicador', query: { ver: creado.id } });
 
   } catch (e) {
-    error.value = e instanceof Error
+    error.value = axios.isAxiosError(e)
+      ? e.response?.data?.detail || 'No se pudo conectar con el servidor. Puedes reintentar sin perder la ficha.'
+      : e instanceof Error
       ? e.message
       : 'No se pudo guardar el indicador.';
   } finally {
@@ -604,8 +586,8 @@ function volver() {
       <h1>
         {{
           idEdicion
-            ? 'Editar ficha de demostración'
-            : 'Crear ficha de demostración'
+            ? 'Consultar ficha del indicador'
+            : 'Crear indicador'
         }}
       </h1>
 
@@ -616,12 +598,12 @@ function volver() {
     </header>
 
     <p class="nota" role="status">
-      Esta ficha se conserva solo como demostración en este navegador. No activa un indicador
-      ni lo incorpora al catálogo operativo de Consulta, Captura o Estadísticas.
-      La metodología, variables, asignaciones y vigencias necesitan validación antes de habilitarse.
+      La ficha se guarda en la base de datos como indicador inactivo. No activa la captura
+      ni publica resultados. La edición y activación se habilitarán al definir sus reglas operativas.
     </p>
 
     <p v-if="mensaje" class="nota" role="status">{{ mensaje }}</p>
+    <p v-if="cargandoFicha" class="nota" role="status">Cargando ficha…</p>
 
     <!-- PROGRESO -->
     <section class="progreso-panel">
@@ -732,8 +714,10 @@ function volver() {
 
               <textarea
                 v-if="campo.tipo === 'textarea'"
+                :name="campo.clave"
                 v-model="formulario[campo.clave]"
                 rows="4"
+                :disabled="guardando || cargandoFicha || !!idEdicion"
                 :placeholder="
                   `Captura ${campo.etiqueta.toLowerCase()}`
                 "
@@ -741,8 +725,9 @@ function volver() {
 
               <select
                 v-else-if="campo.tipo === 'select'"
+                :name="campo.clave"
                 v-model="formulario[campo.clave]"
-                :disabled="campo.clave === 'familia' && !formulario.agrupacion"
+                :disabled="guardando || cargandoFicha || !!idEdicion || (campo.clave === 'familia' && !formulario.agrupacion)"
               >
                 <option value="">
                   Selecciona una opción
@@ -759,9 +744,11 @@ function volver() {
 
               <input
                 v-else
+                :name="campo.clave"
                 v-model="formulario[campo.clave]"
                 type="text"
-                :readonly="campo.clave === 'consecutivo'"
+                :readonly="campo.clave === 'consecutivo' || !!idEdicion"
+                :disabled="guardando || cargandoFicha"
                 :placeholder="
                   `Captura ${campo.etiqueta.toLowerCase()}`
                 "
@@ -785,10 +772,11 @@ function volver() {
           class="btn-secundario"
           @click="volver"
         >
-          Cancelar
+          {{ idEdicion ? 'Regresar' : 'Cancelar' }}
         </button>
 
         <button
+          v-if="!idEdicion"
           type="submit"
           class="btn-principal"
           :disabled="guardando"
@@ -796,9 +784,7 @@ function volver() {
           {{
             guardando
               ? 'Guardando...'
-              : idEdicion
-                ? 'Guardar cambios de la ficha'
-                : 'Guardar ficha de demostración'
+              : 'Guardar indicador'
           }}
         </button>
       </footer>

@@ -168,7 +168,7 @@ watch(() => userForm.rol, (rol) => {
 });
 
 onMounted(() => {
-  refrescarAdmin();
+  void cargarIndicadores();
   void loadUsers();
   void loadDependencies();
 });
@@ -176,8 +176,12 @@ onMounted(() => {
 function nuevoIndicador() {
   router.push({ name: 'AdministradorNuevoIndicador' });
 }
-function editarIndicador(id: string) {
-  router.push({ name: 'AdministradorNuevoIndicador', query: { editar: id } });
+function verIndicador(id: string) {
+  router.push({ name: 'AdministradorNuevoIndicador', query: { ver: id } });
+}
+async function cargarIndicadores() {
+  try { await refrescarAdmin(); }
+  catch (error) { adminState.error = errorMessage(error); }
 }
 </script>
 
@@ -210,8 +214,8 @@ function editarIndicador(id: string) {
       </article>
       <article class="tarjeta">
         <span>Indicadores nuevos</span>
-        <strong>{{ totalIndicadoresNuevos }}</strong>
-        <small>Registrados en esta demo</small>
+        <strong>{{ adminState.cargando || adminState.error ? '—' : totalIndicadoresNuevos }}</strong>
+        <small>Fichas guardadas en la base</small>
       </article>
     </section>
 
@@ -332,11 +336,11 @@ function editarIndicador(id: string) {
             CATÁLOGO METODOLÓGICO
           </span>
 
-          <h2>Fichas de indicadores (demostración)</h2>
+          <h2>Fichas de indicadores</h2>
 
           <p>
-            Conserva fichas metodológicas locales para revisar el diseño.
-            Guardarlas no activa indicadores ni los incorpora al catálogo operativo.
+            Registra fichas metodológicas en la base de datos. Permanecen inactivas
+            hasta configurar y verificar sus variables, asignaciones y reglas operativas.
           </p>
         </div>
 
@@ -345,12 +349,17 @@ function editarIndicador(id: string) {
           class="btn-principal"
           @click="nuevoIndicador"
         >
-          + Nueva ficha de demostración
+          + Nuevo indicador
         </button>
       </div>
 
+      <p v-if="adminState.cargando" class="nota" role="status">Cargando indicadores…</p>
+      <div v-else-if="adminState.error">
+        <p class="error" role="alert">{{ adminState.error }}</p>
+        <button type="button" class="btn-secundario" @click="cargarIndicadores">Reintentar indicadores</button>
+      </div>
       <div
-        v-if="adminState.indicadores.length"
+        v-else-if="adminState.indicadores.length"
         class="tabla-scroll tabla-indicadores"
       >
         <table>
@@ -360,6 +369,7 @@ function editarIndicador(id: string) {
               <th>Nombre</th>
               <th>Agrupación</th>
               <th>Frecuencia</th>
+              <th>Estado</th>
               <th>Acción</th>
             </tr>
           </thead>
@@ -387,13 +397,14 @@ function editarIndicador(id: string) {
                 {{ indicador.campos.frecuencia }}
               </td>
 
+              <td>{{ indicador.activo ? 'Activo' : 'Inactivo' }}</td>
               <td>
                 <button
                   type="button"
                   class="btn-editar"
-                  @click="editarIndicador(indicador.id)"
+                  @click="verIndicador(indicador.id)"
                 >
-                  Editar
+                  Ver ficha
                 </button>
               </td>
             </tr>
@@ -413,9 +424,8 @@ function editarIndicador(id: string) {
           El catálogo inicial conserva sus
           63 indicadores.
 
-          Los indicadores adicionales se registran
-          por separado para proteger la información
-          original del Excel.
+          Las fichas nuevas se guardan en la base y se muestran aquí.
+          Las demostraciones anteriores de este navegador no se trasladan automáticamente.
         </p>
       </div>
     </section>

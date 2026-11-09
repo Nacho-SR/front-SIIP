@@ -5,7 +5,7 @@ import { createSSRApp } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { createServer } from 'vite';
 
-let vite, calendario, seguimiento, admin, catalogo, CaptureView, ReviewDetailView, NuevoIndicadorView, ConsultaView, router, useAuthStore;
+let vite, calendario, seguimiento, admin, catalogo, CaptureView, ReviewDetailView, NuevoIndicadorView, ConsultaView, router, useAuthStore, api;
 before(async () => {
   vite = await createServer({
     server: { middlewareMode: true, watch: null, hmr: false, ws: false }, appType: 'custom',
@@ -16,6 +16,7 @@ before(async () => {
   calendario = await vite.ssrLoadModule('/src/core/operacion-pendiente.ts');
   seguimiento = await vite.ssrLoadModule('/src/modules/review/data/seguimiento.store.ts');
   admin = await vite.ssrLoadModule('/src/modules/admin/data/admin.store.ts');
+  ({ default: api } = await vite.ssrLoadModule('/src/core/api.ts'));
   ({ default: catalogo } = await vite.ssrLoadModule('/src/modules/consulta/data/indicadores-siip.json'));
   ({ default: CaptureView } = await vite.ssrLoadModule('/src/modules/capture/CaptureView.vue'));
   ({ default: ReviewDetailView } = await vite.ssrLoadModule('/src/modules/review/ReviewDetailView.vue'));
@@ -32,6 +33,8 @@ beforeEach(() => {
   auth.initialized = true;
   auth.user = { id: '1', nombre: 'Revisión de prueba', correo: 'revision@example.test', rol: 'revision', dependencia_id: '7' };
   admin.adminState.indicadores = [];
+  admin.adminState.error = '';
+  admin.adminState.cargando = false;
 });
 
 async function render(component, preparar) {
@@ -177,7 +180,7 @@ test('cambiar agrupación filtra familias y borra una familia incompatible', asy
     assert.equal(state.formulario.familia, '');
     assert.ok(state.familiasDisponibles.includes(otro.familia));
   });
-  assert.match(html, /No activa un indicador/);
+  assert.match(html, /indicador inactivo/);
 });
 
 test('el guardado también rechaza una familia de otra agrupación sin escribir', async () => {
@@ -185,26 +188,44 @@ test('el guardado también rechaza una familia de otra agrupación sin escribir'
   const otro = catalogo.find(indicador => indicador.agrupacion !== primero.agrupacion);
   let escrituras = 0;
   await conAlmacenamiento('localStorage', { setItem() { escrituras++; } }, async () => {
-    assert.throws(() => admin.guardarIndicador({ clave: 'FICHA-PRUEBA', nombre: 'Ejemplo',
+    await assert.rejects(admin.guardarIndicador({ clave: 'FICHA-PRUEBA', nombre: 'Ejemplo',
       agrupacion: primero.agrupacion, familia: otro.familia }), /familia que pertenezca/);
     assert.equal(escrituras, 0);
     assert.equal(admin.adminState.indicadores.length, 0);
   });
 });
 
-test('una ficha válida sigue siendo demostrativa y el fallo de almacenamiento no deja un alta aparente', async () => {
+test('el alta espera al servidor y no escribe localStorage ni activa Consulta', async () => {
   const campos = { clave: 'FICHA-PRUEBA', nombre: 'Ejemplo', agrupacion: catalogo[0].agrupacion, familia: catalogo[0].familia };
-  await conAlmacenamiento('localStorage', { setItem() { throw new Error('Sin espacio'); } }, async () => {
-    assert.throws(() => admin.guardarIndicador(campos), /Sin espacio/);
-    assert.equal(admin.adminState.indicadores.length, 0);
+  api.defaults.adapter = async () => { throw new Error('Sin conexión'); };
+  await assert.rejects(admin.guardarIndicador(campos), /Sin conexión/);
+  assert.equal(admin.adminState.indicadores.length, 0);
+  const confirmado = { id: '9007199254740993', campos: { ...campos, consecutivo: '130' }, activo: false,
+    creadoEn: '2026-11-09T12:00:00Z', actualizadoEn: '2026-11-09T12:00:00Z' };
+  let enviado;
+  api.defaults.adapter = async config => { enviado = config; return { status: 201, data: confirmado, config, headers: {} }; };
+  await conAlmacenamiento('localStorage', { getItem() { assert.fail('No leer fichas demo'); }, setItem() { assert.fail('No guardar fichas locales'); } }, async () => {
+    assert.deepEqual(await admin.guardarIndicador({ ...campos, consecutivo: '999' }), confirmado);
   });
-  let persistido;
-  await conAlmacenamiento('localStorage', { setItem(_key, value) { persistido = JSON.parse(value); } }, async () => {
-    admin.guardarIndicador(campos);
-  });
-  assert.equal(persistido.length, 1);
+  assert.equal(enviado.url, '/administracion/indicadores');
+  assert.equal(JSON.parse(enviado.data).consecutivo, undefined);
   assert.equal(admin.adminState.indicadores.length, 1);
   const { state } = await render(ConsultaView);
   assert.equal(state.indicadores.length, 63);
   assert.equal(state.indicadores.some(indicador => indicador.clave === campos.clave), false);
+});
+
+test('el listado y la ficha se recuperan por API y los errores permiten reintentar', async () => {
+  const confirmado = { id: '1', campos: { clave: 'SIIP.05.F35.004' }, activo: false };
+  const urls = [];
+  api.defaults.adapter = async config => { urls.push(config.url); return { status: 200, data: config.url.endsWith('/1') ? confirmado : [confirmado], config, headers: {} }; };
+  await admin.refrescarAdmin();
+  assert.deepEqual(admin.adminState.indicadores, [confirmado]);
+  assert.deepEqual(await admin.obtenerIndicadorAdmin('1'), confirmado);
+  assert.deepEqual(urls, ['/administracion/indicadores', '/administracion/indicadores/1']);
+  api.defaults.adapter = async () => { throw new Error('Sin conexión'); };
+  await assert.rejects(admin.refrescarAdmin());
+  assert.deepEqual(admin.adminState.indicadores, []);
+  assert.match(admin.adminState.error, /No se pudo cargar/);
+  assert.equal(admin.adminState.cargando, false);
 });

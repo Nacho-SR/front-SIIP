@@ -197,6 +197,114 @@ paths:
           $ref: '#/components/responses/AutenticacionNoConfigurada'
         '500':
           $ref: '#/components/responses/ErrorInterno'
+  /administracion/indicadores:
+    get:
+      tags: &a1
+        - Administracion
+      x-roles: &a2
+        - administrador
+      operationId: listarIndicadoresAdministrados
+      summary: Listar fichas nuevas persistidas
+      description: Array completo por consecutivo descendente, solo Administrador. No
+        incluye las 63 fichas de referencia del frontend.
+      responses:
+        "200":
+          description: Ficha documental confirmada. No habilita captura ni publica resultados.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                type: array
+                items: &a3
+                  $ref: "#/components/schemas/IndicadorAdministrado"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/NoPermitido"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+        "503":
+          $ref: "#/components/responses/AutenticacionNoConfigurada"
+    post:
+      tags: *a1
+      x-roles: *a2
+      operationId: crearIndicador
+      summary: Registrar ficha de indicador inactivo
+      description: Ficha y auditoría atómicas. Consecutivo del servidor. Clave única,
+        familia/agrupación activas y coherentes. Requiere SQL 005 autorizado; no
+        configura operaciones.
+      parameters:
+        - $ref: "#/components/parameters/Csrf"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AltaIndicador"
+      responses:
+        "201":
+          description: Ficha documental confirmada. No habilita captura ni publica resultados.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema: *a3
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/NoPermitido"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "413":
+          $ref: "#/components/responses/CargaExcesiva"
+        "422":
+          $ref: "#/components/responses/DatosInvalidos"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+        "503":
+          $ref: "#/components/responses/AutenticacionNoConfigurada"
+  /administracion/indicadores/{id}:
+    get:
+      tags: *a1
+      x-roles: *a2
+      operationId: consultarIndicadorAdministrado
+      summary: Consultar ficha por ID interno
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      responses:
+        "200":
+          description: Ficha documental confirmada. No habilita captura ni publica resultados.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema: *a3
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/NoPermitido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "422":
+          $ref: "#/components/responses/DatosInvalidos"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+        "503":
+          $ref: "#/components/responses/AutenticacionNoConfigurada"
   /administracion/usuarios:
     get:
       operationId: listarUsuarios
@@ -2126,6 +2234,354 @@ components:
         correo: captura@example.test
         rol: captura
         dependencia_id: '7'
+    AltaIndicador:
+      type: object
+      properties:
+        ipsm:
+          default: ""
+          type: string
+          maxLength: 8
+        clave:
+          type: string
+          pattern: ^SIIP\.\d{2}\.F\d{2}\.\d{3}$
+        nombre:
+          type: string
+          minLength: 1
+          maxLength: 500
+        definicion:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        nivelObjetivo:
+          type: string
+        tipologia:
+          type: string
+        ambito:
+          type: string
+        dimension:
+          type: string
+        transversalidad:
+          default: ""
+          type: string
+          maxLength: 20000
+        agrupacion:
+          type: string
+          minLength: 1
+          maxLength: 300
+        familia:
+          type: string
+          minLength: 1
+          maxLength: 300
+        funcionIndicador:
+          default: ""
+          type: string
+          maxLength: 20000
+        procedencia:
+          default: ""
+          type: string
+          maxLength: 20000
+        idsOrigen:
+          default: ""
+          type: string
+          maxLength: 20000
+        justificacion:
+          default: ""
+          type: string
+          maxLength: 20000
+        objetivo:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        algoritmo:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        variables:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        unidad:
+          type: string
+          minLength: 1
+          maxLength: 200
+        condicionAcumulacion:
+          default: ""
+          type: string
+          enum:
+            - ""
+            - Acumulable
+            - No acumulable
+        sentido:
+          type: string
+        desagregacion:
+          type: string
+        frecuencia:
+          type: string
+          enum:
+            - Mensual
+            - Trimestral
+            - Semestral
+            - Anual
+        lineaBase:
+          default: ""
+          type: string
+          maxLength: 20000
+        periodoLineaBase:
+          default: ""
+          type: string
+          maxLength: 20000
+        fuente:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        unidadResponsable:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        criterioInterpretacion:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        meta:
+          default: ""
+          type: string
+          maxLength: 20000
+        periodoCumplimiento:
+          default: ""
+          type: string
+          maxLength: 20000
+        semaforizacion:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        observaciones:
+          default: ""
+          type: string
+          maxLength: 20000
+        territorial:
+          default: ""
+          type: string
+          enum:
+            - ""
+            - S
+            - N
+      required:
+        - clave
+        - nombre
+        - definicion
+        - nivelObjetivo
+        - tipologia
+        - ambito
+        - dimension
+        - agrupacion
+        - familia
+        - objetivo
+        - algoritmo
+        - variables
+        - unidad
+        - sentido
+        - desagregacion
+        - frecuencia
+        - fuente
+        - unidadResponsable
+        - criterioInterpretacion
+        - semaforizacion
+      additionalProperties: false
+    IndicadorAdministrado:
+      type: object
+      properties:
+        id:
+          type: string
+          maxLength: 19
+          pattern: ^[1-9]\d*$
+        campos:
+          type: object
+          properties:
+            ipsm:
+              default: ""
+              type: string
+              maxLength: 8
+            clave:
+              type: string
+              pattern: ^SIIP\.\d{2}\.F\d{2}\.\d{3}$
+            nombre:
+              type: string
+              minLength: 1
+              maxLength: 500
+            definicion:
+              type: string
+              minLength: 1
+              maxLength: 20000
+            nivelObjetivo:
+              type: string
+            tipologia:
+              type: string
+            ambito:
+              type: string
+            dimension:
+              type: string
+            transversalidad:
+              default: ""
+              type: string
+              maxLength: 20000
+            agrupacion:
+              type: string
+              minLength: 1
+              maxLength: 300
+            familia:
+              type: string
+              minLength: 1
+              maxLength: 300
+            funcionIndicador:
+              default: ""
+              type: string
+              maxLength: 20000
+            procedencia:
+              default: ""
+              type: string
+              maxLength: 20000
+            idsOrigen:
+              default: ""
+              type: string
+              maxLength: 20000
+            justificacion:
+              default: ""
+              type: string
+              maxLength: 20000
+            objetivo:
+              type: string
+              minLength: 1
+              maxLength: 20000
+            algoritmo:
+              type: string
+              minLength: 1
+              maxLength: 20000
+            variables:
+              type: string
+              minLength: 1
+              maxLength: 20000
+            unidad:
+              type: string
+              minLength: 1
+              maxLength: 200
+            condicionAcumulacion:
+              default: ""
+              type: string
+              enum:
+                - ""
+                - Acumulable
+                - No acumulable
+            sentido:
+              type: string
+            desagregacion:
+              type: string
+            frecuencia:
+              type: string
+              enum:
+                - Mensual
+                - Trimestral
+                - Semestral
+                - Anual
+            lineaBase:
+              default: ""
+              type: string
+              maxLength: 20000
+            periodoLineaBase:
+              default: ""
+              type: string
+              maxLength: 20000
+            fuente:
+              type: string
+              minLength: 1
+              maxLength: 20000
+            unidadResponsable:
+              type: string
+              minLength: 1
+              maxLength: 20000
+            criterioInterpretacion:
+              type: string
+              minLength: 1
+              maxLength: 20000
+            meta:
+              default: ""
+              type: string
+              maxLength: 20000
+            periodoCumplimiento:
+              default: ""
+              type: string
+              maxLength: 20000
+            semaforizacion:
+              type: string
+              minLength: 1
+              maxLength: 20000
+            observaciones:
+              default: ""
+              type: string
+              maxLength: 20000
+            territorial:
+              default: ""
+              type: string
+              enum:
+                - ""
+                - S
+                - N
+            consecutivo:
+              type: string
+              maxLength: 19
+              pattern: ^[1-9]\d*$
+          required:
+            - ipsm
+            - clave
+            - nombre
+            - definicion
+            - nivelObjetivo
+            - tipologia
+            - ambito
+            - dimension
+            - transversalidad
+            - agrupacion
+            - familia
+            - funcionIndicador
+            - procedencia
+            - idsOrigen
+            - justificacion
+            - objetivo
+            - algoritmo
+            - variables
+            - unidad
+            - condicionAcumulacion
+            - sentido
+            - desagregacion
+            - frecuencia
+            - lineaBase
+            - periodoLineaBase
+            - fuente
+            - unidadResponsable
+            - criterioInterpretacion
+            - meta
+            - periodoCumplimiento
+            - semaforizacion
+            - observaciones
+            - territorial
+            - consecutivo
+          additionalProperties: false
+        activo:
+          type: boolean
+        creadoEn:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+        actualizadoEn:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+      required:
+        - id
+        - campos
+        - activo
+        - creadoEn
+        - actualizadoEn
+      additionalProperties: false
     UsuarioAdministrado:
       type: object
       additionalProperties: false

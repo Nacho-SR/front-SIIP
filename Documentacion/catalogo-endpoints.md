@@ -60,6 +60,17 @@ Cookie opaca HttpOnly/Secure/SameSite y token CSRF son la alternativa propuesta.
 
 El primer administrador se crea por `npm run admin:create`, nunca por endpoint público. El script no modifica cuentas existentes. Colección importable en `../siip-backend/docs/SIIP-auth.postman_collection.json`.
 
+## Fichas persistentes de indicadores — 09/11/2026, DEC-042
+
+| Método | Ruta | Propósito | Acceso |
+| --- | --- | --- | --- |
+| POST | /administracion/indicadores | Crear ficha inactiva y auditoría en una transacción. Consecutivo del servidor, código único y clasificación válida. | Administrador con sesión, Origin y CSRF |
+| GET | /administracion/indicadores | Listar fichas nuevas persistidas, por consecutivo descendente, sin paginación. | Administrador con sesión |
+| GET | /administracion/indicadores/{id} | Consultar ficha por ID interno. | Administrador con sesión |
+
+Implementado en código/UI. Requiere SQL 005 en la base autorizada. No carga las
+63 fichas base ni activa indicadores. [Alcance y diferencias del borrador](alta-indicadores.md).
+
 ## Candidatos P2 aún sin contrato OpenAPI
 
 | Método / ruta candidata | Propósito de negocio | Roles | Pendiente que impide cerrarlo |

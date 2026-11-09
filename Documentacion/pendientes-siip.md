@@ -29,6 +29,14 @@ Otras verificaciones pendientes:
 - Determinar qué configuraciones puede modificar el administrador desde UI y cuáles requieren intervención técnica.
 
 ## Próxima actividad que no depende de todas las respuestas
+Actualización 09/11/2026, DEC-042: el usuario solicita implementar el alta persistente
+de fichas, exclusivamente inactivas. SQL 005 aplicado con autorización expresa solo
+en SIIP local (localhost:5432/public), con ocho agrupaciones, 54 familias y ninguna
+ficha ficticia en las tablas de trabajo. Integración real aislada aprobada. Este alcance
+no aprueba las otras tablas ni habilita Captura/Seguimiento. Estado y contratos
+en [alta-indicadores.md](alta-indicadores.md). Las restricciones siguientes se
+conservan para el resto del modelo y sus decisiones abiertas.
+
 Revisar [modelo-datos-mvp-borrador.md](modelo-datos-mvp-borrador.md), entregado como propuesta v0.1 el 23/10/2026, y PROP-BD-001..009 de decisiones-siip.md. El alcance actualizado y la bitácora están en [alcance-mvp.md](alcance-mvp.md). Mantener como recomendaciones los detalles del flujo aún no aprobados. No modificar el ERD ni el código, ni generar migraciones, hasta que se apruebe la propuesta y se solicite su implementación.
 
 ### Puntos técnicos añadidos a revisión del borrador

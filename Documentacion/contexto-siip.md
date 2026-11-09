@@ -85,6 +85,12 @@ Confirmado por el equipo el 22/10/2026: verdes=1, amarillos=0.5, rojos=0; índic
 1) Alcance/MVP; 2) SRS con historias, RF/RNF y reglas; 3) flujos y matriz de permisos; 4) arquitectura/stack/Git/CI-CD; 5) ERD+diccionario SQL; 6) API OpenAPI; 7) UI/UX; 8) pruebas y aceptación; 9) despliegue/operación. Mantener registro de decisiones; no duplicar información innecesaria.
 
 ## 9. Trabajo actual
+Actualización 09/11/2026, DEC-042: alta/listado/consulta de fichas persistidas para
+Administrador, siempre inactivas; sustituye la ficha demostrativa en localStorage.
+SQL 005 aplicado con autorización expresa únicamente en SIIP local, localhost:5432/public,
+con catálogos 8/54 y ninguna ficha ficticia en las tablas de trabajo. No implementa
+variables operativas, periodos, cálculos ni publicación. Véase [alta-indicadores.md](alta-indicadores.md).
+
 La revisión inicial del ERD y las fuentes está realizada. Se entrega el borrador PostgreSQL solicitado en `modelo-datos-mvp-borrador.md`, con 13 entidades, tipos, relaciones, restricciones y pendientes. `alcance-mvp.md` actualiza el MVP en Markdown y `decisiones-siip.md` registra PROP-BD-001..009 como recomendaciones por revisar. La propuesta de tablas, campos y flujo no está aprobada todavía; no se han modificado el ERD HTML, los Word ni el código, ni generado migraciones.
 
 Detalle vigente de DEC-039: [cierre y justificación en flujos de negocio](flujos-negocio.md#cierre-y-justificación--dec-039-06112026). Cierre al terminar el periodo, gris por faltantes, continuidad de revisión de envíos completos y reapertura exclusivamente documental. Implementación operativa pendiente.

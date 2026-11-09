@@ -1,0 +1,101 @@
+// Referencia de las 63 fichas originales; no añade indicadores operativos.
+export const clavesBase: readonly string[] = [
+  "SIIP.01.F01.002",
+  "SIIP.01.F01.003",
+  "SIIP.01.F02.002",
+  "SIIP.01.F02.003",
+  "SIIP.01.F03.003",
+  "SIIP.01.F04.002",
+  "SIIP.01.F05.002",
+  "SIIP.01.F05.003",
+  "SIIP.01.F06.002",
+  "SIIP.01.F06.003",
+  "SIIP.01.F07.003",
+  "SIIP.01.F08.002",
+  "SIIP.01.F09.002",
+  "SIIP.01.F09.003",
+  "SIIP.01.F10.002",
+  "SIIP.01.F11.003",
+  "SIIP.02.F12.002",
+  "SIIP.02.F13.002",
+  "SIIP.02.F14.001",
+  "SIIP.02.F15.002",
+  "SIIP.02.F16.002",
+  "SIIP.02.F17.002",
+  "SIIP.02.F17.003",
+  "SIIP.03.F18.002",
+  "SIIP.03.F19.002",
+  "SIIP.03.F20.002",
+  "SIIP.03.F21.002",
+  "SIIP.03.F22.001",
+  "SIIP.03.F23.002",
+  "SIIP.03.F24.002",
+  "SIIP.04.F25.002",
+  "SIIP.04.F26.002",
+  "SIIP.04.F27.002",
+  "SIIP.04.F28.002",
+  "SIIP.04.F29.002",
+  "SIIP.04.F30.001",
+  "SIIP.04.F31.002",
+  "SIIP.04.F32.002",
+  "SIIP.04.F33.002",
+  "SIIP.05.F34.003",
+  "SIIP.05.F34.004",
+  "SIIP.05.F35.002",
+  "SIIP.05.F36.002",
+  "SIIP.05.F36.003",
+  "SIIP.05.F37.001",
+  "SIIP.05.F38.002",
+  "SIIP.06.F39.002",
+  "SIIP.06.F40.001",
+  "SIIP.06.F41.002",
+  "SIIP.06.F42.002",
+  "SIIP.06.F43.002",
+  "SIIP.07.F44.002",
+  "SIIP.07.F45.002",
+  "SIIP.07.F46.002",
+  "SIIP.07.F47.002",
+  "SIIP.07.F48.003",
+  "SIIP.07.F49.002",
+  "SIIP.07.F50.001",
+  "SIIP.07.F51.002",
+  "SIIP.08.F52.001",
+  "SIIP.08.F52.002",
+  "SIIP.08.F53.002",
+  "SIIP.08.F54.002"
+];
+export const opcionesFicha = {
+  "nivelObjetivo": [
+    "Actividad",
+    "Componente",
+    "Fin",
+    "Propósito"
+  ],
+  "tipologia": [
+    "Estratégico",
+    "Gestión"
+  ],
+  "ambito": [
+    "Impacto",
+    "Insumos",
+    "Procesos",
+    "Productos",
+    "Resultados"
+  ],
+  "dimension": [
+    "Calidad",
+    "Economía",
+    "Eficacia",
+    "Eficiencia"
+  ],
+  "sentido": [
+    "Ascendente",
+    "Constante",
+    "Descendente",
+    "Mantenimiento"
+  ],
+  "desagregacion": [
+    "Colonia",
+    "Municipal"
+  ]
+} as const;

@@ -1,5 +1,10 @@
 # Backend SIIP
 
+Alta persistente de indicadores (09/11/2026): POST/GET `/api/v1/administracion/indicadores`
+y GET `/api/v1/administracion/indicadores/{id}` para Administrador. SQL 005 crea
+las tres tablas del alcance documental y catálogos, sin ejecutarse al arrancar.
+[Alcance, contrato y preparación de base](../Documentacion/alta-indicadores.md).
+
 Estado de la integración visual, límites operativos y verificación del 09/11/2026: [informe](../Documentacion/verificacion-integracion-visual-2026-11-09.md).
 
 Node.js 22, TypeScript y Fastify 5. Ejecuta los comandos desde `siip-backend`.

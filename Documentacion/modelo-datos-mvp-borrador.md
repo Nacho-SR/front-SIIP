@@ -1,5 +1,12 @@
 # Borrador del modelo PostgreSQL del SIIP
 
+**Actualización de implementación 09/11/2026, DEC-042:** el alta documental de fichas
+ya usa tres tablas nuevas mediante SQL 005, aplicado con autorización en SIIP local.
+No equivale a aprobar estas 13 tablas. Los campos documentales de variables, meta,
+línea base, acumulación y reglas se conservan como texto con unidad, sin convertirlos
+en configuración operativa. Difiere expresamente del diseño numérico propuesto más
+abajo. [Alcance aplicado, diferencias y pruebas](alta-indicadores.md).
+
 **Versión:** 0.1. **Fecha:** 23/10/2026. **Estado:** propuesta técnica para revisión, sin aprobación del esquema ni migraciones ejecutadas.
 
 Este documento propone 13 tablas para operar el MVP con integridad, revisión, resultados publicados e historia. Separa lo confirmado de los detalles de implementación que todavía requieren revisión. La cantidad de tablas no constituye una restricción de negocio.

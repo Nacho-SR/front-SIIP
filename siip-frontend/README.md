@@ -1,5 +1,9 @@
 # SIIP frontend
 
+Alta persistente de indicadores (09/11/2026): Administrador puede crear fichas
+inactivas, listarlas y consultarlas tras recargar. Sustituye el guardado local de
+demostración; requiere SQL 005 en la base del backend. [Alcance y pruebas](../Documentacion/alta-indicadores.md).
+
 Estado de la integración visual, límites operativos y verificación del 09/11/2026: [informe](../Documentacion/verificacion-integracion-visual-2026-11-09.md).
 
 Corrección posterior al merge (09/11/2026): Administración carga las cuentas guardadas

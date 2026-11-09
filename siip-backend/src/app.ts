@@ -11,8 +11,10 @@ import type { AuthDependencies } from './modules/auth/auth.routes.js';
 import { HttpError } from './shared/http-error.js';
 import { usersRoutes } from './modules/administracion/usuarios.routes.js';
 import type { UsersRepository } from './modules/administracion/repositories/usuarios.repository.js';
+import { indicatorsRoutes } from './modules/indicadores/indicadores.routes.js';
+import type { IndicatorsRepository } from './modules/indicadores/repositories/indicadores.repository.js';
 
-export async function buildApp(env: Env, auth?: AuthDependencies & { users?: UsersRepository }) {
+export async function buildApp(env: Env, auth?: AuthDependencies & { users?: UsersRepository; indicators?: IndicatorsRepository }) {
   const app = Fastify({
     logger: {
       redact: ['req.headers.authorization', 'req.headers.cookie', 'req.body.password', 'res.headers["set-cookie"]'],
@@ -56,6 +58,7 @@ export async function buildApp(env: Env, auth?: AuthDependencies & { users?: Use
   await app.register(async (api) => {
     await registerAuth(api, { env, dependencies: auth });
     await api.register(usersRoutes, { prefix: '/administracion', repository: auth?.users });
+    await api.register(indicatorsRoutes, { prefix: '/administracion', repository: auth?.indicators });
   }, { prefix: '/api/v1' });
 
   app.get('/api/v1/salud', {

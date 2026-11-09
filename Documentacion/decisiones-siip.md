@@ -50,6 +50,22 @@
 
 Actualización técnica del 30/10/2026: DEC-029/035 completan la selección inicial de DEC-027. Hay arranque, validación de entorno, cabeceras, CORS, límites por IP y código de autenticación modular. Sesión con cookie/CSRF y Argon2id; expiración absoluta inicial de 30 minutos y 5 intentos de login/IP/minuto como valores técnicos revisables. Se relee cuenta/rol/dependencia vigentes; cambios de hash invalidan sesiones previas mediante huella HMAC. El almacén de sesiones usa generación y compare-and-set para impedir sobrescrituras obsoletas tras rotación/revocación. Sin DATABASE_URL, auth responde 503 y salud sigue disponible. El SQL no se ejecuta al iniciar ni se ha aplicado; PostgreSQL real sigue pendiente de prueba.
 
+## Alta persistente de fichas — 09/11/2026
+
+DEC-042, implementación solicitada por el usuario: alta, listado y consulta de fichas
+de indicadores desde Administrador con persistencia en PostgreSQL. Se sustituye
+el guardado demostrativo local. Fichas inactivas, código único, clasificación
+consistente y alta/auditoría atómicas. SQL 005 prepara agrupaciones, familias e
+indicadores, sin aprobar ni crear el resto del esquema de negocio. La ficha
+conserva textos y unidades; no ejecuta algoritmos ni asigna variables o permisos
+por el texto del responsable. Edición, activación, operación y vigencias siguen
+pendientes. Aplicación de SQL solo en base concreta autorizada. Alcance, contratos
+y diferencias del borrador: [alta-indicadores.md](alta-indicadores.md).
+
+Aplicación autorizada el 09/11/2026: SQL 005 solo en SIIP local, localhost:5432/public,
+con ocho agrupaciones y 54 familias. Cero fichas ficticias en las tablas de trabajo.
+Integración real de seis fichas aprobada en un esquema temporal aislado, ya eliminado.
+
 ## Infraestructura vigente — actualización del 06/11/2026
 
 - Solo el backend Node.js necesita conexión directa a PostgreSQL durante la operación; los usuarios de la aplicación acceden mediante la API, sin credenciales de BD en el frontend. Migraciones y respaldos son accesos técnicos separados.

@@ -5,6 +5,7 @@ import { createPool } from './database/pool.js';
 import { createAuthRepository } from './modules/auth/repositories/auth.repository.js';
 import { PostgresSessionStore } from './modules/auth/repositories/session.repository.js';
 import { createUsersRepository } from './modules/administracion/repositories/usuarios.repository.js';
+import { createIndicatorsRepository } from './modules/indicadores/repositories/indicadores.repository.js';
 
 config({ quiet: true });
 
@@ -23,6 +24,7 @@ const pool = env.DATABASE_URL ? createPool(env.DATABASE_URL) : undefined;
 const app = await buildApp(env, pool ? {
   repository: createAuthRepository(pool), sessionStore: new PostgresSessionStore(pool),
   users: createUsersRepository(pool),
+  indicators: createIndicatorsRepository(pool),
 } : undefined);
 
 if (pool) {
