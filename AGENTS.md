@@ -12,7 +12,8 @@ Este repositorio corresponde al **Sistema Integrado de Indicadores de Planeació
 - MVP inicial: 63 indicadores, 8 agrupaciones temáticas, familias y PostgreSQL. Captura territorial **solo municipal**.
 - Equipo: una persona de backend y una de frontend, nivel junior. Privilegia arquitectura y tablas mínimas, relaciones/constraints claras, migraciones comprensibles y código mantenible.
 - Evita microservicios, event sourcing, CQRS, abstracciones innecesarias y motores de fórmulas arbitrarias salvo necesidad demostrada y aprobación.
-- Los roles son **Captura**, **Revisión** y **Administrador**; un usuario tiene un solo rol. El rol Revisión realiza las acciones de revisar y validar; son acciones distintas, no un cuarto rol.
+- Los roles son **Captura**, **Revisión**, **Administrador** y **Consulta**; un usuario tiene un solo rol. El rol Revisión realiza las acciones de revisar y validar; son acciones distintas.
+- DEC-038: Consulta permite varias cuentas sin dependencia, con lectura global de información publicada, ficha técnica y estadísticas; no concede acciones operativas ni acceso predeterminado a expedientes/PDF internos. SQL 004 preparado, no aplicado automáticamente.
 - DEC-037 (04/11/2026): Captura y Revisión requieren una dependencia activa. La pertenencia de Revisión no restringe su consulta global ni concede captura; Administrador no hereda sus acciones. Las altas desde UI/API solo las realiza Administrador. SQL 003 preparado, no aplicado automáticamente; no inventar dependencia para cuentas existentes.
 - La fórmula textual se conserva para la ficha técnica; la implementación del cálculo puede limitarse a los tipos reales soportados por los 63 indicadores.
 - DEC-030/031: cambios de regla no recalculan publicaciones; una captura en revisión conserva su regla y atrasos/reaperturas usan la del periodo. No usar la regla actual como sustituto de una versión histórica faltante. Precisar la vigencia de cambios a mitad de periodo.

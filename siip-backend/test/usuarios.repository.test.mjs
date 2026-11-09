@@ -42,6 +42,19 @@ test('un fallo de auditoría revierte el alta y libera la conexión', async () =
   assert.equal(f.released(), true);
 });
 
+test('Consulta se inserta con dependencia nula y auditoría en la misma transacción', async () => {
+  const consulta = { ...publicUser, rol: 'consulta', dependencia_id: null };
+  const f = fixture((sql) => sql.includes('INSERT INTO usuarios') ? { rows: [consulta], rowCount: 1 } : undefined);
+  assert.deepEqual(await f.repository.createUser({ ...consulta, password_hash: account.password_hash }, '1'), consulta);
+  assert.equal(f.calls.some(({ sql }) => sql.includes('SELECT id FROM dependencias')), false);
+  const insert = f.calls.find(({ sql }) => sql.includes('INSERT INTO usuarios'));
+  assert.equal(insert.params[3], 'consulta');
+  assert.equal(insert.params[4], null);
+  const audit = f.calls.find(({ sql }) => sql.includes('INSERT INTO auditoria_configuracion'));
+  assert.equal(JSON.parse(audit.params[3]).rol, 'consulta');
+  assert.equal(f.calls.at(-1).sql, 'COMMIT');
+});
+
 test('bootstrap existente no inserta ni cambia la cuenta y los duplicados son 409', async () => {
   const existing = fixture((sql) => sql.includes('SELECT 1 FROM usuarios') ? { rowCount: 1 } : undefined);
   await assert.rejects(existing.repository.createInitialAdmin({ ...account, rol: 'administrador', dependencia_id: null }), { codigo: 'ADMIN_YA_EXISTE' });

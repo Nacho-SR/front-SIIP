@@ -68,6 +68,8 @@ de `registerAuth`. Ahí comparten sesión, control de Origin/CSRF para escritura
 usan ese guard; para una acción de Revisión se añade `requireRoles('revision')`.
 Administrador no hereda permisos de Captura/Revisión. Estos guards no sustituyen
 los filtros y permisos por objeto/dependencia que deberá implementar cada módulo.
+Consulta es un cuarto rol exclusivo, sin dependencia, para lectura de información
+publicada; puede haber varias cuentas. No administra ni captura/revisa/valida.
 Salud queda fuera de ese ámbito: no consulta sesiones ni usuarios.
 
 ## Autenticación
@@ -112,14 +114,16 @@ certificado explícitamente antes de usar ese proveedor.
 
 Al 04/11/2026 el equipo dispone de una base PostgreSQL vacía; todavía falta configurar
 la conexión local. **No se ejecutó SQL desde este chat**. Aplicar explícitamente y en
-orden `sql/001_auth_propuesta.sql`, `sql/002_auditoria_configuracion.sql` y
-`sql/003_dependencia_revision.sql` en la base
+orden `sql/001_auth_propuesta.sql`, `sql/002_auditoria_configuracion.sql`,
+`sql/003_dependencia_revision.sql` y `sql/004_rol_consulta.sql` en la base
 de desarrollo autorizada (por ejemplo, desde el editor SQL de PostgreSQL).
 El primero crea dependencias, usuarios y sesiones; el segundo, auditoría administrativa.
 El tercero exige dependencia para Captura y Revisión (DEC-037). Si ya existen
 revisores sin dependencia, asignarles la correcta antes de aplicar SQL 003; la
 validación falla sin inventar asignaciones ni cambiar cuentas. El backend rechaza
 el acceso de cuentas de Revisión sin dependencia o con dependencia inactiva.
+El cuarto SQL añade el rol Consulta y debe confirmarse antes de usar el nuevo valor
+en otra transacción. Está preparado; no se ejecutó ni se modificaron cuentas.
 La tabla técnica de sesiones guarda JSON, generación para actualización
 atómica y vencimiento; evita recrear sesiones revocadas desde solicitudes obsoletas.
 Las consultas iniciales usan `pg` parametrizado, incluido el compare-and-set; Drizzle
@@ -161,7 +165,7 @@ No se implementaron subida PDF, registro público o recuperación de contraseña
 con Argon2id y auditoría en la misma transacción. Si ya hay cualquier cuenta de
 Administrador (incluso inactiva), falla sin cambiarla. No es un reset de contraseña.
 
-Desde PowerShell, en `siip-backend`, con `.env` configurado y los tres SQL aplicados:
+Desde PowerShell, en `siip-backend`, con `.env` configurado y los cuatro SQL aplicados:
 
 ```powershell
 $env:ADMIN_NOMBRE = Read-Host 'Nombre del administrador'
@@ -213,15 +217,20 @@ normalizan a minúsculas; duplicados responden 409. La contraseña inicial requi
 15–1024 caracteres; no se exige composición arbitraria. No se admite crear un
 Administrador por HTTP ni imponer campos como `activo`, `creado_por` o hashes.
 
+Para Consulta se usa el mismo endpoint con `rol: "consulta"` y `dependencia_id`
+omitida o `null`. Una dependencia no nula se rechaza con 422. Se admiten varias
+cuentas de Consulta; todas quedan sin permisos operativos ni administrativos.
+
 El alta y su evento en `auditoria_configuracion` son atómicos. Si falla la bitácora,
 se revierte el alta. El bootstrap se registra con el ID del nuevo administrador
 como actor inicial. Los valores de auditoría no incluyen contraseñas o hashes.
 
 `GET /api/v1/administracion/dependencias` devuelve el catálogo completo de dependencias
 activas como array, ordenado por nombre e ID, sin paginación. Exige sesión de
-Administrador y permite poblar el selector de ambas altas. El frontend en
-`/front-SIIP/administrador` permite crear dependencias y usuarios de Captura/Revisión;
-una dependencia recién creada queda seleccionada para el alta de usuario.
+Administrador y permite poblar el selector de ambas altas. En `develop` la nueva
+pantalla administrativa todavía usa datos locales; reconectarla con estos endpoints
+es el paso 2 de la recuperación. Las altas HTTP del backend sí conservan validación
+y auditoría.
 
 ## Probar el recorrido
 
@@ -236,8 +245,8 @@ usa claves/correos nuevos; las cuentas existentes nunca se sobrescriben.
 
 Para verificar también SQL y persistencia real, configura `TEST_DATABASE_URL` para
 una base de pruebas separada y ejecuta `npm run test:integration`. La prueba crea
-un esquema temporal con prefijo `siip_test_`, verifica su aislamiento, aplica los tres
-SQL (incluida la dependencia obligatoria para Revisión), recorre las altas y auth,
+un esquema temporal con prefijo `siip_test_`, verifica su aislamiento, aplica los cuatro
+SQL (incluidos dependencia obligatoria para Revisión y rol Consulta), recorre las altas y auth,
 comprueba auditoría y elimina únicamente ese esquema.
 Necesita permisos técnicos de crear esquemas en esa base. Sin `TEST_DATABASE_URL`
 se omite; nunca reutiliza automáticamente `DATABASE_URL` para escribir pruebas.
