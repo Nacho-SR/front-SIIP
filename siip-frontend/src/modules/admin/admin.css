@@ -1,0 +1,643 @@
+.admin, .admin-modal {
+  --wine: #70273b;
+  --deep: #431c2a;
+  --gold: #c69a4b;
+  --blue: #245a81;
+  --blue-dark: #183e5a;
+  --blue-light: #eaf3f9;
+  --muted: #777d85;
+  --line: #e8e4dd;
+  color: #282c33;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+}
+
+.admin {
+
+  max-width: 1500px;
+  margin: auto;
+  padding-bottom: 35px;
+}
+
+:where(.admin, .admin-modal) .panel {
+  padding: 23px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 12px 35px #382c260a;
+}
+
+.admin > .encabezado,
+:where(.admin, .admin-modal) .panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.admin > .encabezado {
+  margin-bottom: 22px;
+}
+
+:where(.admin, .admin-modal) .eyebrow {
+  display: block;
+  color: #a17738;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+:where(.admin, .admin-modal) h1,
+:where(.admin, .admin-modal) h2 {
+  color: var(--deep);
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+
+:where(.admin, .admin-modal) h1 {
+  margin: 8px 0;
+  font-size: clamp(30px, 3.5vw, 42px);
+}
+
+:where(.admin, .admin-modal) h2 {
+  margin: 8px 0;
+  font-size: 25px;
+}
+
+.admin > .encabezado p,
+:where(.admin, .admin-modal) .panel-header p,
+:where(.admin, .admin-modal) .modal-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+:where(.admin, .admin-modal) .etiqueta {
+  padding: 10px 14px;
+  border: 1px solid #b8d2e4;
+  border-radius: 9px;
+  background: var(--blue-light);
+  color: var(--blue-dark);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+:where(.admin, .admin-modal) .panel {
+  margin-bottom: 20px;
+}
+
+:where(.admin, .admin-modal) .btn-principal,
+:where(.admin, .admin-modal) .btn-secundario,
+:where(.admin, .admin-modal) .btn-editar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  min-height: 42px;
+  padding: 11px 16px;
+
+  border-radius: 9px;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    transform .2s,
+    background .2s,
+    box-shadow .2s;
+}
+
+:where(.admin, .admin-modal) .btn-principal {
+  border: 1px solid var(--wine);
+  background: var(--wine);
+  color: #fff;
+}
+
+:where(.admin, .admin-modal) .btn-principal:hover:not(:disabled) {
+  background: var(--deep);
+  transform: translateY(-1px);
+}
+
+:where(.admin, .admin-modal) .btn-principal:disabled,
+:where(.admin, .admin-modal) .btn-secundario:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+:where(.admin, .admin-modal) .btn-secundario,
+:where(.admin, .admin-modal) .btn-editar {
+  border: 1px solid #e4d7d5;
+  background: #f8f2ef;
+  color: var(--wine);
+}
+
+:where(.admin, .admin-modal) .btn-secundario:hover:not(:disabled),
+:where(.admin, .admin-modal) .btn-editar:hover {
+  background: #eee4dc;
+}
+
+:where(.admin, .admin-modal) .btn-principal:focus-visible,
+:where(.admin, .admin-modal) .btn-secundario:focus-visible,
+:where(.admin, .admin-modal) .btn-editar:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+:where(.admin, .admin-modal) .btn-agregar-usuario {
+  min-height: 44px;
+  padding: 11px 19px;
+  background: var(--wine);
+  color: #fff;
+  box-shadow:
+    0 5px 15px rgba(112, 39, 59, .16);
+}
+
+:where(.admin, .admin-modal) .btn-agregar-usuario > span {
+  color: #fff;
+}
+
+:where(.admin, .admin-modal) .btn-icono {
+  display: grid;
+  place-items: center;
+
+  width: 23px;
+  height: 23px;
+
+  border-radius: 6px;
+  background: #ffffff24;
+
+  font-size: 18px;
+  line-height: 1;
+}
+
+:where(.admin, .admin-modal) .busqueda {
+  margin: 22px 0 12px;
+}
+
+:where(.admin, .admin-modal) .busqueda input {
+  width: 100%;
+  padding: 12px;
+
+  border: 1px solid #dddcd7;
+  border-radius: 9px;
+
+  background: #fff;
+  color: #282c33;
+
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+:where(.admin, .admin-modal) .busqueda input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px #245a8122;
+}
+
+:where(.admin, .admin-modal) .tabla-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+:where(.admin, .admin-modal) table {
+  width: 100%;
+  min-width: 780px;
+
+  border-collapse: collapse;
+  text-align: left;
+}
+
+:where(.admin, .admin-modal) th,
+:where(.admin, .admin-modal) td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+:where(.admin, .admin-modal) th {
+  background: #faf9f7;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+:where(.admin, .admin-modal) tbody tr:hover {
+  background: #fcfaf8;
+}
+
+:where(.admin, .admin-modal) td strong {
+  color: var(--deep);
+}
+
+:where(.admin, .admin-modal) .nombre-usuario {
+  min-width: 150px;
+}
+
+:where(.admin, .admin-modal) .correo-usuario {
+  overflow-wrap: anywhere;
+}
+
+:where(.admin, .admin-modal) .dependencia-usuario {
+  min-width: 190px;
+}
+
+:where(.admin, .admin-modal) .dependencia-etiqueta {
+  display: inline-block;
+  color: var(--blue-dark);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+:where(.admin, .admin-modal) .sin-dependencia {
+  color: #9b6a30;
+  font-size: 11px;
+  font-style: italic;
+}
+
+:where(.admin, .admin-modal) .rol,
+:where(.admin, .admin-modal) .estado {
+  display: inline-block;
+  padding: 7px 10px;
+  border-radius: 20px;
+
+  background: #f3edf0;
+  color: var(--wine);
+
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+:where(.admin, .admin-modal) .estado.activo {
+  background: #e8f5ed;
+  color: #217447;
+}
+
+:where(.admin, .admin-modal) .estado.inactivo {
+  background: #f0f1f3;
+  color: #68717c;
+}
+
+:where(.admin, .admin-modal) .vacio,
+:where(.admin, .admin-modal) .indicadores-vacio {
+  padding: 35px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+:where(.admin, .admin-modal) .indicadores-vacio strong {
+  color: var(--deep);
+  font-size: 15px;
+}
+
+:where(.admin, .admin-modal) .indicadores-vacio p {
+  line-height: 1.8;
+}
+
+:where(.admin, .admin-modal) .nota {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+:where(.admin, .admin-modal) .mensaje {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+
+  padding: 13px 16px;
+  margin-bottom: 15px;
+
+  border-radius: 9px;
+  background: #e8f5ed;
+  color: #217447;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+:where(.admin, .admin-modal) .mensaje button {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.admin-modal.modal-fondo {
+  --wine: #70273b;
+  --deep: #431c2a;
+  --gold: #c69a4b;
+  --blue: #245a81;
+  --muted: #777d85;
+  --line: #e8e4dd;
+
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 15px;
+
+  background: #19131bb8;
+  backdrop-filter: blur(5px);
+}
+
+:where(.admin, .admin-modal) .modal {
+  width: min(550px, 100%);
+  max-height: 95vh;
+  max-height: 95dvh;
+
+  overflow-y: auto;
+  border-radius: 17px;
+  background: white;
+
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  box-shadow: 0 30px 90px #0004;
+}
+
+:where(.admin, .admin-modal) .modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+
+  padding: 25px;
+
+  border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(
+      125deg,
+      #fcf6f7,
+      #f4f8fb
+    );
+}
+
+:where(.admin, .admin-modal) .modal-header h2 {
+  margin: 8px 0;
+  color: var(--deep);
+  font-size: 25px;
+  font-weight: 750;
+}
+
+:where(.admin, .admin-modal) .modal-header p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+:where(.admin, .admin-modal) .modal-header .eyebrow {
+  color: #a17738;
+}
+
+:where(.admin, .admin-modal) .cerrar {
+  display: grid;
+  place-items: center;
+
+  width: 35px;
+  height: 35px;
+  flex-shrink: 0;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: #f1e4e8;
+  color: var(--wine);
+
+  font-size: 24px;
+  cursor: pointer;
+}
+
+:where(.admin, .admin-modal) .cerrar:hover {
+  background: #e9d3db;
+}
+
+:where(.admin, .admin-modal) .modal-form {
+  display: grid;
+  gap: 17px;
+  padding: 25px;
+}
+
+:where(.admin, .admin-modal) .campos-form {
+  display: grid;
+  gap: 17px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+:where(.admin, .admin-modal) .formulario-dependencia {
+  padding: 20px 0;
+}
+
+:where(.admin, .admin-modal) .formulario-dependencia .campos-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 700px) {
+  :where(.admin, .admin-modal) .formulario-dependencia .campos-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+:where(.admin, .admin-modal) .cerrar:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+:where(.admin, .admin-modal) .modal-form label {
+  display: grid;
+  gap: 8px;
+  color: #48444a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+:where(.admin, .admin-modal) .modal-form input:not([type="checkbox"]),
+:where(.admin, .admin-modal) .modal-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 12px;
+
+  border: 1px solid #dddcd7;
+  border-radius: 9px;
+
+  background: white;
+  color: #282c33;
+
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+:where(.admin, .admin-modal) .modal-form input:focus,
+:where(.admin, .admin-modal) .modal-form select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px #245a8122;
+}
+
+:where(.admin, .admin-modal) .campo-ayuda {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+:where(.admin, .admin-modal) .rol-ayuda {
+  padding: 14px 16px;
+  border-left: 3px solid var(--gold);
+
+  background: #faf7f0;
+  border-radius: 0 9px 9px 0;
+}
+
+:where(.admin, .admin-modal) .rol-ayuda strong {
+  color: var(--wine);
+  font-size: 12px;
+}
+
+:where(.admin, .admin-modal) .rol-ayuda p {
+  margin: 7px 0 0;
+  color: #6c6767;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+:where(.admin, .admin-modal) .modal-form .interruptor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+:where(.admin, .admin-modal) .interruptor input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--wine);
+}
+
+:where(.admin, .admin-modal) .error {
+  padding: 12px;
+
+  background: #fde8eb;
+  color: #a62b3a;
+
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+:where(.admin, .admin-modal) .modal-acciones {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+
+:where(.admin, .admin-modal) .modal-acciones .btn-principal,
+:where(.admin, .admin-modal) .modal-acciones .btn-secundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 44px;
+  padding: 12px 20px;
+
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+:where(.admin, .admin-modal) .modal-acciones .btn-principal {
+  background: #70273b !important;
+  color: #ffffff !important;
+  border: 1px solid #70273b !important;
+
+  opacity: 1;
+  visibility: visible;
+}
+
+:where(.admin, .admin-modal) .modal-acciones .btn-principal:hover:not(:disabled) {
+  background: #431c2a !important;
+}
+
+:where(.admin, .admin-modal) .modal-acciones .btn-principal:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+:where(.admin, .admin-modal) .modal-acciones .btn-secundario {
+  background: #f8f2ef;
+  color: #70273b;
+  border: 1px solid #e4d7d5;
+}
+
+:where(.admin, .admin-modal) .modal-acciones .btn-secundario:hover {
+  background: #eee4dc;
+}
+
+:where(.admin, .admin-modal) .modal-acciones button:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+@media (max-width: 550px) {
+
+  :where(.admin, .admin-modal) .modal-header,
+  :where(.admin, .admin-modal) .modal-form {
+    padding: 18px;
+  }
+
+  :where(.admin, .admin-modal) .modal-acciones {
+    flex-wrap: wrap;
+  }
+
+  :where(.admin, .admin-modal) .modal-acciones button {
+    flex: 1;
+  }
+
+  :where(.admin, .admin-modal) .btn-agregar-usuario {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.admin, .admin-modal) .btn-principal,
+  :where(.admin, .admin-modal) .btn-secundario,
+  :where(.admin, .admin-modal) .btn-editar {
+    transition: none;
+  }
+}
+
+.admin .admin-nav { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 24px; }
+.admin .admin-nav a { display:inline-flex; align-items:center; min-height:44px; padding:10px 18px; border:1px solid var(--line); border-radius:9px; background:white; color:var(--wine); font-weight:750; font-size:14px; text-decoration:none; }
+.admin .admin-nav a.activo { background:var(--wine); color:white; border-color:var(--wine); }
+.admin .admin-nav a:focus-visible, .admin a:focus-visible, .admin-modal a:focus-visible { outline:3px solid var(--gold); outline-offset:3px; }
+.admin .admin-nav a:hover { border-color:var(--wine); }
+.admin .mensaje a { color:inherit; text-underline-offset:3px; }
+.admin .mensaje { flex-wrap:wrap; overflow-wrap:anywhere; }
+.admin .tabla-dependencias table { min-width:0; table-layout:fixed; }
+.admin .tabla-dependencias th:first-child { width:30%; }
+.admin .tabla-dependencias td { overflow-wrap:anywhere; }

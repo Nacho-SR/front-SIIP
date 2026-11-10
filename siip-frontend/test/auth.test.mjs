@@ -12,7 +12,7 @@ const usuario = {
 };
 const anonymous = { usuario: null, csrf_token: 'csrf-anonimo-de-prueba' };
 const authenticated = { usuario, csrf_token: 'csrf-autenticado-de-prueba' };
-let vite, api, router, useAuthStore, auth, requests, responses, AdminView, MainLayout, LoginView, DashboardView;
+let vite, api, router, useAuthStore, auth, requests, responses, AdminUsuariosView, AdminDependenciasView, AdminView, AdminIndicadoresView, MainLayout, LoginView, DashboardView;
 
 before(async () => {
   vite = await createServer({
@@ -31,7 +31,10 @@ before(async () => {
   ({ useAuthStore } = await vite.ssrLoadModule('/src/store/auth.store.ts'));
   ({ default: api } = await vite.ssrLoadModule('/src/core/api.ts'));
   ({ default: router } = await vite.ssrLoadModule('/src/router/index.ts'));
+  ({ default: AdminUsuariosView } = await vite.ssrLoadModule('/src/modules/admin/AdminUsuariosView.vue'));
+  ({ default: AdminDependenciasView } = await vite.ssrLoadModule('/src/modules/admin/AdminDependenciasView.vue'));
   ({ default: AdminView } = await vite.ssrLoadModule('/src/modules/admin/AdminView.vue'));
+  ({ default: AdminIndicadoresView } = await vite.ssrLoadModule('/src/modules/admin/AdminIndicadoresView.vue'));
   ({ default: MainLayout } = await vite.ssrLoadModule('/src/layouts/MainLayout.vue'));
   ({ default: LoginView } = await vite.ssrLoadModule('/src/modules/auth/LoginView.vue'));
   ({ default: DashboardView } = await vite.ssrLoadModule('/src/modules/dashboard/DashboardView.vue'));
@@ -115,10 +118,13 @@ test('rutas de captura, revisión y administración mantienen roles exclusivos',
     for (const [path, allowed] of [
       ['/captura', 'captura'], ['/seguimiento', 'revision'],
       ['/seguimiento/7', 'revision'], ['/administrador', 'administrador'],
+      ['/administrador/usuarios', 'administrador'], ['/administrador/dependencias', 'administrador'],
+      ['/administrador/indicadores', 'administrador'],
       ['/administrador/indicadores/nuevo', 'administrador'],
     ]) {
       await router.replace(path);
-      assert.equal(router.currentRoute.value.path, rol === allowed ? path : '/');
+      assert.equal(router.currentRoute.value.path, rol === allowed
+        ? path === '/administrador' ? '/administrador/usuarios' : path : '/');
     }
   }
 });
@@ -293,21 +299,25 @@ test('logout fallido no simula haber cerrado la sesión del servidor', async () 
 });
 
 async function adminForm() {
-  return (await renderComponent(AdminView)).state;
+  return (await renderComponent(AdminUsuariosView)).state;
 }
 
 test('alta de dependencia actualiza el selector y permite crear Revisión con esa dependencia', async () => {
-  const form = await adminForm();
+  const dependenciesForm = (await renderComponent(AdminDependenciasView)).state;
   const dependency = { id: '9007199254740993', clave: 'REV', nombre: 'Planeación', activo: true };
   auth.csrfToken = authenticated.csrf_token;
   responses.push({ data: [] });
-  await form.loadDependencies();
-  Object.assign(form.dependencyForm, { clave: 'REV', nombre: 'Planeación' });
+  await dependenciesForm.loadDependencies();
+  Object.assign(dependenciesForm.dependencyForm, { clave: 'REV', nombre: 'Planeación' });
   responses.push({ status: 201, data: dependency });
-  await form.createDependency();
-  assert.deepEqual(form.dependencies, [dependency]);
-  assert.equal(form.userForm.dependencia_id, dependency.id);
-  assert.equal(form.dependencyForm.clave, '');
+  await dependenciesForm.createDependency();
+  assert.deepEqual(dependenciesForm.dependencies, [dependency]);
+  assert.equal(dependenciesForm.dependenciaCreada.id, dependency.id);
+  assert.equal(dependenciesForm.dependencyForm.clave, '');
+  const form = await adminForm();
+  responses.push({ data: [dependency] });
+  await form.loadDependencies();
+  form.userForm.dependencia_id = dependency.id;
   await form.nuevoUsuario();
   assert.equal(form.userForm.dependencia_id, dependency.id);
 
@@ -341,12 +351,15 @@ test('altas sin dependencia o con error del servidor no muestran éxito', async 
   assert.equal(form.userForm.password, '');
   assert.equal(form.savingUser, false);
 
-  Object.assign(form.dependencyForm, { clave: 'REV', nombre: 'Revisión' });
+  const dependenciesForm = (await renderComponent(AdminDependenciasView)).state;
+  responses.push({ data: [dependency] });
+  await dependenciesForm.loadDependencies();
+  Object.assign(dependenciesForm.dependencyForm, { clave: 'REV', nombre: 'Revisión' });
   responses.push({ status: 409, data: { detail: 'Ya existe una dependencia con esa clave.' } });
-  await form.createDependency();
-  assert.equal(form.dependencyError, 'Ya existe una dependencia con esa clave.');
-  assert.equal(form.dependencyForm.clave, 'REV');
-  assert.equal(form.dependencies.length, 1);
+  await dependenciesForm.createDependency();
+  assert.equal(dependenciesForm.dependencyError, 'Ya existe una dependencia con esa clave.');
+  assert.equal(dependenciesForm.dependencyForm.clave, 'REV');
+  assert.equal(dependenciesForm.dependencies.length, 1);
 });
 
 test('fallo al cargar dependencias bloquea altas hasta que se reintenta', async () => {
@@ -354,7 +367,6 @@ test('fallo al cargar dependencias bloquea altas hasta que se reintenta', async 
   responses.push({ status: 503, data: { detail: 'Servicio no disponible.' } });
   await form.loadDependencies();
   await form.createUser();
-  await form.createDependency();
   assert.equal(requests.length, 1);
   assert.equal(form.dependenciesError, 'Servicio no disponible.');
   responses.push({ data: [] });
@@ -460,7 +472,7 @@ test('cancelar el modal borra la contraseña sin registrar una cuenta', async ()
 
 test('el modal muestra contraseña inicial y dependencia solo para Captura y Revisión', async () => {
   for (const rol of ['captura', 'revision', 'consulta']) {
-    const app = createSSRApp(AdminView).use(router);
+    const app = createSSRApp(AdminUsuariosView).use(router);
     app.mixin({ created() {
       if (this.$parent) return;
       this.$.setupState.modalAbierto = true;
@@ -534,4 +546,50 @@ test('el formulario de Consulta conserva datos ante correo duplicado y permite o
   assert.equal(form.users.length, 1);
   assert.equal(form.modalAbierto, false);
   assert.equal(JSON.parse(requests.at(-1).data).dependencia_id, null);
+});
+
+test('la navegación administrativa reconoce la sección de indicadores al crear o consultar una ficha', async () => {
+  auth.initialized = true;
+  auth.user = { ...usuario, rol: 'administrador', dependencia_id: null };
+  await router.replace('/administrador');
+  assert.equal(router.currentRoute.value.name, 'AdministradorUsuarios');
+  await router.replace('/administrador/indicadores/nuevo?ver=1');
+  const { state, html } = await renderComponent(AdminView);
+  assert.equal(state.activa('/administrador/indicadores'), true);
+  assert.equal(state.activa('/administrador/usuarios'), false);
+  assert.deepEqual(state.secciones.map(s => s.nombre), ['Usuarios', 'Dependencias', 'Indicadores']);
+  assert.match(html, /aria-label="Secciones de administración"/);
+  assert.match(html, /administrador\/usuarios/);
+  assert.match(html, /administrador\/dependencias/);
+  assert.match(html, /administrador\/indicadores/);
+  assert.equal(requests.length, 0);
+});
+
+test('Dependencias gestiona sus errores y ofrece crear usuario solo después de confirmar el alta', async () => {
+  const form = (await renderComponent(AdminDependenciasView)).state;
+  responses.push({ status: 503, data: { detail: 'Catálogo no disponible.' } });
+  await form.loadDependencies();
+  await form.createDependency();
+  assert.equal(requests.length, 1);
+  assert.equal(form.dependenciesError, 'Catálogo no disponible.');
+  responses.push({ data: [] });
+  await form.loadDependencies();
+  Object.assign(form.dependencyForm, { clave: 'PLAN', nombre: 'Planeación' });
+  const dependency = { id: '7', clave: 'PLAN', nombre: 'Planeación', activo: true };
+  responses.push({ status: 201, data: dependency });
+  await form.createDependency();
+  const { html } = await renderComponent(AdminDependenciasView, state => {
+    state.dependenciaCreada = form.dependenciaCreada;
+    state.dependencySuccess = form.dependencySuccess;
+  });
+  assert.match(html, /usuarios\?dependencia=7/);
+  assert.match(html, /Crear usuario en esta dependencia/);
+  assert.ok(requests.every(request => request.url === '/administracion/dependencias'));
+});
+
+test('Indicadores carga su catálogo sin consultar usuarios ni dependencias', async () => {
+  const { state } = await renderComponent(AdminIndicadoresView);
+  responses.push({ data: [] });
+  await state.cargarIndicadores();
+  assert.deepEqual(requests.map(request => request.url), ['/administracion/indicadores']);
 });

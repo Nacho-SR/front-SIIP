@@ -60,18 +60,28 @@ const routes: Array<RouteRecordRaw> = [
       },
       {
         path: 'administrador',
-        name: 'Administrador',
         component: () => import('../modules/admin/AdminView.vue'),
-        // Acceso exclusivo para administradores
-        meta: { requiredRoles: ['administrador'] }
+        meta: { requiredRoles: ['administrador'] },
+        children: [
+          { path: '', name: 'Administrador', redirect: { name: 'AdministradorUsuarios' } },
+          {
+            path: 'usuarios', name: 'AdministradorUsuarios',
+            component: () => import('../modules/admin/AdminUsuariosView.vue'),
+          },
+          {
+            path: 'dependencias', name: 'AdministradorDependencias',
+            component: () => import('../modules/admin/AdminDependenciasView.vue'),
+          },
+          {
+            path: 'indicadores', name: 'AdministradorIndicadores',
+            component: () => import('../modules/admin/AdminIndicadoresView.vue'),
+          },
+          {
+            path: 'indicadores/nuevo', name: 'AdministradorNuevoIndicador',
+            component: () => import('../modules/admin/NuevoIndicadorView.vue'),
+          },
+        ],
       },
-      {
-        path: 'administrador/indicadores/nuevo',
-        name: 'AdministradorNuevoIndicador',
-        component: () => import('../modules/admin/NuevoIndicadorView.vue'),
-        meta: { requiredRoles: ['administrador']
-         }
-        },
     ]
   }
 ];

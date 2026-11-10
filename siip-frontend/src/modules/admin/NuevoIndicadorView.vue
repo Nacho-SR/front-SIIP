@@ -561,7 +561,7 @@ async function guardar() {
 
 function volver() {
   router.push({
-    name: 'Administrador'
+    name: 'AdministradorIndicadores'
   });
 }
 </script>
@@ -576,7 +576,7 @@ function volver() {
         class="volver"
         @click="volver"
       >
-        ← Regresar a Administrador
+        ← Regresar a Indicadores
       </button>
 
       <span class="eyebrow">

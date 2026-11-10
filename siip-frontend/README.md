@@ -1,5 +1,13 @@
 # SIIP frontend
 
+Administración (10/11/2026): vistas separadas en `/administrador/usuarios`,
+`/administrador/dependencias` y `/administrador/indicadores`. La ruta
+`/administrador` abre Usuarios. Todas heredan el permiso de Administrador y solo
+cargan los datos de su tarea; Usuarios también consulta dependencias para el alta.
+Después de crear una dependencia hay un enlace para abrir el alta de usuario con
+esa dependencia seleccionada. Crear/consultar una ficha conserva la navegación de
+Indicadores y regresa a su listado. La API y el esquema no cambian.
+
 Alta persistente de indicadores (09/11/2026): Administrador puede crear fichas
 inactivas, listarlas y consultarlas tras recargar. Sustituye el guardado local de
 demostración; requiere SQL 005 en la base del backend. [Alcance y pruebas](../Documentacion/alta-indicadores.md).
