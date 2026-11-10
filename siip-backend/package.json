@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "test": "node --import tsx --test",
     "admin:create": "tsx src/scripts/create-admin.ts",
-    "test:integration": "node --import tsx --test test/usuarios.integration.test.mjs test/indicadores.integration.test.mjs"
+    "indicadores:cargar-prueba": "tsx src/scripts/cargar-indicadores-prueba.ts",
+    "test:integration": "node --import tsx --test test/usuarios.integration.test.mjs test/indicadores.integration.test.mjs test/variables.integration.test.mjs"
   },
   "keywords": [],
   "author": "",

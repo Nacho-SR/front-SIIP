@@ -197,6 +197,82 @@ paths:
           $ref: '#/components/responses/AutenticacionNoConfigurada'
         '500':
           $ref: '#/components/responses/ErrorInterno'
+  /administracion/indicadores/{id}/variables:
+    get:
+      tags: &a1
+        - Administracion
+      x-roles: &a2
+        - administrador
+      parameters:
+        - &a3
+          name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Id"
+      operationId: consultarVariablesIndicador
+      summary: Consultar entradas y dependencias de una ficha
+      responses:
+        "200": &a4
+          description: Configuración administrativa de entradas; no activa el indicador.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfiguracionVariables"
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/NoPermitido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "422":
+          $ref: "#/components/responses/DatosInvalidos"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+        "503":
+          $ref: "#/components/responses/AutenticacionNoConfigurada"
+    put:
+      tags: *a1
+      x-roles: *a2
+      parameters:
+        - *a3
+        - $ref: "#/components/parameters/Csrf"
+      operationId: guardarVariablesIndicador
+      summary: Añadir entradas o asignar sus dependencias
+      description: Solo indicadores inactivos. Versión obligatoria contra
+        sobrescrituras. Incluye todas las entradas persistidas; no elimina ni
+        cambia sus definiciones. Una dependencia activa o null por entrada.
+        Altas/asignaciones y auditoría atómicas. Sin cambios no incrementa
+        versión. Requiere SQL 006.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardarVariablesIndicador"
+      responses:
+        "200": *a4
+        "401":
+          $ref: "#/components/responses/NoAutenticado"
+        "403":
+          $ref: "#/components/responses/NoPermitido"
+        "404":
+          $ref: "#/components/responses/NoEncontrado"
+        "409":
+          $ref: "#/components/responses/Conflicto"
+        "413":
+          $ref: "#/components/responses/CargaExcesiva"
+        "422":
+          $ref: "#/components/responses/DatosInvalidos"
+        "500":
+          $ref: "#/components/responses/ErrorInterno"
+        "503":
+          $ref: "#/components/responses/AutenticacionNoConfigurada"
   /administracion/indicadores:
     get:
       tags: &a1
@@ -2581,6 +2657,122 @@ components:
         - activo
         - creadoEn
         - actualizadoEn
+      additionalProperties: false
+    GuardarVariablesIndicador:
+      type: object
+      properties:
+        version:
+          type: integer
+          minimum: 0
+          maximum: 2147483646
+        variables:
+          minItems: 1
+          maxItems: 50
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                maxLength: 19
+                pattern: ^[1-9]\d*$
+              codigo:
+                type: string
+                pattern: ^[A-Z][A-Z0-9_]{0,39}$
+              descripcion:
+                type: string
+                minLength: 1
+                maxLength: 2000
+              unidadMedida:
+                type: string
+                minLength: 1
+                maxLength: 200
+              tipoDato:
+                type: string
+                enum:
+                  - entero
+                  - decimal
+              dependenciaId:
+                anyOf:
+                  - type: string
+                    maxLength: 19
+                    pattern: ^[1-9]\d*$
+                  - type: "null"
+            required:
+              - codigo
+              - descripcion
+              - unidadMedida
+              - tipoDato
+              - dependenciaId
+            additionalProperties: false
+      required:
+        - version
+        - variables
+      additionalProperties: false
+    ConfiguracionVariables:
+      type: object
+      properties:
+        indicadorId:
+          type: string
+          maxLength: 19
+          pattern: ^[1-9]\d*$
+        version:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        variables:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                maxLength: 19
+                pattern: ^[1-9]\d*$
+              codigo:
+                type: string
+                pattern: ^[A-Z][A-Z0-9_]{0,39}$
+              descripcion:
+                type: string
+                minLength: 1
+                maxLength: 2000
+              unidadMedida:
+                type: string
+                minLength: 1
+                maxLength: 200
+              tipoDato:
+                type: string
+                enum:
+                  - entero
+                  - decimal
+              dependenciaId:
+                anyOf:
+                  - type: string
+                    maxLength: 19
+                    pattern: ^[1-9]\d*$
+                  - type: "null"
+              dependenciaNombre:
+                type:
+                  - string
+                  - "null"
+              dependenciaActiva:
+                type:
+                  - boolean
+                  - "null"
+            required:
+              - id
+              - codigo
+              - descripcion
+              - unidadMedida
+              - tipoDato
+              - dependenciaId
+              - dependenciaNombre
+              - dependenciaActiva
+            additionalProperties: false
+      required:
+        - indicadorId
+        - version
+        - variables
       additionalProperties: false
     UsuarioAdministrado:
       type: object

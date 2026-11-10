@@ -1,5 +1,11 @@
 # Backend SIIP
 
+Variables y dependencias (10/11/2026): GET/PUT
+`/api/v1/administracion/indicadores/{id}/variables`, solo Administrador. Requiere SQL
+006 en la base autorizada. Carga técnica local de cuatro ejemplos:
+`npm run indicadores:cargar-prueba` (vista previa), con `-- --aplicar --actor=ID`
+para confirmar la escritura. [Contrato y pruebas](../Documentacion/variables-asignaciones.md).
+
 Alta persistente de indicadores (09/11/2026): POST/GET `/api/v1/administracion/indicadores`
 y GET `/api/v1/administracion/indicadores/{id}` para Administrador. SQL 005 crea
 las tres tablas del alcance documental y catálogos, sin ejecutarse al arrancar.

@@ -73,12 +73,18 @@ Implementado en código/UI. Requiere SQL 005 en la base autorizada. No carga las
 
 ## Candidatos P2 aún sin contrato OpenAPI
 
+Actualización 10/11/2026, DEC-043: GET/PUT
+`/administracion/indicadores/{id}/variables` implementados para Administrador.
+PUT registra entradas nuevas y sus dependencias o cambia asignaciones existentes,
+con versión y auditoría transaccional. No activa indicadores ni edita definiciones
+registradas. [Contrato y límites](variables-asignaciones.md).
+
 | Método / ruta candidata | Propósito de negocio | Roles | Pendiente que impide cerrarlo |
 |---|---|---|---|
 | PATCH /administracion/usuarios/{id} | Actualizar rol/dependencia y desactivar cuentas. | Administrador | Campos editables y protección de acceso administrativo. Sin DELETE de historia. |
 | GET /administracion/dependencias; PATCH /administracion/dependencias/{id} | Mantener el catálogo responsable depurado. | Administrador | Denominaciones y tratamiento de cambios con asignaciones. |
 | GET /administracion/indicadores/{id}/configuracion; PATCH sobre el mismo recurso | Configurar ficha, operaciones soportadas y reglas delimitadas. | Administrador | P-08, catálogos editables y validación de cada regla. Sin expresiones arbitrarias. |
-| PUT /administracion/indicadores/{id}/asignaciones | Asignar dependencias a las entradas del indicador de forma atómica. | Administrador | Asignaciones del cliente y efecto temporal. No crea una entidad asignacion por existir la ruta. |
+| PUT /administracion/indicadores/{id}/asignaciones | Absorbido por GET/PUT /administracion/indicadores/{id}/variables (DEC-043), sin ruta duplicada. | Administrador | Las asignaciones para indicadores activos y su efecto temporal requieren el flujo posterior de metodología. |
 | GET /administracion/auditoria | Consultar cambios administrativos. | Administrador | Filtros y retención; excluir secretos. |
 | GET /reportes/resultados | Exportar resultados autorizados. | Revisión; Administrador pendiente | Formato, filtros, tamaño y modo de entrega. No se promete PDF/XLSX ni jobs asíncronos. |
 

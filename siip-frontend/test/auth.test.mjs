@@ -12,7 +12,7 @@ const usuario = {
 };
 const anonymous = { usuario: null, csrf_token: 'csrf-anonimo-de-prueba' };
 const authenticated = { usuario, csrf_token: 'csrf-autenticado-de-prueba' };
-let vite, api, router, useAuthStore, auth, requests, responses, AdminUsuariosView, AdminDependenciasView, AdminView, AdminIndicadoresView, MainLayout, LoginView, DashboardView;
+let vite, api, router, useAuthStore, auth, requests, responses, AdminUsuariosView, AdminDependenciasView, AdminView, AdminIndicadoresView, VariablesIndicadorView, MainLayout, LoginView, DashboardView;
 
 before(async () => {
   vite = await createServer({
@@ -35,6 +35,7 @@ before(async () => {
   ({ default: AdminDependenciasView } = await vite.ssrLoadModule('/src/modules/admin/AdminDependenciasView.vue'));
   ({ default: AdminView } = await vite.ssrLoadModule('/src/modules/admin/AdminView.vue'));
   ({ default: AdminIndicadoresView } = await vite.ssrLoadModule('/src/modules/admin/AdminIndicadoresView.vue'));
+  ({ default: VariablesIndicadorView } = await vite.ssrLoadModule('/src/modules/admin/VariablesIndicadorView.vue'));
   ({ default: MainLayout } = await vite.ssrLoadModule('/src/layouts/MainLayout.vue'));
   ({ default: LoginView } = await vite.ssrLoadModule('/src/modules/auth/LoginView.vue'));
   ({ default: DashboardView } = await vite.ssrLoadModule('/src/modules/dashboard/DashboardView.vue'));
@@ -120,6 +121,7 @@ test('rutas de captura, revisión y administración mantienen roles exclusivos',
       ['/seguimiento/7', 'revision'], ['/administrador', 'administrador'],
       ['/administrador/usuarios', 'administrador'], ['/administrador/dependencias', 'administrador'],
       ['/administrador/indicadores', 'administrador'],
+      ['/administrador/indicadores/1/variables', 'administrador'],
       ['/administrador/indicadores/nuevo', 'administrador'],
     ]) {
       await router.replace(path);
@@ -592,4 +594,51 @@ test('Indicadores carga su catálogo sin consultar usuarios ni dependencias', as
   responses.push({ data: [] });
   await state.cargarIndicadores();
   assert.deepEqual(requests.map(request => request.url), ['/administracion/indicadores']);
+});
+
+async function variablesForm() {
+  auth.initialized = true;
+  auth.user = { ...usuario, rol: 'administrador', dependencia_id: null };
+  await router.replace('/administrador/indicadores/1/variables');
+  return (await renderComponent(VariablesIndicadorView)).state;
+}
+const entrada = { id: '9007199254740993', codigo: 'N', descripcion: 'Reportes reparados', unidadMedida: 'reportes', tipoDato: 'entero', dependenciaId: null,
+  dependenciaNombre: null, dependenciaActiva: null };
+test('variables carga contexto y asigna solo después de confirmar la API, conservando IDs largos', async () => {
+  const form = await variablesForm();
+  responses.push({ data: { id: '1', campos: { clave: 'SIIP.05.F35.004', nombre: 'Ejemplo' }, activo: false } },
+    { data: { indicadorId: '1', version: 1, variables: [entrada] } },
+    { data: [{ id: '7', clave: 'PLAN', nombre: 'Planeación', activo: true }] });
+  await form.cargar();
+  assert.equal(form.hayCambios, false);
+  form.variables[0].dependenciaId = '7';
+  assert.equal(form.hayCambios, true);
+  responses.push({ data: { indicadorId: '1', version: 2, variables: [{ ...entrada, dependenciaId: '7', dependenciaNombre: 'Planeación', dependenciaActiva: true }] } });
+  await form.guardar();
+  assert.equal(requests.at(-1).method, 'put');
+  assert.deepEqual(JSON.parse(requests.at(-1).data), { version: 1, variables: [{
+    id: entrada.id, codigo: 'N', descripcion: entrada.descripcion, unidadMedida: 'reportes', tipoDato: 'entero', dependenciaId: '7',
+  }] });
+  assert.equal(form.version, 2);
+  assert.equal(form.hayCambios, false);
+  assert.match(form.mensaje, /continúa inactivo/);
+});
+test('un conflicto conserva cambios sin fingir éxito; la carga fallida no permite guardar', async () => {
+  const form = await variablesForm();
+  responses.push({ status: 503, data: { detail: 'Falta SQL 006.' } }, { data: { indicadorId: '1', version: 0, variables: [] } }, { data: [] });
+  await form.cargar();
+  assert.match(form.error, /Falta SQL 006/);
+  const count = requests.length;
+  form.agregar(); await form.guardar();
+  assert.equal(requests.length, count);
+  form.indicador = { id: '1', campos: {}, activo: false };
+  form.variables = [{ ...entrada, dependenciaId: '7' }];
+  form.original = '[]';
+  responses.push({ status: 409, data: { codigo: 'CONFIGURACION_DESACTUALIZADA', detail: 'Otra persona modificó las variables.' } });
+  await form.guardar();
+  assert.equal(form.variables[0].dependenciaId, '7');
+  assert.equal(form.hayCambios, true);
+  assert.equal(form.mensaje, '');
+  assert.equal(form.guardando, false);
+  assert.match(form.error, /Otra persona/);
 });

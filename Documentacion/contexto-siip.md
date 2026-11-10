@@ -85,6 +85,12 @@ Confirmado por el equipo el 22/10/2026: verdes=1, amarillos=0.5, rojos=0; índic
 1) Alcance/MVP; 2) SRS con historias, RF/RNF y reglas; 3) flujos y matriz de permisos; 4) arquitectura/stack/Git/CI-CD; 5) ERD+diccionario SQL; 6) API OpenAPI; 7) UI/UX; 8) pruebas y aceptación; 9) despliegue/operación. Mantener registro de decisiones; no duplicar información innecesaria.
 
 ## 9. Trabajo actual
+Actualización 10/11/2026, DEC-043: vista administrativa de entradas y dependencias,
+GET/PUT con versión y auditoría, solo para fichas inactivas. SQL 006 aplicado con
+autorización expresa en SIIP local, localhost:5432/public; cuatro ejemplos ficticios
+130–133 y ocho entradas N/D sin asignar. No implementa Captura ni el cálculo.
+Integración real aislada aprobada. [Alcance y estado](variables-asignaciones.md).
+
 Actualización 09/11/2026, DEC-042: alta/listado/consulta de fichas persistidas para
 Administrador, siempre inactivas; sustituye la ficha demostrativa en localStorage.
 SQL 005 aplicado con autorización expresa únicamente en SIIP local, localhost:5432/public,

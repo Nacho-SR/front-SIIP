@@ -1,5 +1,10 @@
 # SIIP frontend
 
+Variables y dependencias (10/11/2026): Administración → Indicadores → Variables y
+dependencias. Define entradas o asigna cada una a una dependencia activa. Guarda
+mediante GET/PUT con control de versión. No activa indicadores ni calcula resultados.
+Requiere SQL 006. [Alcance](../Documentacion/variables-asignaciones.md).
+
 Administración (10/11/2026): vistas separadas en `/administrador/usuarios`,
 `/administrador/dependencias` y `/administrador/indicadores`. La ruta
 `/administrador` abre Usuarios. Todas heredan el permiso de Administrador y solo

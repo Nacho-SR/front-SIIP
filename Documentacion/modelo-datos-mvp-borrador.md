@@ -1,5 +1,12 @@
 # Borrador del modelo PostgreSQL del SIIP
 
+**Actualización 10/11/2026, DEC-043:** SQL 006 añade `variables_indicador` para
+entradas periódicas (entero/decimal) y una dependencia nullable por entrada, junto
+con `version_variables` en indicadores. Aplicado con autorización en SIIP local;
+no implementa todos los campos ni ENUM propuestos en la sección 3.6. Las definiciones
+registradas se conservan y se editan solo asignaciones de fichas inactivas, con
+auditoría y control de concurrencia. [Alcance aplicado](variables-asignaciones.md).
+
 **Actualización de implementación 09/11/2026, DEC-042:** el alta documental de fichas
 ya usa tres tablas nuevas mediante SQL 005, aplicado con autorización en SIIP local.
 No equivale a aprobar estas 13 tablas. Los campos documentales de variables, meta,

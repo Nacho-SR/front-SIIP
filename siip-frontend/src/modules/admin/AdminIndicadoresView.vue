@@ -6,6 +6,7 @@ import { adminState, refrescarAdmin } from './data/admin.store';
 const router = useRouter();
 function nuevoIndicador() { void router.push({ name: 'AdministradorNuevoIndicador' }); }
 function verIndicador(id: string) { void router.push({ name: 'AdministradorNuevoIndicador', query: { ver: id } }); }
+function configurarVariables(id: string) { void router.push({ name: 'AdministradorVariablesIndicador', params: { id } }); }
 async function cargarIndicadores() {
   try { await refrescarAdmin(); }
   catch (error) {
@@ -59,7 +60,7 @@ onMounted(() => { void cargarIndicadores(); });
               <th>Agrupación</th>
               <th>Frecuencia</th>
               <th>Estado</th>
-              <th>Acción</th>
+              <th class="columna-acciones">Acción</th>
             </tr>
           </thead>
 
@@ -87,14 +88,15 @@ onMounted(() => { void cargarIndicadores(); });
               </td>
 
               <td>{{ indicador.activo ? 'Activo' : 'Inactivo' }}</td>
-              <td>
-                <button
-                  type="button"
-                  class="btn-editar"
-                  @click="verIndicador(indicador.id)"
-                >
-                  Ver ficha
-                </button>
+              <td class="columna-acciones">
+                <div class="acciones-indicador">
+                  <button type="button" class="btn-editar" @click="verIndicador(indicador.id)">
+                    Ver ficha
+                  </button>
+                  <button type="button" class="btn-secundario" @click="configurarVariables(indicador.id)">
+                    Variables y dependencias
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -119,3 +121,10 @@ onMounted(() => { void cargarIndicadores(); });
       </div>
     </section>
 </template>
+
+<style scoped>
+.columna-acciones { width: 224px; text-align: center; }
+.acciones-indicador { display: grid; gap: 8px; width: 200px; margin-inline: auto; }
+.acciones-indicador button { width: 100%; min-height: 44px; }
+.acciones-indicador .btn-editar:not(:hover) { background: white; }
+</style>

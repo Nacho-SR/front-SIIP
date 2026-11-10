@@ -6,6 +6,7 @@ import { createAuthRepository } from './modules/auth/repositories/auth.repositor
 import { PostgresSessionStore } from './modules/auth/repositories/session.repository.js';
 import { createUsersRepository } from './modules/administracion/repositories/usuarios.repository.js';
 import { createIndicatorsRepository } from './modules/indicadores/repositories/indicadores.repository.js';
+import { createVariablesRepository } from './modules/indicadores/repositories/variables.repository.js';
 
 config({ quiet: true });
 
@@ -25,6 +26,7 @@ const app = await buildApp(env, pool ? {
   repository: createAuthRepository(pool), sessionStore: new PostgresSessionStore(pool),
   users: createUsersRepository(pool),
   indicators: createIndicatorsRepository(pool),
+  variables: createVariablesRepository(pool),
 } : undefined);
 
 if (pool) {

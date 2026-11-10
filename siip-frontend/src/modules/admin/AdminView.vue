@@ -26,6 +26,6 @@ const activa = (ruta: string) => route.path === ruta || route.path.startsWith(ru
         {{ seccion.nombre }}
       </router-link>
     </nav>
-    <router-view />
+    <router-view :key="route.path" />
   </div>
 </template>

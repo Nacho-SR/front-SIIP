@@ -52,6 +52,20 @@ Actualización técnica del 30/10/2026: DEC-029/035 completan la selección inic
 
 ## Alta persistente de fichas — 09/11/2026
 
+Actualización DEC-043, implementación solicitada el 10/11/2026: cargar los cuatro
+ejemplos ficticios 130–133 y configurar entradas/asignaciones desde Administrador.
+Una dependencia activa o ninguna por variable, sin activar indicadores ni Captura.
+Se añaden definiciones periódicas (entero/decimal) y se cambian sus dependencias;
+se conservan definiciones e IDs ya registrados. Versiones contra sobrescrituras y
+auditoría atómica. SQL 006 y carga de ejemplos requieren base concreta autorizada.
+No aprueba variables fijas, vigencias ni consolidación de aportaciones a una misma
+variable. [Detalle](variables-asignaciones.md).
+
+Aplicación autorizada y comprobada el 10/11/2026: SQL 006 en SIIP local,
+localhost:5432/public; cuatro fichas ficticias 130–133, ocho entradas N/D sin
+dependencia y auditoría del Administrador ID 1. Prueba real aislada aprobada,
+sin asignaciones de prueba en las tablas de trabajo. No acredita otros entornos.
+
 DEC-042, implementación solicitada por el usuario: alta, listado y consulta de fichas
 de indicadores desde Administrador con persistencia en PostgreSQL. Se sustituye
 el guardado demostrativo local. Fichas inactivas, código único, clasificación
