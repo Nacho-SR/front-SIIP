@@ -76,14 +76,14 @@ const routes: Array<RouteRecordRaw> = [
             path: 'indicadores', name: 'AdministradorIndicadores',
             component: () => import('../modules/admin/AdminIndicadoresView.vue'),
           },
-          //{
-            //path: 'agrupaciones', name: 'AdministradorAgrupaciones',
-            //component: () => import('../modules/admin/AdminAgrupacionesView.vue'),
-          //},
-          //{
-            //path: 'familias', name: 'AdministradorFamilias',
-            //component: () => import('../modules/admin/AdminFamiliasView.vue'),
-          //},
+          {
+            path: 'agrupaciones', name: 'AdministradorAgrupaciones',
+            component: () => import('../modules/admin/AdminAgrupacionesView.vue'),
+          },
+          {
+            path: 'familias', name: 'AdministradorFamilias',
+            component: () => import('../modules/admin/AdminFamiliasView.vue'),
+          },
           {
             path: 'indicadores/nuevo', name: 'AdministradorNuevoIndicador',
             component: () => import('../modules/admin/NuevoIndicadorView.vue'),

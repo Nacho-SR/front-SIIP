@@ -43,3 +43,29 @@ export async function obtenerIndicadorAdmin(id: string): Promise<IndicadorAdmin>
   const { data } = await api.get<IndicadorAdmin>('/administracion/indicadores/' + encodeURIComponent(id));
   return data;
 }
+
+
+export async function actualizarIndicador(
+  id: string,
+  campos: Record<string, string>
+) {
+  const {
+    consecutivo: _consecutivo,
+    ...datos
+  } = campos;
+
+  const { data } = await api.patch<IndicadorAdmin>(
+    `/administracion/indicadores/${encodeURIComponent(id)}`,
+    datos
+  );
+
+  const index = adminState.indicadores.findIndex(
+    item => item.id === id
+  );
+
+  if (index >= 0) {
+    adminState.indicadores[index] = data;
+  }
+
+  return data;
+}
