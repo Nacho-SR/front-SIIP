@@ -5,12 +5,10 @@ import { buildApp } from './app.js';
 import { envSchema } from './env.js';
 
 import { createPool } from './database/pool.js';
-<<<<<<< HEAD
-import { createAuthRepository } from './modules/auth/repositories/auth.repository.js';
-import { PostgresSessionStore } from './modules/auth/repositories/session.repository.js';
-import { createUsersRepository } from './modules/administracion/repositories/usuarios.repository.js';
-import { createIndicatorsRepository } from './modules/indicadores/repositories/indicadores.repository.js';
-=======
+
+// ============================================
+// AUTENTICACIÓN
+// ============================================
 
 import {
   createAuthRepository
@@ -20,22 +18,33 @@ import {
   PostgresSessionStore
 } from './modules/auth/repositories/session.repository.js';
 
+// ============================================
+// USUARIOS Y DEPENDENCIAS
+// ============================================
+
 import {
   createUsersRepository
 } from './modules/administracion/repositories/usuarios.repository.js';
+
+// ============================================
+// INDICADORES
+// ============================================
 
 import {
   createIndicatorsRepository
 } from './modules/indicadores/repositories/indicadores.repository.js';
 
+// ============================================
+// AGRUPACIONES TEMÁTICAS Y FAMILIAS
+// ============================================
+
 import {
   createClassificationsRepository
 } from './modules/indicadores/repositories/clasificaciones.repository.js';
 
-// ---------------------------------------------
+// ============================================
 // VARIABLES DE ENTORNO
-// ---------------------------------------------
->>>>>>> 81274da (feat(admin) - Cambios Backend)
+// ============================================
 
 config({ quiet: true });
 
@@ -53,27 +62,19 @@ if (!result.success) {
   process.exit(1);
 }
 
-// ---------------------------------------------
+// ============================================
 // CONFIGURACIÓN DE POSTGRESQL
-// ---------------------------------------------
+// ============================================
 
 const env = result.data;
-<<<<<<< HEAD
-const pool = env.DATABASE_URL ? createPool(env.DATABASE_URL) : undefined;
-const app = await buildApp(env, pool ? {
-  repository: createAuthRepository(pool), sessionStore: new PostgresSessionStore(pool),
-  users: createUsersRepository(pool),
-  indicators: createIndicatorsRepository(pool),
-} : undefined);
-=======
 
 const pool = env.DATABASE_URL
   ? createPool(env.DATABASE_URL)
   : undefined;
 
-// ---------------------------------------------
+// ============================================
 // INICIALIZACIÓN DE FASTIFY
-// ---------------------------------------------
+// ============================================
 
 const app = await buildApp(
   env,
@@ -91,16 +92,14 @@ const app = await buildApp(
         indicators: createIndicatorsRepository(pool),
 
         // Agrupaciones temáticas y familias
-        classifications:
-          createClassificationsRepository(pool)
+        classifications: createClassificationsRepository(pool)
       }
     : undefined
 );
 
-// ---------------------------------------------
+// ============================================
 // MANEJO DE CONEXIONES POSTGRESQL
-// ---------------------------------------------
->>>>>>> 81274da (feat(admin) - Cambios Backend)
+// ============================================
 
 if (pool) {
   pool.on('error', () => {
@@ -114,9 +113,9 @@ if (pool) {
   });
 }
 
-// ---------------------------------------------
+// ============================================
 // CIERRE CONTROLADO DEL SERVIDOR
-// ---------------------------------------------
+// ============================================
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
@@ -131,9 +130,9 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   });
 }
 
-// ---------------------------------------------
+// ============================================
 // INICIAR SERVIDOR
-// ---------------------------------------------
+// ============================================
 
 try {
   await app.listen({
