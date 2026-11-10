@@ -28,7 +28,7 @@ export async function buildApp(env: Env, auth?: AuthDependencies & { users?: Use
   await app.register(cors, {
     origin: [env.FRONTEND_ORIGIN],
     credentials: true,
-    methods: ['GET', 'POST', 'DELETE'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
   });
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
