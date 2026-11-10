@@ -52,6 +52,16 @@ Actualización técnica del 30/10/2026: DEC-029/035 completan la selección inic
 
 ## Alta persistente de fichas — 09/11/2026
 
+DEC-044 (10/11/2026): implementación solicitada de la preparación operativa,
+inicialmente para el ejemplo 130. El usuario confirma Dirección General de Servicios
+Municipales para N y D y pospone el periodo inicial a la activación. Se prepara
+cálculo parte/total, umbrales, simulación sin escrituras y versiones conservadas
+con snapshot/auditoría para indicadores inactivos. No habilita activación, captura,
+vigencias ni resuelve P-07/P-08. SQL 007 aplicado con autorización expresa solo en
+SIIP local, localhost:5432/public, después de prueba aislada aprobada. Con autorización
+se creó DGSM (ID 3), se asignaron N/D y se guardó metodología versión 1 (75/90 %),
+con auditoría del Administrador ID 1. [Alcance y estado](metodologia-indicadores.md).
+
 Actualización DEC-043, implementación solicitada el 10/11/2026: cargar los cuatro
 ejemplos ficticios 130–133 y configurar entradas/asignaciones desde Administrador.
 Una dependencia activa o ninguna por variable, sin activar indicadores ni Captura.

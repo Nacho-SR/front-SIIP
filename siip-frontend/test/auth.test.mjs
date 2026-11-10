@@ -12,7 +12,7 @@ const usuario = {
 };
 const anonymous = { usuario: null, csrf_token: 'csrf-anonimo-de-prueba' };
 const authenticated = { usuario, csrf_token: 'csrf-autenticado-de-prueba' };
-let vite, api, router, useAuthStore, auth, requests, responses, AdminUsuariosView, AdminDependenciasView, AdminView, AdminIndicadoresView, VariablesIndicadorView, MainLayout, LoginView, DashboardView;
+let vite, api, router, useAuthStore, auth, requests, responses, AdminUsuariosView, AdminDependenciasView, AdminView, AdminIndicadoresView, VariablesIndicadorView, MetodologiaIndicadorView, MainLayout, LoginView, DashboardView;
 
 before(async () => {
   vite = await createServer({
@@ -36,6 +36,7 @@ before(async () => {
   ({ default: AdminView } = await vite.ssrLoadModule('/src/modules/admin/AdminView.vue'));
   ({ default: AdminIndicadoresView } = await vite.ssrLoadModule('/src/modules/admin/AdminIndicadoresView.vue'));
   ({ default: VariablesIndicadorView } = await vite.ssrLoadModule('/src/modules/admin/VariablesIndicadorView.vue'));
+  ({ default: MetodologiaIndicadorView } = await vite.ssrLoadModule('/src/modules/admin/MetodologiaIndicadorView.vue'));
   ({ default: MainLayout } = await vite.ssrLoadModule('/src/layouts/MainLayout.vue'));
   ({ default: LoginView } = await vite.ssrLoadModule('/src/modules/auth/LoginView.vue'));
   ({ default: DashboardView } = await vite.ssrLoadModule('/src/modules/dashboard/DashboardView.vue'));
@@ -641,4 +642,59 @@ test('un conflicto conserva cambios sin fingir éxito; la carga fallida no permi
   assert.equal(form.mensaje, '');
   assert.equal(form.guardando, false);
   assert.match(form.error, /Otra persona/);
+});
+
+const reglaMetodologia = { tipo: 'porcentaje_parte_total', numeradorId: '9007199254740993', denominadorId: '2', amarilloDesde: 75, verdeDesde: 90 };
+const fichaMetodologia = { id: '1', activo: false, campos: { clave: 'SIIP.05.F35.004', nombre: 'Luminarias', unidad: '%', sentido: 'Ascendente', condicionAcumulacion: 'No acumulable', frecuencia: 'Mensual' } };
+const varsMetodologia = { version: 1, variables: [entrada, { ...entrada, id: '2', codigo: 'D' }] };
+const configMetodologia = { indicadorId: '1', version: 1, metodologias: [{ id: '8', version: 1, regla: reglaMetodologia,
+  contexto: { versionVariables: 1, frecuencia: 'Mensual', variables: varsMetodologia.variables }, creadoEn: '2026-11-10T12:00:00Z', creadoPor: '1' }] };
+async function metodologiaForm() {
+  auth.initialized = true; auth.user = { ...usuario, rol: 'administrador', dependencia_id: null };
+  await router.replace('/administrador/indicadores/1/metodologia');
+  return (await renderComponent(MetodologiaIndicadorView)).state;
+}
+function cargarMetodologia() {
+  const config = structuredClone(configMetodologia);
+  config.metodologias[0].regla = Object.fromEntries(Object.entries(config.metodologias[0].regla).reverse());
+  responses.push({ data: fichaMetodologia }, { data: varsMetodologia }, { data: config });
+}
+test('metodología carga la versión guardada y la simulación usa la API sin persistir capturas', async () => {
+  const form = await metodologiaForm(); cargarMetodologia(); await form.cargar();
+  assert.equal(form.hayCambios, false); assert.equal(form.bloqueado, false);
+  form.numerador = 90; form.denominador = 100;
+  responses.push({ data: { valor: '90.0000', semaforo: 'verde', motivo: null } });
+  await form.simular();
+  assert.equal(requests.at(-1).url, '/administracion/indicadores/1/metodologia/simular');
+  assert.equal(requests.at(-1).method, 'post'); assert.equal(form.resultado.semaforo, 'verde');
+  assert.equal(form.configuracion.version, 1);
+});
+test('metodología conserva parámetros en conflicto y solo confirma guardado después de la API', async () => {
+  const form = await metodologiaForm(); cargarMetodologia(); await form.cargar();
+  form.verdeDesde = 95;
+  responses.push({ status: 409, data: { detail: 'Otra persona guardó una metodología.' } });
+  await form.guardar();
+  assert.equal(form.verdeDesde, 95); assert.equal(form.configuracion.version, 1); assert.equal(form.mensaje, '');
+  assert.equal(form.hayCambios, true);
+  const next = { ...configMetodologia, version: 2, metodologias: [{ ...configMetodologia.metodologias[0], id: '9', version: 2, regla: { ...reglaMetodologia, verdeDesde: 95 } }, ...configMetodologia.metodologias] };
+  responses.push({ data: next }); await form.guardar();
+  assert.match(form.mensaje, /Versión 2 guardada/); assert.match(form.mensaje, /inactivo/);
+  assert.equal(form.configuracion.metodologias.length, 2); assert.equal(form.hayCambios, false);
+  assert.equal(JSON.parse(requests.at(-1).data).versionVariables, 1);
+});
+test('una recarga fallida impide guardar o simular con contexto viejo', async () => {
+  const form = await metodologiaForm(); cargarMetodologia(); await form.cargar();
+  responses.push({ data: fichaMetodologia }, { data: varsMetodologia }, { status: 503, data: { detail: 'Falta SQL 007.' } });
+  await form.cargar(); assert.equal(form.bloqueado, true);
+  const count = requests.length;
+  form.verdeDesde = 95; form.numerador = 90; form.denominador = 100;
+  await form.guardar(); await form.simular(); assert.equal(requests.length, count);
+});
+test('la ruta de metodología conserva la exclusividad de Administrador', async () => {
+  auth.initialized = true;
+  for (const rol of ['captura', 'revision', 'consulta']) {
+    auth.user = { ...usuario, rol, dependencia_id: rol === 'consulta' ? null : '7' };
+    await router.replace('/administrador/indicadores/1/metodologia');
+    assert.notEqual(router.currentRoute.value.name, 'AdministradorMetodologiaIndicador');
+  }
 });

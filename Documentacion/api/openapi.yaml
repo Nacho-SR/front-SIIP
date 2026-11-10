@@ -197,6 +197,152 @@ paths:
           $ref: '#/components/responses/AutenticacionNoConfigurada'
         '500':
           $ref: '#/components/responses/ErrorInterno'
+  "/administracion/indicadores/{id}/metodologia":
+    "get":
+      "tags":
+        - "Administracion"
+      "x-roles":
+        - "administrador"
+      "x-estado-contrato": "Implementado; SQL 007 aplicado con autorización solo en SIIP local"
+      "operationId": "consultarMetodologiasIndicador"
+      "summary": "Consultar versiones preparadas de cálculo y semáforo"
+      "parameters":
+        -
+          "name": "id"
+          "in": "path"
+          "required": true
+          "schema":
+            "$ref": "#/components/schemas/Id"
+      "responses":
+        "200":
+          "description": "Configuración preparada, sin vigencia ni activación."
+          "headers":
+            "Cache-Control":
+              "schema":
+                "type": "string"
+                "const": "no-store"
+          "content":
+            "application/json":
+              "schema":
+                "$ref": "#/components/schemas/ConfiguracionMetodologias"
+        "401":
+          "$ref": "#/components/responses/NoAutenticado"
+        "403":
+          "$ref": "#/components/responses/NoPermitido"
+        "404":
+          "$ref": "#/components/responses/NoEncontrado"
+        "422":
+          "$ref": "#/components/responses/DatosInvalidos"
+        "500":
+          "$ref": "#/components/responses/ErrorInterno"
+        "503":
+          "$ref": "#/components/responses/NoDisponible"
+      "description": "Porcentaje parte/total ascendente no acumulable, con dos conteos de la misma unidad y operandos distintos del indicador. Umbrales entre 0 y 100; amarillo menor que verde. Versión de metodología y de variables obligatorias al guardar. Versiones anteriores conservadas; guardado y auditoría atómicos. Sin cambios no crea versión. Vigencia pendiente de activación. Simulación sin escrituras: N y D enteros no negativos, N <= D, máximo 9007199254740991. N=D=0 da sin dato y sin color. Presentación con cuatro decimales; semáforo antes del redondeo."
+    "put":
+      "tags":
+        - "Administracion"
+      "x-roles":
+        - "administrador"
+      "x-estado-contrato": "Implementado; SQL 007 aplicado con autorización solo en SIIP local"
+      "operationId": "guardarMetodologiaIndicador"
+      "summary": "Guardar metodología de un indicador inactivo"
+      "parameters":
+        -
+          "name": "id"
+          "in": "path"
+          "required": true
+          "schema":
+            "$ref": "#/components/schemas/Id"
+        -
+          "$ref": "#/components/parameters/Csrf"
+      "responses":
+        "200":
+          "description": "Configuración preparada, sin vigencia ni activación."
+          "headers":
+            "Cache-Control":
+              "schema":
+                "type": "string"
+                "const": "no-store"
+          "content":
+            "application/json":
+              "schema":
+                "$ref": "#/components/schemas/ConfiguracionMetodologias"
+        "401":
+          "$ref": "#/components/responses/NoAutenticado"
+        "403":
+          "$ref": "#/components/responses/NoPermitido"
+        "404":
+          "$ref": "#/components/responses/NoEncontrado"
+        "422":
+          "$ref": "#/components/responses/DatosInvalidos"
+        "500":
+          "$ref": "#/components/responses/ErrorInterno"
+        "503":
+          "$ref": "#/components/responses/NoDisponible"
+        "409":
+          "$ref": "#/components/responses/Conflicto"
+        "413":
+          "$ref": "#/components/responses/CargaExcesiva"
+      "description": "Porcentaje parte/total ascendente no acumulable, con dos conteos de la misma unidad y operandos distintos del indicador. Umbrales entre 0 y 100; amarillo menor que verde. Versión de metodología y de variables obligatorias al guardar. Versiones anteriores conservadas; guardado y auditoría atómicos. Sin cambios no crea versión. Vigencia pendiente de activación. Simulación sin escrituras: N y D enteros no negativos, N <= D, máximo 9007199254740991. N=D=0 da sin dato y sin color. Presentación con cuatro decimales; semáforo antes del redondeo."
+      "requestBody":
+        "required": true
+        "content":
+          "application/json":
+            "schema":
+              "$ref": "#/components/schemas/GuardarMetodologia"
+  "/administracion/indicadores/{id}/metodologia/simular":
+    "post":
+      "tags":
+        - "Administracion"
+      "x-roles":
+        - "administrador"
+      "x-estado-contrato": "Implementado; SQL 007 aplicado con autorización solo en SIIP local"
+      "operationId": "simularMetodologiaIndicador"
+      "summary": "Probar cálculo sin registrar capturas ni resultados"
+      "parameters":
+        -
+          "name": "id"
+          "in": "path"
+          "required": true
+          "schema":
+            "$ref": "#/components/schemas/Id"
+        -
+          "$ref": "#/components/parameters/Csrf"
+      "responses":
+        "200":
+          "description": "Simulación sin escrituras."
+          "headers":
+            "Cache-Control":
+              "schema":
+                "type": "string"
+                "const": "no-store"
+          "content":
+            "application/json":
+              "schema":
+                "$ref": "#/components/schemas/ResultadoSimulacionMetodologia"
+        "401":
+          "$ref": "#/components/responses/NoAutenticado"
+        "403":
+          "$ref": "#/components/responses/NoPermitido"
+        "404":
+          "$ref": "#/components/responses/NoEncontrado"
+        "422":
+          "$ref": "#/components/responses/DatosInvalidos"
+        "500":
+          "$ref": "#/components/responses/ErrorInterno"
+        "503":
+          "$ref": "#/components/responses/NoDisponible"
+        "409":
+          "$ref": "#/components/responses/Conflicto"
+        "413":
+          "$ref": "#/components/responses/CargaExcesiva"
+      "description": "Porcentaje parte/total ascendente no acumulable, con dos conteos de la misma unidad y operandos distintos del indicador. Umbrales entre 0 y 100; amarillo menor que verde. Versión de metodología y de variables obligatorias al guardar. Versiones anteriores conservadas; guardado y auditoría atómicos. Sin cambios no crea versión. Vigencia pendiente de activación. Simulación sin escrituras: N y D enteros no negativos, N <= D, máximo 9007199254740991. N=D=0 da sin dato y sin color. Presentación con cuatro decimales; semáforo antes del redondeo."
+      "requestBody":
+        "required": true
+        "content":
+          "application/json":
+            "schema":
+              "$ref": "#/components/schemas/SimulacionMetodologia"
   /administracion/indicadores/{id}/variables:
     get:
       tags: &a1
@@ -2658,6 +2804,185 @@ components:
         - creadoEn
         - actualizadoEn
       additionalProperties: false
+    "ReglaPorcentaje":
+      "type": "object"
+      "properties":
+        "tipo":
+          "type": "string"
+          "const": "porcentaje_parte_total"
+        "numeradorId":
+          "type": "string"
+          "maxLength": 19
+          "pattern": "^[1-9]\\d*$"
+        "denominadorId":
+          "type": "string"
+          "maxLength": 19
+          "pattern": "^[1-9]\\d*$"
+        "amarilloDesde":
+          "type": "number"
+          "minimum": 0
+          "maximum": 100
+        "verdeDesde":
+          "type": "number"
+          "minimum": 0
+          "maximum": 100
+      "required":
+        - "tipo"
+        - "numeradorId"
+        - "denominadorId"
+        - "amarilloDesde"
+        - "verdeDesde"
+      "additionalProperties": false
+    "GuardarMetodologia":
+      "type": "object"
+      "properties":
+        "version":
+          "type": "integer"
+          "minimum": 0
+          "maximum": 2147483646
+        "versionVariables":
+          "type": "integer"
+          "minimum": 0
+          "maximum": 2147483646
+        "regla":
+          "$ref": "#/components/schemas/ReglaPorcentaje"
+      "required":
+        - "version"
+        - "versionVariables"
+        - "regla"
+      "additionalProperties": false
+    "SimulacionMetodologia":
+      "type": "object"
+      "properties":
+        "versionVariables":
+          "type": "integer"
+          "minimum": 0
+          "maximum": 2147483646
+        "regla":
+          "$ref": "#/components/schemas/ReglaPorcentaje"
+        "numerador":
+          "type": "integer"
+          "minimum": 0
+          "maximum": 9007199254740991
+        "denominador":
+          "type": "integer"
+          "minimum": 0
+          "maximum": 9007199254740991
+      "required":
+        - "versionVariables"
+        - "regla"
+        - "numerador"
+        - "denominador"
+      "additionalProperties": false
+    "ConfiguracionMetodologias":
+      "type": "object"
+      "properties":
+        "indicadorId":
+          "type": "string"
+          "maxLength": 19
+          "pattern": "^[1-9]\\d*$"
+        "version":
+          "type": "integer"
+          "minimum": 0
+          "maximum": 2147483646
+        "metodologias":
+          "type": "array"
+          "items":
+            "type": "object"
+            "properties":
+              "id":
+                "type": "string"
+                "maxLength": 19
+                "pattern": "^[1-9]\\d*$"
+              "version":
+                "type": "integer"
+                "exclusiveMinimum": 0
+                "maximum": 9007199254740991
+              "regla":
+                "$ref": "#/components/schemas/ReglaPorcentaje"
+              "contexto":
+                "type": "object"
+                "properties":
+                  "versionVariables":
+                    "type": "integer"
+                    "minimum": 0
+                    "maximum": 2147483646
+                  "frecuencia":
+                    "type": "string"
+                    "enum":
+                      - "Mensual"
+                      - "Trimestral"
+                      - "Semestral"
+                      - "Anual"
+                  "unidadResultado":
+                    "type": "string"
+                    "const": "%"
+                  "sentido":
+                    "type": "string"
+                    "const": "Ascendente"
+                  "acumulacion":
+                    "type": "string"
+                    "const": "No acumulable"
+                  "variables":
+                    "$ref": "#/components/schemas/ConfiguracionVariables/properties/variables"
+                    "minItems": 2
+                    "maxItems": 2
+                "required":
+                  - "versionVariables"
+                  - "frecuencia"
+                  - "unidadResultado"
+                  - "sentido"
+                  - "acumulacion"
+                  - "variables"
+                "additionalProperties": false
+              "creadoPor":
+                "type": "string"
+                "maxLength": 19
+                "pattern": "^[1-9]\\d*$"
+              "creadoEn":
+                "type": "string"
+            "required":
+              - "id"
+              - "version"
+              - "regla"
+              - "contexto"
+              - "creadoPor"
+              - "creadoEn"
+            "additionalProperties": false
+      "required":
+        - "indicadorId"
+        - "version"
+        - "metodologias"
+      "additionalProperties": false
+    "ResultadoSimulacionMetodologia":
+      "type": "object"
+      "properties":
+        "valor":
+          "type":
+            - "string"
+            - "null"
+        "semaforo":
+          "anyOf":
+            -
+              "type": "string"
+              "enum":
+                - "verde"
+                - "amarillo"
+                - "rojo"
+            -
+              "type": "null"
+        "motivo":
+          "anyOf":
+            -
+              "type": "string"
+              "const": "DENOMINADOR_CERO"
+            -
+              "type": "null"
+      "required":
+        - "valor"
+        - "semaforo"
+        - "motivo"
+      "additionalProperties": false
     GuardarVariablesIndicador:
       type: object
       properties:

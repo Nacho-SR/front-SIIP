@@ -112,3 +112,9 @@ indicador y permisos de los cuatro perfiles. Usó repositorios sintéticos, sin 
 asignaciones de prueba en public. No se probaron dispositivos móviles físicos.
 [Evidencia de navegador](../../QA-final-2026-11-09/variables/resultado.json) y
 [constancia de aplicación/carga](../../QA-final-2026-11-09/sql-006-carga-aplicada.json).
+
+Actualización DEC-044 (10/11/2026): el ejemplo 130 ya tiene N/D asignadas a DGSM
+(Dirección General de Servicios Municipales, ID 3), por indicación y autorización
+expresa del usuario. Se guardó metodología v1 parte/total con umbrales 75/90 %,
+sin vigencia ni activación. Los ejemplos 131–133 no se modificaron.
+[Detalle y comprobaciones](metodologia-indicadores.md).

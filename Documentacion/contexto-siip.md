@@ -85,6 +85,15 @@ Confirmado por el equipo el 22/10/2026: verdes=1, amarillos=0.5, rojos=0; índic
 1) Alcance/MVP; 2) SRS con historias, RF/RNF y reglas; 3) flujos y matriz de permisos; 4) arquitectura/stack/Git/CI-CD; 5) ERD+diccionario SQL; 6) API OpenAPI; 7) UI/UX; 8) pruebas y aceptación; 9) despliegue/operación. Mantener registro de decisiones; no duplicar información innecesaria.
 
 ## 9. Trabajo actual
+Actualización 10/11/2026, DEC-044: se prepara configuración versionada de cálculo
+y semáforo con simulación administrativa, inicialmente parte/total ascendente no
+acumulable. El usuario asigna N y D del ejemplo 130 a Dirección General de Servicios
+Municipales y acuerda definir el inicio al activar. SQL 007 aplicado con autorización
+expresa solo en SIIP local, localhost:5432/public, tras prueba real aislada aprobada.
+DGSM creada (ID 3), N/D asignadas y metodología versión 1 guardada (75/90 %).
+No activa indicadores ni habilita Captura.
+[Estado y límites](metodologia-indicadores.md).
+
 Actualización 10/11/2026, DEC-043: vista administrativa de entradas y dependencias,
 GET/PUT con versión y auditoría, solo para fichas inactivas. SQL 006 aplicado con
 autorización expresa en SIIP local, localhost:5432/public; cuatro ejemplos ficticios

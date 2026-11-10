@@ -15,8 +15,10 @@ import { indicatorsRoutes } from './modules/indicadores/indicadores.routes.js';
 import type { IndicatorsRepository } from './modules/indicadores/repositories/indicadores.repository.js';
 import { variablesRoutes } from './modules/indicadores/variables.routes.js';
 import type { VariablesRepository } from './modules/indicadores/repositories/variables.repository.js';
+import { metodologiaRoutes } from './modules/indicadores/metodologia.routes.js';
+import type { MetodologiaRepository } from './modules/indicadores/repositories/metodologia.repository.js';
 
-export async function buildApp(env: Env, auth?: AuthDependencies & { users?: UsersRepository; indicators?: IndicatorsRepository; variables?: VariablesRepository }) {
+export async function buildApp(env: Env, auth?: AuthDependencies & { users?: UsersRepository; indicators?: IndicatorsRepository; variables?: VariablesRepository; metodologias?: MetodologiaRepository }) {
   const app = Fastify({
     logger: {
       redact: ['req.headers.authorization', 'req.headers.cookie', 'req.body.password', 'res.headers["set-cookie"]'],
@@ -62,6 +64,7 @@ export async function buildApp(env: Env, auth?: AuthDependencies & { users?: Use
     await api.register(usersRoutes, { prefix: '/administracion', repository: auth?.users });
     await api.register(indicatorsRoutes, { prefix: '/administracion', repository: auth?.indicators });
     await api.register(variablesRoutes, { prefix: '/administracion', repository: auth?.variables });
+    await api.register(metodologiaRoutes, { prefix: '/administracion', repository: auth?.metodologias });
   }, { prefix: '/api/v1' });
 
   app.get('/api/v1/salud', {

@@ -65,3 +65,10 @@ El cierre y gris de DEC-039 están especificados en los contratos. No se afirma 
 ## Alojamiento seleccionado — 06/11/2026
 
 DEC-040: frontend compilado, API Node.js y PostgreSQL en el mismo Hostinger VPS KVM 1. DEC-041: evidencias y justificaciones PDF en Cloudflare R2, sustituyendo Supabase Storage. Se conserva autenticación SIIP. [Arquitectura, costos y fuentes vigentes](../Documentacion/infraestructura-hostinger-r2.md). Selección documental, sin despliegue ni integración R2 realizados.
+# Cálculo y semáforo (DEC-044)
+
+En Administración → Indicadores → Variables y dependencias → Cálculo y semáforo
+se preparan reglas parte/total e historial, con prueba de cálculo en API sin capturas.
+Ruta `/administrador/indicadores/:id/metodologia`, solo Administrador. Requiere
+backend actualizado y SQL 007 autorizado. Guardar conserva el indicador inactivo;
+el periodo inicial se elegirá al implementar activación.

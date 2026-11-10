@@ -18,6 +18,11 @@ Cookie opaca HttpOnly/Secure/SameSite y token CSRF son la alternativa propuesta.
 
 ## Indicadores y captura
 
+DEC-044 añade tres operaciones administrativas implementadas en código, con SQL 007 aplicado solo en SIIP local: GET/PUT `/administracion/indicadores/{id}/metodologia` y POST
+`/administracion/indicadores/{id}/metodologia/simular`. Preparan versiones o prueban
+porcentaje parte/total sin vigencia, activación ni capturas. Solo Administrador;
+Origin/CSRF en PUT/POST. [Contrato](metodologia-indicadores.md).
+
 | Método | Ruta | Propósito | Roles | Prioridad | Estado |
 |---|---|---|---|---|---|
 | GET | /indicadores | Listar catálogo visible; Captura solo asignados. | Cuatro roles | P0 | T; alcance por DEC-010 |

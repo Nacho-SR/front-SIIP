@@ -7,6 +7,7 @@ import { PostgresSessionStore } from './modules/auth/repositories/session.reposi
 import { createUsersRepository } from './modules/administracion/repositories/usuarios.repository.js';
 import { createIndicatorsRepository } from './modules/indicadores/repositories/indicadores.repository.js';
 import { createVariablesRepository } from './modules/indicadores/repositories/variables.repository.js';
+import { createMetodologiaRepository } from './modules/indicadores/repositories/metodologia.repository.js';
 
 config({ quiet: true });
 
@@ -27,6 +28,7 @@ const app = await buildApp(env, pool ? {
   users: createUsersRepository(pool),
   indicators: createIndicatorsRepository(pool),
   variables: createVariablesRepository(pool),
+  metodologias: createMetodologiaRepository(pool),
 } : undefined);
 
 if (pool) {

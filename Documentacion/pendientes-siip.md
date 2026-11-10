@@ -15,7 +15,13 @@
 | P-14 | Media | Catálogos exactos, formatos de reportes, canales/disparadores de notificaciones. | Persistencia de notificaciones y API. Sin tablas ni función de importación. |
 
 Otras verificaciones pendientes:
-- DEC-043 (10/11/2026): ya existe la vista para definir entradas/asignar dependencias en indicadores inactivos. SQL 006 y cuatro ejemplos 130–133 aplicados con autorización expresa en SIIP local; ocho entradas sin responsable asignado. Falta que el equipo elija las dependencias reales en pantalla. No asignar automáticamente por el texto de la ficha. Variables fijas, vigencias, activación, captura y cálculo siguen pendientes. [Estado](variables-asignaciones.md).
+- DEC-044 (10/11/2026): preparados cálculo/semáforo parte-total, simulación y versiones
+  para fichas inactivas. El usuario confirma Dirección General de Servicios Municipales
+  para N/D del ejemplo 130; el inicio se fijará al activar. SQL 007 y prueba real
+  aislada aprobados/aplicados con autorización solo en SIIP local. DGSM creada,
+  N/D asignadas y metodología v1 (75/90 %) guardada. Falta la activación y su periodo;
+  no dar por vigentes estas reglas ni habilitar Captura. [Estado](metodologia-indicadores.md).
+- DEC-043 (10/11/2026): ya existe la vista para definir entradas/asignar dependencias en indicadores inactivos. SQL 006 y cuatro ejemplos 130–133 aplicados con autorización expresa en SIIP local; ocho entradas sin responsable asignado. Falta que el equipo elija las dependencias reales en pantalla. No asignar automáticamente por el texto de la ficha. DEC-044 añade metodología preparada y asignación explícita para el ejemplo 130; los otros tres siguen pendientes. Variables fijas, vigencias, activación, captura y cálculo operativo siguen pendientes. [Estado](variables-asignaciones.md).
 - DEC-037 (04/11/2026): altas desde Administrador y dependencia obligatoria para Revisión implementadas. Preparado SQL 003, sin ejecutar: si existen revisores sin dependencia, asignarles una real antes de validar la nueva restricción. Verificar altas y auth contra PostgreSQL; no se inventan asignaciones ni se cambian permisos globales de Revisión.
 - El cliente entregará las asignaciones de dependencia/usuario por variable; la estructura se puede proponer antes de tenerlas. Depurar denominaciones sin inventar responsables.
 - Conciliar `SIIP.02.F13.002` (Desarrollo Económico/DIF: PA y PO) y `SIIP.02.F16.002` (Obras Públicas/CMAPAS: IE e IP). DEC-032 confirma envío por dependencia y validación conjunta, pero convertir aportaciones compartidas en variables distintas sigue como propuesta. Verificar universos, solapamientos y consolidación; no aprobar sumas por el solo cambio de nombre. Alternativas: componentes formalmente distintos y agregación explícita; responsable único que consolida fuera del sistema; o aportaciones a una variable común (cambia DEC-002 y amplía modelo).
