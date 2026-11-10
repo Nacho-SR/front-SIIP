@@ -76,7 +76,7 @@ función de importación del Excel ni incorporación automática a Consulta o Es
 
 Para habilitar el alta local se debe autorizar/aplicar SQL 005 en la base concreta
 configurada en el backend. Reiniciar la API si se ejecuta la compilación anterior.
-Desde Administrador: Nuevo indicador, completar apartados, Guardar indicador,
+Desde Administrador → Indicadores: Nuevo indicador, completar apartados, Guardar indicador,
 comprobar confirmación y consecutivo, regresar al listado y recargar/ver la ficha.
 
 El usuario autorizó expresamente SQL 005 y la prueba aislada el 09/11/2026.
