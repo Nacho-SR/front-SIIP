@@ -8,6 +8,7 @@ import type {
   ChangeStatus,
   CreateDependency,
   CreateUser,
+  UpdateDependency,
   UpdateUser
 } from '../schemas/usuarios.schema.js';
 
@@ -24,29 +25,20 @@ export function createUsersController(
 ) {
   return {
 
-    // --------------------------------------
-    // CONSULTAR USUARIOS
-    // --------------------------------------
-
+    // LISTAR USUARIOS
     async listUsers() {
       return service.listUsers();
     },
 
-    // --------------------------------------
-    // CONSULTAR DEPENDENCIAS
-    // --------------------------------------
-
+    // LISTAR DEPENDENCIAS
     async listDependencies() {
       return service.listDependencies();
     },
 
-    // --------------------------------------
     // CREAR USUARIO
-    // --------------------------------------
-
     async createUser(
       request: FastifyRequest<{
-        Body: CreateUser
+        Body: CreateUser;
       }>,
       reply: FastifyReply
     ) {
@@ -58,13 +50,10 @@ export function createUsersController(
       return reply.code(201).send(user);
     },
 
-    // --------------------------------------
     // CREAR DEPENDENCIA
-    // --------------------------------------
-
     async createDependency(
       request: FastifyRequest<{
-        Body: CreateDependency
+        Body: CreateDependency;
       }>,
       reply: FastifyReply
     ) {
@@ -76,10 +65,7 @@ export function createUsersController(
       return reply.code(201).send(dependency);
     },
 
-    // --------------------------------------
     // EDITAR USUARIO
-    // --------------------------------------
-
     async updateUser(
       request: FastifyRequest<{
         Params: IdParams;
@@ -96,10 +82,7 @@ export function createUsersController(
       return reply.code(200).send(user);
     },
 
-    // --------------------------------------
-    // ACTIVAR / DESACTIVAR USUARIO
-    // --------------------------------------
-
+    // CAMBIAR ESTADO DE USUARIO
     async changeUserStatus(
       request: FastifyRequest<{
         Params: IdParams;
@@ -114,6 +97,42 @@ export function createUsersController(
       );
 
       return reply.code(200).send(user);
+    },
+
+    // EDITAR DEPENDENCIA
+    async updateDependency(
+      request: FastifyRequest<{
+        Params: IdParams;
+        Body: UpdateDependency;
+      }>,
+      reply: FastifyReply
+    ) {
+      const dependency =
+        await service.updateDependency(
+          request.params.id,
+          request.body,
+          request.usuario!.id
+        );
+
+      return reply.code(200).send(dependency);
+    },
+
+    // CAMBIAR ESTADO DE DEPENDENCIA
+    async changeDependencyStatus(
+      request: FastifyRequest<{
+        Params: IdParams;
+        Body: ChangeStatus;
+      }>,
+      reply: FastifyReply
+    ) {
+      const dependency =
+        await service.changeDependencyStatus(
+          request.params.id,
+          request.body,
+          request.usuario!.id
+        );
+
+      return reply.code(200).send(dependency);
     }
 
   };

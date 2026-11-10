@@ -13,17 +13,17 @@ const accountFields = {
   password: z.string().min(15).max(1024)
 };
 
-// Administración inicial
+// Administrador inicial
 export const initialAdminSchema =
   z.strictObject(accountFields);
 
-// Usuarios consultados desde el administrador
+// Usuario de administración
 export const managedUserSchema = userSchema.extend({
   activo: z.boolean(),
   dependencia_nombre: z.string().nullable()
 });
 
-// Registrar usuario
+// Crear usuario
 export const createUserSchema =
   z.discriminatedUnion('rol', [
     z.strictObject({
@@ -31,7 +31,6 @@ export const createUserSchema =
       rol: z.enum(['captura', 'revision']),
       dependencia_id: idSchema
     }),
-
     z.strictObject({
       ...accountFields,
       rol: z.literal('consulta'),
@@ -39,9 +38,7 @@ export const createUserSchema =
     })
   ]);
 
-// Editar usuario existente
-// No permite modificar contraseña ni asignar
-// el rol administrador.
+// Editar usuario
 export const updateUserSchema =
   z.discriminatedUnion('rol', [
     z.strictObject({
@@ -50,7 +47,6 @@ export const updateUserSchema =
       rol: z.enum(['captura', 'revision']),
       dependencia_id: idSchema
     }),
-
     z.strictObject({
       nombre: accountFields.nombre,
       correo: accountFields.correo,
@@ -59,12 +55,12 @@ export const updateUserSchema =
     })
   ]);
 
-// Cambiar estado: activar o desactivar
+// Cambiar estado
 export const changeStatusSchema = z.strictObject({
   activo: z.boolean()
 });
 
-// Dependencias
+// Dependencia
 export const dependencySchema = z.object({
   id: idSchema,
   clave: z.string(),
@@ -72,17 +68,18 @@ export const dependencySchema = z.object({
   activo: z.boolean()
 });
 
-// Crear dependencia
 export const createDependencySchema = z.strictObject({
   clave: z.string().trim().min(1).max(40).toUpperCase(),
   nombre: z.string().trim().min(1).max(200)
 });
 
-// Editar dependencia
-export const updateDependencySchema =
-  createDependencySchema;
+// Editar dependencia: mismos campos que crear
+export const updateDependencySchema = z.strictObject({
+  clave: z.string().trim().min(1).max(40).toUpperCase(),
+  nombre: z.string().trim().min(1).max(200)
+});
 
-// Tipos TypeScript
+// Tipos
 export type CreateUser =
   z.infer<typeof createUserSchema>;
 

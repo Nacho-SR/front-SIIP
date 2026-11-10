@@ -10,11 +10,24 @@ import type {
   Dependency,
   ManagedUser,
   UpdateUser,
+  UpdateDependency,
   ChangeStatus
 } from '../schemas/usuarios.schema.js';
 
 type NewAccount = Omit<User, 'id'> & {
   password_hash: string;
+};
+
+type AuditEntity = 'usuarios' | 'dependencias';
+type AuditAction =
+  | 'crear'
+  | 'modificar'
+  | 'activar'
+  | 'desactivar';
+
+type AuditRecord = {
+  id: string;
+  [key: string]: unknown;
 };
 
 export interface UsersRepository {
@@ -46,11 +59,23 @@ export interface UsersRepository {
     data: ChangeStatus,
     actorId: string
   ): Promise<ManagedUser>;
+
+  updateDependency(
+    id: string,
+    data: UpdateDependency,
+    actorId: string
+  ): Promise<Dependency>;
+
+  changeDependencyStatus(
+    id: string,
+    data: ChangeStatus,
+    actorId: string
+  ): Promise<Dependency>;
 }
 
-// --------------------------------------------
-// ERRORES DE INTEGRIDAD
-// --------------------------------------------
+// --------------------------------------------------
+// ERRORES DE POSTGRESQL
+// --------------------------------------------------
 
 function conflict(error: unknown): never {
   const pg = error as {
@@ -90,55 +115,17 @@ function conflict(error: unknown): never {
   throw error;
 }
 
-// --------------------------------------------
-// AUDITORÍA DE CREACIÓN
-// --------------------------------------------
+// --------------------------------------------------
+// AUDITORÍA
+// --------------------------------------------------
 
 async function audit(
   client: PoolClient,
-  actor: string,
-  entity: string,
-  record: { id: string }
-): Promise<void> {
-  await client.query(
-    `
-    INSERT INTO auditoria_configuracion (
-      actor_id,
-      entidad,
-      registro_id,
-      accion,
-      despues
-    )
-    VALUES (
-      $1, $2, $3, 'crear', $4::jsonb
-    )
-    `,
-    [
-      actor,
-      entity,
-      record.id,
-      JSON.stringify(record)
-    ]
-  );
-}
-
-// --------------------------------------------
-// AUDITORÍA DE MODIFICACIONES
-// --------------------------------------------
-
-type ChangeAction =
-  | 'modificar'
-  | 'activar'
-  | 'desactivar';
-
-async function auditChange(
-  client: PoolClient,
   actorId: string,
-  entity: 'usuarios' | 'dependencias',
-  recordId: string,
-  action: ChangeAction,
-  before: ManagedUser | Dependency,
-  after: ManagedUser | Dependency
+  entidad: AuditEntity,
+  accion: AuditAction,
+  despues: AuditRecord,
+  antes: AuditRecord | null = null
 ): Promise<void> {
   await client.query(
     `
@@ -151,37 +138,29 @@ async function auditChange(
       despues
     )
     VALUES (
-      $1,
-      $2,
-      $3,
-      $4,
-      $5::jsonb,
-      $6::jsonb
+      $1, $2, $3, $4, $5::jsonb, $6::jsonb
     )
     `,
     [
       actorId,
-      entity,
-      recordId,
-      action,
-      JSON.stringify(before),
-      JSON.stringify(after)
+      entidad,
+      despues.id,
+      accion,
+      antes ? JSON.stringify(antes) : null,
+      JSON.stringify(despues)
     ]
   );
 }
 
-// --------------------------------------------
+// --------------------------------------------------
 // REPOSITORIO
-// --------------------------------------------
+// --------------------------------------------------
 
 export function createUsersRepository(
   pool: Pool
 ): UsersRepository {
 
-  // ------------------------------------------
-  // OBTENER USUARIO ADMINISTRABLE
-  // ------------------------------------------
-
+  // Obtener un usuario y bloquearlo si corresponde.
   async function readManagedUser(
     client: PoolClient,
     id: string,
@@ -209,15 +188,37 @@ export function createUsersRepository(
     return result.rows[0] ?? null;
   }
 
-  // ------------------------------------------
-  // VALIDAR DEPENDENCIA ACTIVA
-  // ------------------------------------------
+  // Obtener dependencia con bloqueo opcional.
+  async function readDependency(
+    client: PoolClient,
+    id: string,
+    lock = false
+  ): Promise<Dependency | null> {
+    const result = await client.query<Dependency>(
+      `
+      SELECT
+        id::text,
+        clave,
+        nombre,
+        activo
+      FROM dependencias
+      WHERE id = $1
+      ${lock ? 'FOR UPDATE' : ''}
+      `,
+      [id]
+    );
 
+    return result.rows[0] ?? null;
+  }
+
+  // Verificar que la dependencia exista y esté activa.
+  // FOR SHARE evita cambios de estado concurrentes
+  // mientras se asigna una cuenta.
   async function assertActiveDependency(
     client: PoolClient,
-    dependencyId: string | null
+    id: string | null
   ): Promise<void> {
-    if (dependencyId === null) return;
+    if (id === null) return;
 
     const result = await client.query(
       `
@@ -227,7 +228,7 @@ export function createUsersRepository(
         AND activo
       FOR SHARE
       `,
-      [dependencyId]
+      [id]
     );
 
     if (!result.rowCount) {
@@ -239,10 +240,7 @@ export function createUsersRepository(
     }
   }
 
-  // ------------------------------------------
-  // CREAR USUARIO
-  // ------------------------------------------
-
+  // Crear usuario, incluyendo bootstrap administrativo.
   async function insertUser(
     account: NewAccount,
     actorId?: string
@@ -312,29 +310,27 @@ export function createUsersRepository(
         client,
         actorId ?? user.id,
         'usuarios',
-        user
+        'crear',
+        { ...user }
       );
 
       await client.query('COMMIT');
-
       return user;
 
     } catch (error) {
       await client.query('ROLLBACK');
       return conflict(error);
-
     } finally {
       client.release();
     }
   }
 
-  // ------------------------------------------
-  // MÉTODOS PÚBLICOS
-  // ------------------------------------------
-
   return {
 
-    // Consultar usuarios, incluyendo inactivos
+    // ----------------------------------------------
+    // LISTAR USUARIOS
+    // ----------------------------------------------
+
     async listUsers() {
       const result = await pool.query<ManagedUser>(
         `
@@ -356,8 +352,11 @@ export function createUsersRepository(
       return result.rows;
     },
 
-    // Consultar dependencias activas
-    listDependencies: async () => {
+    // ----------------------------------------------
+    // LISTAR TODAS LAS DEPENDENCIAS
+    // ----------------------------------------------
+
+    async listDependencies() {
       const result = await pool.query<Dependency>(
         `
         SELECT
@@ -366,7 +365,6 @@ export function createUsersRepository(
           nombre,
           activo
         FROM dependencias
-        WHERE activo
         ORDER BY nombre, id
         `
       );
@@ -374,15 +372,16 @@ export function createUsersRepository(
       return result.rows;
     },
 
-    // Crear usuario
     createUser: (account, actorId) =>
       insertUser(account, actorId),
 
-    // Crear primer administrador
     createInitialAdmin: account =>
       insertUser(account),
 
-    // Crear dependencia
+    // ----------------------------------------------
+    // CREAR DEPENDENCIA
+    // ----------------------------------------------
+
     async createDependency(data, actorId) {
       const client = await pool.connect();
 
@@ -391,10 +390,7 @@ export function createUsersRepository(
 
         const result = await client.query<Dependency>(
           `
-          INSERT INTO dependencias (
-            clave,
-            nombre
-          )
+          INSERT INTO dependencias (clave, nombre)
           VALUES ($1, $2)
           RETURNING
             id::text,
@@ -402,10 +398,7 @@ export function createUsersRepository(
             nombre,
             activo
           `,
-          [
-            data.clave,
-            data.nombre
-          ]
+          [data.clave, data.nombre]
         );
 
         const dependency = result.rows[0];
@@ -414,25 +407,24 @@ export function createUsersRepository(
           client,
           actorId,
           'dependencias',
-          dependency
+          'crear',
+          { ...dependency }
         );
 
         await client.query('COMMIT');
-
         return dependency;
 
       } catch (error) {
         await client.query('ROLLBACK');
         return conflict(error);
-
       } finally {
         client.release();
       }
     },
 
-    // ----------------------------------------
+    // ----------------------------------------------
     // EDITAR USUARIO
-    // ----------------------------------------
+    // ----------------------------------------------
 
     async updateUser(id, data, actorId) {
       const client = await pool.connect();
@@ -454,20 +446,24 @@ export function createUsersRepository(
           );
         }
 
-        // Las cuentas administradoras no se
-        // modifican desde el CRUD ordinario.
         if (before.rol === 'administrador') {
           throw new HttpError(
             403,
             'ADMIN_PROTEGIDO',
-            'No se permite modificar cuentas administradoras desde este módulo.'
+            'No se permite modificar cuentas administradoras.'
           );
         }
 
-        await assertActiveDependency(
-          client,
-          data.dependencia_id
-        );
+        // Para cuentas activas comprobamos que la
+        // dependencia nueva esté disponible.
+        // Una cuenta inactiva puede editarse sin
+        // reactivarse automáticamente.
+        if (before.activo) {
+          await assertActiveDependency(
+            client,
+            data.dependencia_id
+          );
+        }
 
         await client.query(
           `
@@ -488,10 +484,7 @@ export function createUsersRepository(
           ]
         );
 
-        const after = await readManagedUser(
-          client,
-          id
-        );
+        const after = await readManagedUser(client, id);
 
         if (!after) {
           throw new HttpError(
@@ -501,32 +494,29 @@ export function createUsersRepository(
           );
         }
 
-        await auditChange(
+        await audit(
           client,
           actorId,
           'usuarios',
-          id,
           'modificar',
-          before,
-          after
+          { ...after },
+          { ...before }
         );
 
         await client.query('COMMIT');
-
         return after;
 
       } catch (error) {
         await client.query('ROLLBACK');
         return conflict(error);
-
       } finally {
         client.release();
       }
     },
 
-    // ----------------------------------------
-    // DESACTIVAR / REACTIVAR USUARIO
-    // ----------------------------------------
+    // ----------------------------------------------
+    // ACTIVAR / DESACTIVAR USUARIO
+    // ----------------------------------------------
 
     async changeUserStatus(id, data, actorId) {
       const client = await pool.connect();
@@ -548,22 +538,15 @@ export function createUsersRepository(
           );
         }
 
-        // Protegemos las cuentas de
-        // administración.
         if (before.rol === 'administrador') {
           throw new HttpError(
             403,
             'ADMIN_PROTEGIDO',
-            'No se permite cambiar el estado de una cuenta administradora.'
+            'No se permite cambiar el estado de cuentas administradoras.'
           );
         }
 
-        // Protección adicional contra
-        // desactivación de la propia cuenta.
-        if (
-          id === actorId &&
-          data.activo === false
-        ) {
+        if (id === actorId && !data.activo) {
           throw new HttpError(
             403,
             'AUTO_DESACTIVACION_NO_PERMITIDA',
@@ -575,15 +558,10 @@ export function createUsersRepository(
           throw new HttpError(
             409,
             'ESTADO_SIN_CAMBIOS',
-            data.activo
-              ? 'El usuario ya está activo.'
-              : 'El usuario ya está inactivo.'
+            'El usuario ya tiene ese estado.'
           );
         }
 
-        // Una cuenta que requiere dependencia
-        // solo podrá reactivarse si esta existe
-        // y continúa activa.
         if (data.activo) {
           await assertActiveDependency(
             client,
@@ -597,16 +575,10 @@ export function createUsersRepository(
           SET activo = $1
           WHERE id = $2
           `,
-          [
-            data.activo,
-            id
-          ]
+          [data.activo, id]
         );
 
-        const after = await readManagedUser(
-          client,
-          id
-        );
+        const after = await readManagedUser(client, id);
 
         if (!after) {
           throw new HttpError(
@@ -616,24 +588,175 @@ export function createUsersRepository(
           );
         }
 
-        await auditChange(
+        await audit(
           client,
           actorId,
           'usuarios',
-          id,
           data.activo ? 'activar' : 'desactivar',
-          before,
-          after
+          { ...after },
+          { ...before }
         );
 
         await client.query('COMMIT');
-
         return after;
 
       } catch (error) {
         await client.query('ROLLBACK');
         return conflict(error);
+      } finally {
+        client.release();
+      }
+    },
 
+    // ----------------------------------------------
+    // EDITAR DEPENDENCIA
+    // ----------------------------------------------
+
+    async updateDependency(id, data, actorId) {
+      const client = await pool.connect();
+
+      try {
+        await client.query('BEGIN');
+
+        const before = await readDependency(
+          client,
+          id,
+          true
+        );
+
+        if (!before) {
+          throw new HttpError(
+            404,
+            'DEPENDENCIA_NO_ENCONTRADA',
+            'La dependencia no existe.'
+          );
+        }
+
+        const result = await client.query<Dependency>(
+          `
+          UPDATE dependencias
+          SET
+            clave = $1,
+            nombre = $2
+          WHERE id = $3
+          RETURNING
+            id::text,
+            clave,
+            nombre,
+            activo
+          `,
+          [data.clave, data.nombre, id]
+        );
+
+        const after = result.rows[0];
+
+        await audit(
+          client,
+          actorId,
+          'dependencias',
+          'modificar',
+          { ...after },
+          { ...before }
+        );
+
+        await client.query('COMMIT');
+        return after;
+
+      } catch (error) {
+        await client.query('ROLLBACK');
+        return conflict(error);
+      } finally {
+        client.release();
+      }
+    },
+
+    // ----------------------------------------------
+    // ACTIVAR / DESACTIVAR DEPENDENCIA
+    // ----------------------------------------------
+
+    async changeDependencyStatus(id, data, actorId) {
+      const client = await pool.connect();
+
+      try {
+        await client.query('BEGIN');
+
+        const before = await readDependency(
+          client,
+          id,
+          true
+        );
+
+        if (!before) {
+          throw new HttpError(
+            404,
+            'DEPENDENCIA_NO_ENCONTRADA',
+            'La dependencia no existe.'
+          );
+        }
+
+        if (before.activo === data.activo) {
+          throw new HttpError(
+            409,
+            'ESTADO_SIN_CAMBIOS',
+            'La dependencia ya tiene ese estado.'
+          );
+        }
+
+        // Impedir desactivación si existen
+        // usuarios operativos activos asignados.
+        if (!data.activo) {
+          const assigned = await client.query(
+            `
+            SELECT 1
+            FROM usuarios
+            WHERE dependencia_id = $1
+              AND activo
+              AND rol IN ('captura', 'revision')
+            LIMIT 1
+            `,
+            [id]
+          );
+
+          if (assigned.rowCount) {
+            throw new HttpError(
+              409,
+              'DEPENDENCIA_CON_USUARIOS_ACTIVOS',
+              'La dependencia tiene usuarios operativos activos. Desactívalos o reasígnalos primero.'
+            );
+          }
+        }
+
+        const result = await client.query<Dependency>(
+          `
+          UPDATE dependencias
+          SET activo = $1
+          WHERE id = $2
+          RETURNING
+            id::text,
+            clave,
+            nombre,
+            activo
+          `,
+          [data.activo, id]
+        );
+
+        const after = result.rows[0];
+
+        await audit(
+          client,
+          actorId,
+          'dependencias',
+          data.activo ? 'activar' : 'desactivar',
+          { ...after },
+          { ...before }
+        );
+
+        await client.query('COMMIT');
+        return after;
+
+      } catch (error) {
+        await client.query('ROLLBACK');
+        return conflict(error);
       } finally {
         client.release();
       }

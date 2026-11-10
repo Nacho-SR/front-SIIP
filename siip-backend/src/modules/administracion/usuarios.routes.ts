@@ -1,10 +1,8 @@
 
 import type { FastifyInstance } from 'fastify';
-
 import { z } from 'zod';
 
 import { HttpError } from '../../shared/http-error.js';
-
 import { requireRoles } from '../auth/guards/auth.guard.js';
 
 import {
@@ -30,6 +28,7 @@ import {
   createUserSchema,
   dependencySchema,
   managedUserSchema,
+  updateDependencySchema,
   updateUserSchema
 } from './schemas/usuarios.schema.js';
 
@@ -37,6 +36,7 @@ import type {
   ChangeStatus,
   CreateDependency,
   CreateUser,
+  UpdateDependency,
   UpdateUser
 } from './schemas/usuarios.schema.js';
 
@@ -54,20 +54,14 @@ export async function usersRoutes(
     repository?: UsersRepository;
   }
 ) {
-
-  // Todas las rutas requieren sesión
   app.addHook('onRequest', app.requireSession);
 
-  // Todas las rutas requieren administrador
   app.addHook(
     'onRequest',
     requireRoles('administrador')
   );
 
-  // --------------------------------------
-  // SIN REPOSITORIO CONFIGURADO
-  // --------------------------------------
-
+  // SIN BASE DE DATOS CONFIGURADA
   if (!options.repository) {
     const unavailable = async () => {
       throw new HttpError(
@@ -101,6 +95,18 @@ export async function usersRoutes(
       handler: unavailable
     });
 
+    app.route({
+      method: ['PATCH'],
+      url: '/dependencias/:id',
+      handler: unavailable
+    });
+
+    app.route({
+      method: ['PATCH'],
+      url: '/dependencias/:id/estado',
+      handler: unavailable
+    });
+
     return;
   }
 
@@ -108,11 +114,7 @@ export async function usersRoutes(
     createUsersService(options.repository)
   );
 
-  // --------------------------------------
-  // CONSULTAR USUARIOS
-  // GET /administracion/usuarios
-  // --------------------------------------
-
+  // LISTAR USUARIOS
   app.get('/usuarios', {
     schema: {
       response: {
@@ -121,11 +123,7 @@ export async function usersRoutes(
     }
   }, controller.listUsers);
 
-  // --------------------------------------
-  // CONSULTAR DEPENDENCIAS
-  // GET /administracion/dependencias
-  // --------------------------------------
-
+  // LISTAR DEPENDENCIAS
   app.get('/dependencias', {
     schema: {
       response: {
@@ -134,11 +132,7 @@ export async function usersRoutes(
     }
   }, controller.listDependencies);
 
-  // --------------------------------------
   // CREAR USUARIO
-  // POST /administracion/usuarios
-  // --------------------------------------
-
   app.post<{
     Body: CreateUser;
   }>('/usuarios', {
@@ -151,11 +145,7 @@ export async function usersRoutes(
     }
   }, controller.createUser);
 
-  // --------------------------------------
   // CREAR DEPENDENCIA
-  // POST /administracion/dependencias
-  // --------------------------------------
-
   app.post<{
     Body: CreateDependency;
   }>('/dependencias', {
@@ -167,11 +157,7 @@ export async function usersRoutes(
     }
   }, controller.createDependency);
 
-  // --------------------------------------
   // EDITAR USUARIO
-  // PATCH /administracion/usuarios/:id
-  // --------------------------------------
-
   app.patch<{
     Params: IdParams;
     Body: UpdateUser;
@@ -186,11 +172,7 @@ export async function usersRoutes(
     }
   }, controller.updateUser);
 
-  // --------------------------------------
   // ACTIVAR / DESACTIVAR USUARIO
-  // PATCH /administracion/usuarios/:id/estado
-  // --------------------------------------
-
   app.patch<{
     Params: IdParams;
     Body: ChangeStatus;
@@ -203,4 +185,33 @@ export async function usersRoutes(
       }
     }
   }, controller.changeUserStatus);
+
+  // EDITAR DEPENDENCIA
+  app.patch<{
+    Params: IdParams;
+    Body: UpdateDependency;
+  }>('/dependencias/:id', {
+    bodyLimit: 8192,
+    schema: {
+      params: idParamsSchema,
+      body: updateDependencySchema,
+      response: {
+        200: dependencySchema
+      }
+    }
+  }, controller.updateDependency);
+
+  // ACTIVAR / DESACTIVAR DEPENDENCIA
+  app.patch<{
+    Params: IdParams;
+    Body: ChangeStatus;
+  }>('/dependencias/:id/estado', {
+    schema: {
+      params: idParamsSchema,
+      body: changeStatusSchema,
+      response: {
+        200: dependencySchema
+      }
+    }
+  }, controller.changeDependencyStatus);
 }

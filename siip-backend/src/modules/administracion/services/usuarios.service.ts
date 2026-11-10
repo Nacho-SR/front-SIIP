@@ -1,13 +1,16 @@
 
 import { argon2id, hash } from 'argon2';
 
-import type { UsersRepository } from '../repositories/usuarios.repository.js';
+import type {
+  UsersRepository
+} from '../repositories/usuarios.repository.js';
 
 import {
   changeStatusSchema,
   createDependencySchema,
   createUserSchema,
   initialAdminSchema,
+  updateDependencySchema,
   updateUserSchema
 } from '../schemas/usuarios.schema.js';
 
@@ -16,13 +19,12 @@ export function createUsersService(
 ) {
   return {
 
-    // Consultar usuarios
+    // CONSULTAS
     listUsers: () => repository.listUsers(),
 
-    // Consultar dependencias
     listDependencies: () => repository.listDependencies(),
 
-    // Registrar usuario
+    // CREAR USUARIO
     async createUser(
       data: unknown,
       actorId: string
@@ -40,7 +42,7 @@ export function createUsersService(
       );
     },
 
-    // Crear administrador inicial
+    // ADMINISTRADOR INICIAL
     async createInitialAdmin(data: unknown) {
       const { password, ...account } =
         initialAdminSchema.parse(data);
@@ -57,7 +59,7 @@ export function createUsersService(
       });
     },
 
-    // Registrar dependencia
+    // CREAR DEPENDENCIA
     async createDependency(
       data: unknown,
       actorId: string
@@ -68,38 +70,54 @@ export function createUsersService(
       );
     },
 
-    // --------------------------------------
     // EDITAR USUARIO
-    // --------------------------------------
-
     async updateUser(
       id: string,
       data: unknown,
       actorId: string
     ) {
-      const validData = updateUserSchema.parse(data);
-
       return repository.updateUser(
         id,
-        validData,
+        updateUserSchema.parse(data),
         actorId
       );
     },
 
-    // --------------------------------------
-    // ACTIVAR / DESACTIVAR USUARIO
-    // --------------------------------------
-
+    // CAMBIAR ESTADO DE USUARIO
     async changeUserStatus(
       id: string,
       data: unknown,
       actorId: string
     ) {
-      const validData = changeStatusSchema.parse(data);
-
       return repository.changeUserStatus(
         id,
-        validData,
+        changeStatusSchema.parse(data),
+        actorId
+      );
+    },
+
+    // EDITAR DEPENDENCIA
+    async updateDependency(
+      id: string,
+      data: unknown,
+      actorId: string
+    ) {
+      return repository.updateDependency(
+        id,
+        updateDependencySchema.parse(data),
+        actorId
+      );
+    },
+
+    // CAMBIAR ESTADO DE DEPENDENCIA
+    async changeDependencyStatus(
+      id: string,
+      data: unknown,
+      actorId: string
+    ) {
+      return repository.changeDependencyStatus(
+        id,
+        changeStatusSchema.parse(data),
         actorId
       );
     }
