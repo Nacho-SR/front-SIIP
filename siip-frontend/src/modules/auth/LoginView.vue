@@ -170,6 +170,15 @@ const handleLogin = async () => {
             </div>
           </div>
 
+          <div class="forgot-password">
+            <RouterLink
+              :to="{ name: 'RecuperarContrasena' }"
+              class="forgot-password-link"
+            >
+              ¿Olvidaste tu contraseña?
+            </RouterLink>
+          </div>
+
           <p
             v-if="errorMsg"
             class="form-error"
@@ -751,4 +760,34 @@ const handleLogin = async () => {
     transition: none;
   }
 }
+
+/* ==========================================
+   RECUPERACIÓN DE CONTRASEÑA
+   ========================================== */
+
+.forgot-password {
+  display: flex;
+  justify-content: flex-end;
+  margin: 9px 0 18px;
+}
+
+.forgot-password-link {
+  color: #245a81;
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.forgot-password-link:hover {
+  color: #70273b;
+  text-decoration: underline;
+}
+
+.forgot-password-link:focus-visible {
+  outline: 2px solid #c69a4b;
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
 </style>

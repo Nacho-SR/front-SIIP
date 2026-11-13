@@ -1,10 +1,11 @@
-
 import { config } from 'dotenv';
 
 import { buildApp } from './app.js';
 import { envSchema } from './env.js';
 
-import { createPool } from './database/pool.js';
+import {
+  createPool
+} from './database/pool.js';
 
 // ============================================
 // AUTENTICACIÓN
@@ -17,6 +18,18 @@ import {
 import {
   PostgresSessionStore
 } from './modules/auth/repositories/session.repository.js';
+
+// ============================================
+// RECUPERACIÓN DE CONTRASEÑA
+// ============================================
+
+import {
+  createRecoveryRepository
+} from './modules/auth/repositories/recovery.repository.js';
+
+import {
+  createRecoveryMailer
+} from './modules/auth/services/recovery.mail.js';
 
 // ============================================
 // USUARIOS Y DEPENDENCIAS
@@ -48,10 +61,14 @@ import {
 
 config({ quiet: true });
 
-const result = envSchema.safeParse(process.env);
+const result = envSchema.safeParse(
+  process.env
+);
 
 if (!result.success) {
-  console.error('Configuración de entorno inválida:');
+  console.error(
+    'Configuración de entorno inválida:'
+  );
 
   for (const issue of result.error.issues) {
     console.error(
@@ -63,7 +80,7 @@ if (!result.success) {
 }
 
 // ============================================
-// CONFIGURACIÓN DE POSTGRESQL
+// CONFIGURACIÓN POSTGRESQL
 // ============================================
 
 const env = result.data;
@@ -80,25 +97,52 @@ const app = await buildApp(
   env,
   pool
     ? {
-        // Autenticación
-        repository: createAuthRepository(pool),
+        // ------------------------------------
+        // AUTENTICACIÓN
+        // ------------------------------------
 
-        sessionStore: new PostgresSessionStore(pool),
+        repository:
+          createAuthRepository(pool),
 
-        // Usuarios y dependencias
-        users: createUsersRepository(pool),
+        sessionStore:
+          new PostgresSessionStore(pool),
 
-        // Indicadores
-        indicators: createIndicatorsRepository(pool),
+        // ------------------------------------
+        // RECUPERACIÓN DE CONTRASEÑA
+        // ------------------------------------
 
-        // Agrupaciones temáticas y familias
-        classifications: createClassificationsRepository(pool)
+        recovery:
+          createRecoveryRepository(pool),
+
+        recoveryMailer:
+          createRecoveryMailer(env),
+
+        // ------------------------------------
+        // USUARIOS Y DEPENDENCIAS
+        // ------------------------------------
+
+        users:
+          createUsersRepository(pool),
+
+        // ------------------------------------
+        // INDICADORES
+        // ------------------------------------
+
+        indicators:
+          createIndicatorsRepository(pool),
+
+        // ------------------------------------
+        // AGRUPACIONES Y FAMILIAS
+        // ------------------------------------
+
+        classifications:
+          createClassificationsRepository(pool)
       }
     : undefined
 );
 
 // ============================================
-// MANEJO DE CONEXIONES POSTGRESQL
+// CONEXIONES POSTGRESQL
 // ============================================
 
 if (pool) {
@@ -117,7 +161,9 @@ if (pool) {
 // CIERRE CONTROLADO DEL SERVIDOR
 // ============================================
 
-for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+for (
+  const signal of ['SIGINT', 'SIGTERM'] as const
+) {
   process.once(signal, () => {
     void app.close().catch(error => {
       app.log.error(
