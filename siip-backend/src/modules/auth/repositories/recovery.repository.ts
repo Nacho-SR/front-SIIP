@@ -14,8 +14,9 @@ interface RecoveryUser {
   correo: string;
 }
 
-interface RecoveryAccount {
+interface RecoveryTokenRow {
   id: string;
+  usuario_id: string;
 }
 
 export interface RecoveryRecipient {
@@ -34,15 +35,27 @@ export function hashToken(token: string): string {
 }
 
 // ============================================
+// ERROR DE ENLACE NO VÁLIDO
+// ============================================
+
+function invalidLink(): HttpError {
+  return new HttpError(
+    400,
+    'ENLACE_INVALIDO',
+    'El enlace de recuperación es inválido, caducó o ya fue utilizado.'
+  );
+}
+
+// ============================================
 // REPOSITORIO DE RECUPERACIÓN
 // ============================================
 
 export function createRecoveryRepository(pool: Pool) {
   return {
 
-    // ----------------------------------------
-    // GENERAR SOLICITUD DE RECUPERACIÓN
-    // ----------------------------------------
+    // ========================================
+    // CREAR SOLICITUD DE RECUPERACIÓN
+    // ========================================
 
     async issue(
       correo: string,
@@ -53,16 +66,11 @@ export function createRecoveryRepository(pool: Pool) {
       try {
         await client.query('BEGIN');
 
-        // Verificar que la cuenta exista y
-        // esté habilitada para iniciar sesión.
-        //
-        // Bloquear el usuario también evita
-        // emitir múltiples tokens simultáneos.
-
+        // Verificar que la cuenta esté activa.
         const result = await client.query<RecoveryUser>(
           `
           SELECT
-            u.id::text,
+            u.id::text AS id,
             u.nombre,
             u.correo
           FROM usuarios u
@@ -86,15 +94,13 @@ export function createRecoveryRepository(pool: Pool) {
 
         const user = result.rows[0];
 
-        // No revelar si la cuenta existe.
+        // No revelar cuentas inexistentes.
         if (!user) {
           await client.query('COMMIT');
           return null;
         }
 
-        // Evitar múltiples solicitudes
-        // consecutivas para el mismo usuario.
-
+        // Limitar solicitudes consecutivas.
         const recent = await client.query(
           `
           SELECT 1
@@ -113,7 +119,8 @@ export function createRecoveryRepository(pool: Pool) {
           return null;
         }
 
-        // Invalidar enlaces anteriores.
+        // Invalidar enlaces anteriores
+        // cuando se genera uno nuevo.
         await client.query(
           `
           UPDATE recuperaciones_password
@@ -125,11 +132,8 @@ export function createRecoveryRepository(pool: Pool) {
           [user.id]
         );
 
-        // Registrar el nuevo enlace.
-        //
-        // Solo almacenamos SHA-256 del token.
-        // Vigencia: 20 minutos.
-
+        // Registrar token con vigencia
+        // de 20 minutos.
         await client.query(
           `
           INSERT INTO recuperaciones_password (
@@ -161,21 +165,30 @@ export function createRecoveryRepository(pool: Pool) {
       }
     },
 
-    // ----------------------------------------
-    // CONSUMIR TOKEN Y CAMBIAR CONTRASEÑA
-    // ----------------------------------------
+    // ========================================
+    // CONSUMIR ENLACE Y CAMBIAR CONTRASEÑA
+    // ========================================
 
     async consume(
       tokenHash: string,
       password: string
     ): Promise<void> {
+
+      // Calcular Argon2id antes de iniciar
+      // la transacción para no mantener
+      // bloqueos durante el cálculo.
+      const passwordHash = await hash(password, {
+        type: argon2id
+      });
+
       const client = await pool.connect();
 
       try {
         await client.query('BEGIN');
 
-        // Localizar la cuenta asociada
-        // con el hash del token.
+        // ------------------------------------
+        // 1. LOCALIZAR CUENTA DEL TOKEN
+        // ------------------------------------
 
         const lookup = await client.query<{
           usuario_id: string;
@@ -191,19 +204,16 @@ export function createRecoveryRepository(pool: Pool) {
         const userId = lookup.rows[0]?.usuario_id;
 
         if (!userId) {
-          throw new HttpError(
-            400,
-            'ENLACE_INVALIDO',
-            'El enlace es inválido, ya fue utilizado o caducó.'
-          );
+          throw invalidLink();
         }
 
-        // Bloquear el usuario y verificar
-        // que todavía esté habilitado.
+        // ------------------------------------
+        // 2. BLOQUEAR Y VALIDAR USUARIO
+        // ------------------------------------
 
-        const user = await client.query<RecoveryAccount>(
+        const user = await client.query(
           `
-          SELECT u.id::text
+          SELECT u.id
           FROM usuarios u
           LEFT JOIN dependencias d
             ON d.id = u.dependencia_id
@@ -223,52 +233,48 @@ export function createRecoveryRepository(pool: Pool) {
           [userId]
         );
 
-        if (!user.rowCount) {
-          throw new HttpError(
-            400,
-            'ENLACE_INVALIDO',
-            'El enlace ya no es válido.'
-          );
+        if (user.rowCount !== 1) {
+          throw invalidLink();
         }
 
-        // Comprobar que el token:
-        // - Exista.
-        // - No haya sido utilizado.
-        // - No haya caducado.
+        // ------------------------------------
+        // 3. CONSUMIR EL TOKEN ATÓMICAMENTE
+        // ------------------------------------
 
-        const recovery = await client.query(
-          `
-          SELECT id
-          FROM recuperaciones_password
-          WHERE
-            token_hash = $1
-            AND usuario_id = $2
-            AND utilizado_en IS NULL
-            AND expira_en > now()
-          FOR UPDATE
-          `,
-          [tokenHash, userId]
-        );
+        // Esta consulta solo modifica tokens
+        // que NO hayan sido utilizados y cuya
+        // fecha de expiración siga vigente.
+        //
+        // Si dos solicitudes intentan consumir
+        // el mismo token, solo una podrá
+        // actualizarlo satisfactoriamente.
 
-        if (!recovery.rowCount) {
-          throw new HttpError(
-            400,
-            'ENLACE_INVALIDO',
-            'El enlace es inválido, ya fue utilizado o caducó.'
+        const consumed =
+          await client.query<RecoveryTokenRow>(
+            `
+            UPDATE recuperaciones_password
+            SET utilizado_en = now()
+            WHERE
+              token_hash = $1
+              AND usuario_id = $2
+              AND utilizado_en IS NULL
+              AND expira_en > now()
+            RETURNING
+              id::text,
+              usuario_id::text
+            `,
+            [tokenHash, userId]
           );
+
+        if (consumed.rowCount !== 1) {
+          throw invalidLink();
         }
 
-        // Cifrado unidireccional de la
-        // nueva contraseña mediante Argon2id.
+        // ------------------------------------
+        // 4. ACTUALIZAR CONTRASEÑA
+        // ------------------------------------
 
-        const passwordHash = await hash(
-          password,
-          { type: argon2id }
-        );
-
-        // Actualizar contraseña.
-
-        await client.query(
+        const updated = await client.query(
           `
           UPDATE usuarios
           SET password_hash = $2
@@ -277,8 +283,13 @@ export function createRecoveryRepository(pool: Pool) {
           [userId, passwordHash]
         );
 
-        // Invalidar todos los enlaces de
-        // recuperación pendientes del usuario.
+        if (updated.rowCount !== 1) {
+          throw invalidLink();
+        }
+
+        // ------------------------------------
+        // 5. INVALIDAR OTROS ENLACES
+        // ------------------------------------
 
         await client.query(
           `
@@ -291,8 +302,9 @@ export function createRecoveryRepository(pool: Pool) {
           [userId]
         );
 
-        // Invalidar todas las sesiones
-        // existentes de esa cuenta.
+        // ------------------------------------
+        // 6. REVOCAR SESIONES ANTERIORES
+        // ------------------------------------
 
         await client.query(
           `
@@ -301,6 +313,10 @@ export function createRecoveryRepository(pool: Pool) {
           `,
           [userId]
         );
+
+        // ------------------------------------
+        // 7. CONFIRMAR TODA LA OPERACIÓN
+        // ------------------------------------
 
         await client.query('COMMIT');
 
@@ -313,10 +329,6 @@ export function createRecoveryRepository(pool: Pool) {
     }
   };
 }
-
-// ============================================
-// TIPO DEL REPOSITORIO
-// ============================================
 
 export type RecoveryRepository =
   ReturnType<typeof createRecoveryRepository>;
