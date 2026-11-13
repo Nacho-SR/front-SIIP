@@ -6,40 +6,14 @@ import session from '@fastify/session';
 import type { SessionStore } from '@fastify/session';
 import csrf from '@fastify/csrf-protection';
 
+import { z } from 'zod';
+
 import type { Env } from '../../env.js';
 import { HttpError } from '../../shared/http-error.js';
-
-// ============================================
-// AUTENTICACIÓN EXISTENTE
-// ============================================
 
 import type {
   AuthRepository
 } from './repositories/auth.repository.js';
-
-import {
-  createAuthService
-} from './services/auth.service.js';
-
-import {
-  credentialsSchema,
-  sessionSchema
-} from './schemas/auth.schema.js';
-
-import type {
-  Credentials
-} from './schemas/auth.schema.js';
-
-import {
-  createAuthController,
-  SESSION_COOKIE,
-  SESSION_PATH,
-  SESSION_TTL_MS
-} from './controllers/auth.controller.js';
-
-// ============================================
-// RECUPERACIÓN DE CONTRASEÑA
-// ============================================
 
 import type {
   RecoveryRepository
@@ -63,6 +37,26 @@ import type {
   RecoveryConfirm
 } from './schemas/recovery.schema.js';
 
+import {
+  createAuthService
+} from './services/auth.service.js';
+
+import {
+  credentialsSchema,
+  sessionSchema
+} from './schemas/auth.schema.js';
+
+import type {
+  Credentials
+} from './schemas/auth.schema.js';
+
+import {
+  createAuthController,
+  SESSION_COOKIE,
+  SESSION_PATH,
+  SESSION_TTL_MS
+} from './controllers/auth.controller.js';
+
 // ============================================
 // DEPENDENCIAS
 // ============================================
@@ -70,13 +64,24 @@ import type {
 export interface AuthDependencies {
   repository: AuthRepository;
   sessionStore: SessionStore;
-
   recovery?: RecoveryRepository;
   recoveryMailer?: RecoveryMailer;
 }
 
 // ============================================
-// REGISTRAR AUTENTICACIÓN
+// VALIDAR TOKEN
+// ============================================
+
+const validateRecoverySchema = z.strictObject({
+  token: z.string().regex(/^[a-f0-9]{64}$/i)
+});
+
+type ValidateRecovery = z.infer<
+  typeof validateRecoverySchema
+>;
+
+// ============================================
+// RUTAS DE AUTENTICACIÓN
 // ============================================
 
 export async function registerAuth(
@@ -92,7 +97,7 @@ export async function registerAuth(
 
   // ==========================================
   // SIN POSTGRESQL
-  // ==========================================
+  // ============================================
 
   if (!options.dependencies) {
     const unavailable = async () => {
@@ -111,15 +116,9 @@ export async function registerAuth(
       handler: unavailable
     });
 
-    app.post(
-      '/auth/recuperacion',
-      unavailable
-    );
-
-    app.post(
-      '/auth/restablecer',
-      unavailable
-    );
+    app.post('/auth/recuperacion', unavailable);
+    app.post('/auth/validar-recuperacion', unavailable);
+    app.post('/auth/restablecer', unavailable);
 
     return;
   }
@@ -135,7 +134,7 @@ export async function registerAuth(
 
   // ==========================================
   // COOKIES Y SESIONES
-  // ==========================================
+  // ============================================
 
   await app.register(cookie);
 
@@ -159,7 +158,7 @@ export async function registerAuth(
 
   // ==========================================
   // PROTECCIÓN CSRF
-  // ==========================================
+  // ============================================
 
   await app.register(csrf, {
     sessionPlugin: '@fastify/session',
@@ -174,15 +173,10 @@ export async function registerAuth(
   });
 
   app.decorateRequest('usuario', null);
-
   app.decorate(
     'requireSession',
     controller.requireSession
   );
-
-  // ==========================================
-  // SEGURIDAD DE SOLICITUDES
-  // ==========================================
 
   app.addHook(
     'onRequest',
@@ -207,7 +201,6 @@ export async function registerAuth(
             'Origen no autorizado.'
           )
         );
-
         return;
       }
 
@@ -217,7 +210,7 @@ export async function registerAuth(
 
   // ==========================================
   // CONSULTAR SESIÓN
-  // ==========================================
+  // ============================================
 
   app.get(
     '/auth/sesion',
@@ -233,7 +226,7 @@ export async function registerAuth(
 
   // ==========================================
   // INICIAR SESIÓN
-  // ==========================================
+  // ============================================
 
   app.post<{
     Body: Credentials;
@@ -261,7 +254,7 @@ export async function registerAuth(
 
   // ==========================================
   // RECUPERACIÓN DE CONTRASEÑA
-  // ==========================================
+  // ============================================
 
   if (
     dependencies.recovery &&
@@ -273,7 +266,7 @@ export async function registerAuth(
     );
 
     // ----------------------------------------
-    // SOLICITAR CORREO DE RECUPERACIÓN
+    // SOLICITAR CORREO
     // ----------------------------------------
 
     app.post<{
@@ -299,38 +292,61 @@ export async function registerAuth(
           await recovery.request(
             request.body.correo
           );
-        
-  } catch (error) {
-  if (
-    error instanceof HttpError &&
-    error.codigo === 'CORREO_NO_CONFIGURADO'
-  ) {
-    throw error;
-  }
+        } catch (error) {
+          if (
+            error instanceof HttpError &&
+            error.codigo === 'CORREO_NO_CONFIGURADO'
+          ) {
+            throw error;
+          }
 
-  if (error instanceof Error) {
-    request.log.error(
-      {
-        codigo: 'RECUPERACION_FALLIDA',
-        tipo: error.name,
-        mensaje: error.message
-      },
-      'Error durante la recuperación de contraseña.'
-    );
-  } else {
-    request.log.error(
-      {
-        codigo: 'RECUPERACION_FALLIDA'
-      },
-      'Error desconocido durante la recuperación.'
-    );
-  }
-}
-        // Misma respuesta, exista o no
-        // una cuenta con ese correo.
+          request.log.error(
+            { codigo: 'RECUPERACION_FALLIDA' },
+            'No se pudo procesar la recuperación.'
+          );
+        }
+
         return reply.code(202).send({
           mensaje:
             'Si la cuenta está habilitada, recibirás un enlace de recuperación.'
+        });
+      }
+    );
+
+    // ----------------------------------------
+    // VALIDAR ENLACE ANTES DE MOSTRAR FORMULARIO
+    // ----------------------------------------
+
+    app.post<{
+      Body: ValidateRecovery;
+    }>(
+      '/auth/validar-recuperacion',
+      {
+        bodyLimit: 4096,
+
+        config: {
+          rateLimit: {
+            max: 20,
+            timeWindow: '10 minutes'
+          }
+        },
+
+        schema: {
+          body: validateRecoverySchema,
+          response: {
+            200: z.object({
+              valido: z.boolean()
+            })
+          }
+        }
+      },
+      async (request, reply) => {
+        const valido = await recovery.validate(
+          request.body.token
+        );
+
+        return reply.code(200).send({
+          valido
         });
       }
     );
@@ -370,9 +386,7 @@ export async function registerAuth(
       }
     );
   } else {
-    // Los endpoints siguen existiendo
-    // aunque falte configurar el servicio.
-    const recoveryUnavailable = async () => {
+    const unavailable = async () => {
       throw new HttpError(
         503,
         'RECUPERACION_NO_CONFIGURADA',
@@ -380,20 +394,14 @@ export async function registerAuth(
       );
     };
 
-    app.post(
-      '/auth/recuperacion',
-      recoveryUnavailable
-    );
-
-    app.post(
-      '/auth/restablecer',
-      recoveryUnavailable
-    );
+    app.post('/auth/recuperacion', unavailable);
+    app.post('/auth/validar-recuperacion', unavailable);
+    app.post('/auth/restablecer', unavailable);
   }
 
   // ==========================================
   // CERRAR SESIÓN
-  // ==========================================
+  // ============================================
 
   app.delete(
     '/auth/sesion',

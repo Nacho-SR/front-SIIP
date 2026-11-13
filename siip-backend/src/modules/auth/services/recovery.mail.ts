@@ -88,8 +88,10 @@ export function createRecoveryMailer(env: Env) {
       // GENERAR ENLACE SEGURO
       // --------------------------------------
 
+      const frontendBasePath = '/front-SIIP/';
+
       const link = new URL(
-        '/restablecer-contrasena',
+        `${frontendBasePath}restablecer-contrasena`,
         env.FRONTEND_ORIGIN
       );
 

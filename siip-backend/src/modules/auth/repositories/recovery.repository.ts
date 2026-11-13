@@ -1,12 +1,9 @@
+
 import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { argon2id, hash } from 'argon2';
 
 import { HttpError } from '../../../shared/http-error.js';
-
-// ============================================
-// TIPOS
-// ============================================
 
 interface RecoveryUser {
   id: string;
@@ -14,19 +11,10 @@ interface RecoveryUser {
   correo: string;
 }
 
-interface RecoveryTokenRow {
-  id: string;
-  usuario_id: string;
-}
-
-export interface RecoveryRecipient {
+interface RecoveryRecipient {
   nombre: string;
   correo: string;
 }
-
-// ============================================
-// HASH DEL TOKEN
-// ============================================
 
 export function hashToken(token: string): string {
   return createHash('sha256')
@@ -34,27 +22,19 @@ export function hashToken(token: string): string {
     .digest('hex');
 }
 
-// ============================================
-// ERROR DE ENLACE NO VÁLIDO
-// ============================================
-
 function invalidLink(): HttpError {
   return new HttpError(
     400,
     'ENLACE_INVALIDO',
-    'El enlace de recuperación es inválido, caducó o ya fue utilizado.'
+    'El enlace de recuperación ya fue utilizado, caducó o no es válido.'
   );
 }
-
-// ============================================
-// REPOSITORIO DE RECUPERACIÓN
-// ============================================
 
 export function createRecoveryRepository(pool: Pool) {
   return {
 
     // ========================================
-    // CREAR SOLICITUD DE RECUPERACIÓN
+    // SOLICITAR RECUPERACIÓN
     // ========================================
 
     async issue(
@@ -66,7 +46,6 @@ export function createRecoveryRepository(pool: Pool) {
       try {
         await client.query('BEGIN');
 
-        // Verificar que la cuenta esté activa.
         const result = await client.query<RecoveryUser>(
           `
           SELECT
@@ -94,13 +73,13 @@ export function createRecoveryRepository(pool: Pool) {
 
         const user = result.rows[0];
 
-        // No revelar cuentas inexistentes.
         if (!user) {
           await client.query('COMMIT');
           return null;
         }
 
-        // Limitar solicitudes consecutivas.
+        // Evitar solicitudes consecutivas
+        // durante los últimos 60 segundos.
         const recent = await client.query(
           `
           SELECT 1
@@ -119,8 +98,7 @@ export function createRecoveryRepository(pool: Pool) {
           return null;
         }
 
-        // Invalidar enlaces anteriores
-        // cuando se genera uno nuevo.
+        // Invalidar enlaces anteriores.
         await client.query(
           `
           UPDATE recuperaciones_password
@@ -132,8 +110,7 @@ export function createRecoveryRepository(pool: Pool) {
           [user.id]
         );
 
-        // Registrar token con vigencia
-        // de 20 minutos.
+        // Crear enlace válido durante 20 minutos.
         await client.query(
           `
           INSERT INTO recuperaciones_password (
@@ -156,7 +133,6 @@ export function createRecoveryRepository(pool: Pool) {
           nombre: user.nombre,
           correo: user.correo
         };
-
       } catch (error) {
         await client.query('ROLLBACK');
         throw error;
@@ -166,17 +142,49 @@ export function createRecoveryRepository(pool: Pool) {
     },
 
     // ========================================
-    // CONSUMIR ENLACE Y CAMBIAR CONTRASEÑA
+    // VALIDAR ESTADO DEL ENLACE
+    // ========================================
+
+    async validate(tokenHash: string): Promise<boolean> {
+      const result = await pool.query(
+        `
+        SELECT 1
+        FROM recuperaciones_password r
+        JOIN usuarios u
+          ON u.id = r.usuario_id
+        LEFT JOIN dependencias d
+          ON d.id = u.dependencia_id
+        WHERE
+          r.token_hash = $1
+          AND r.utilizado_en IS NULL
+          AND r.expira_en > now()
+          AND u.activo = true
+          AND (
+            u.dependencia_id IS NULL
+            OR d.activo = true
+          )
+          AND (
+            u.rol IN ('administrador', 'consulta')
+            OR u.dependencia_id IS NOT NULL
+          )
+        LIMIT 1
+        `,
+        [tokenHash]
+      );
+
+      return result.rowCount === 1;
+    },
+
+    // ========================================
+    // CONSUMIR TOKEN Y CAMBIAR CONTRASEÑA
     // ========================================
 
     async consume(
       tokenHash: string,
       password: string
     ): Promise<void> {
-
-      // Calcular Argon2id antes de iniciar
-      // la transacción para no mantener
-      // bloqueos durante el cálculo.
+      // Calcular el hash antes de mantener
+      // bloqueos de escritura en PostgreSQL.
       const passwordHash = await hash(password, {
         type: argon2id
       });
@@ -186,10 +194,7 @@ export function createRecoveryRepository(pool: Pool) {
       try {
         await client.query('BEGIN');
 
-        // ------------------------------------
-        // 1. LOCALIZAR CUENTA DEL TOKEN
-        // ------------------------------------
-
+        // Buscar el usuario asociado al token.
         const lookup = await client.query<{
           usuario_id: string;
         }>(
@@ -207,10 +212,9 @@ export function createRecoveryRepository(pool: Pool) {
           throw invalidLink();
         }
 
-        // ------------------------------------
-        // 2. BLOQUEAR Y VALIDAR USUARIO
-        // ------------------------------------
-
+        // Bloquear la cuenta antes de modificar
+        // el token, usando el mismo orden de
+        // bloqueo que issue().
         const user = await client.query(
           `
           SELECT u.id
@@ -237,43 +241,27 @@ export function createRecoveryRepository(pool: Pool) {
           throw invalidLink();
         }
 
-        // ------------------------------------
-        // 3. CONSUMIR EL TOKEN ATÓMICAMENTE
-        // ------------------------------------
-
-        // Esta consulta solo modifica tokens
-        // que NO hayan sido utilizados y cuya
-        // fecha de expiración siga vigente.
-        //
-        // Si dos solicitudes intentan consumir
-        // el mismo token, solo una podrá
-        // actualizarlo satisfactoriamente.
-
-        const consumed =
-          await client.query<RecoveryTokenRow>(
-            `
-            UPDATE recuperaciones_password
-            SET utilizado_en = now()
-            WHERE
-              token_hash = $1
-              AND usuario_id = $2
-              AND utilizado_en IS NULL
-              AND expira_en > now()
-            RETURNING
-              id::text,
-              usuario_id::text
-            `,
-            [tokenHash, userId]
-          );
+        // Consumir el token de forma atómica.
+        // Solo puede consumirse una vez.
+        const consumed = await client.query(
+          `
+          UPDATE recuperaciones_password
+          SET utilizado_en = now()
+          WHERE
+            token_hash = $1
+            AND usuario_id = $2
+            AND utilizado_en IS NULL
+            AND expira_en > now()
+          RETURNING id
+          `,
+          [tokenHash, userId]
+        );
 
         if (consumed.rowCount !== 1) {
           throw invalidLink();
         }
 
-        // ------------------------------------
-        // 4. ACTUALIZAR CONTRASEÑA
-        // ------------------------------------
-
+        // Actualizar la contraseña.
         const updated = await client.query(
           `
           UPDATE usuarios
@@ -287,10 +275,8 @@ export function createRecoveryRepository(pool: Pool) {
           throw invalidLink();
         }
 
-        // ------------------------------------
-        // 5. INVALIDAR OTROS ENLACES
-        // ------------------------------------
-
+        // Invalidar cualquier otro enlace
+        // pendiente de la misma cuenta.
         await client.query(
           `
           UPDATE recuperaciones_password
@@ -302,10 +288,9 @@ export function createRecoveryRepository(pool: Pool) {
           [userId]
         );
 
-        // ------------------------------------
-        // 6. REVOCAR SESIONES ANTERIORES
-        // ------------------------------------
-
+        // Revocar sesiones anteriores.
+        // Esta consulta conserva la estructura
+        // de sesiones utilizada en tu proyecto.
         await client.query(
           `
           DELETE FROM sesiones
@@ -314,12 +299,7 @@ export function createRecoveryRepository(pool: Pool) {
           [userId]
         );
 
-        // ------------------------------------
-        // 7. CONFIRMAR TODA LA OPERACIÓN
-        // ------------------------------------
-
         await client.query('COMMIT');
-
       } catch (error) {
         await client.query('ROLLBACK');
         throw error;

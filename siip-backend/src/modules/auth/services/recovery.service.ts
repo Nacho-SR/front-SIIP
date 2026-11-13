@@ -15,9 +15,7 @@ import type {
   RecoveryMailer
 } from './recovery.mail.js';
 
-// ============================================
-// SERVICIO DE RECUPERACIÓN
-// ============================================
+const TOKEN_PATTERN = /^[a-f0-9]{64}$/i;
 
 export function createRecoveryService(
   repository: RecoveryRepository,
@@ -26,12 +24,10 @@ export function createRecoveryService(
   return {
 
     // ========================================
-    // SOLICITAR RECUPERACIÓN
+    // SOLICITAR CORREO DE RECUPERACIÓN
     // ========================================
 
     async request(correo: string): Promise<void> {
-
-      // Comprobar configuración del correo.
       if (!mailer.enabled) {
         throw new HttpError(
           503,
@@ -40,33 +36,19 @@ export function createRecoveryService(
         );
       }
 
-      // Generar un token criptográficamente
-      // aleatorio de 32 bytes.
-      //
-      // Su representación hexadecimal
-      // tendrá 64 caracteres.
-
-      const token = randomBytes(32)
-        .toString('hex');
-
-      // Solo almacenar el hash del token.
+      const token = randomBytes(32).toString('hex');
       const tokenHash = hashToken(token);
 
-      // Buscar cuenta y registrar solicitud.
       const user = await repository.issue(
         correo,
         tokenHash
       );
 
-      // Si la cuenta no existe, está inactiva
-      // o tiene una solicitud muy reciente,
-      // se termina sin revelar información.
+      // La respuesta externa no debe revelar
+      // si una cuenta existe o está activa.
       if (!user) {
         return;
       }
-
-      // Enviar correo con el token original.
-      // El token nunca se guarda en texto plano.
 
       await mailer.send(
         user.nombre,
@@ -76,20 +58,39 @@ export function createRecoveryService(
     },
 
     // ========================================
-    // CONFIRMAR NUEVA CONTRASEÑA
+    // COMPROBAR VIGENCIA DEL ENLACE
+    // ========================================
+
+    async validate(token: string): Promise<boolean> {
+      if (!TOKEN_PATTERN.test(token)) {
+        return false;
+      }
+
+      const tokenHash = hashToken(token);
+
+      return repository.validate(tokenHash);
+    },
+
+    // ========================================
+    // RESTABLECER CONTRASEÑA
     // ========================================
 
     async confirm(
       token: string,
       password: string
     ): Promise<void> {
+      if (!TOKEN_PATTERN.test(token)) {
+        throw new HttpError(
+          400,
+          'ENLACE_INVALIDO',
+          'El enlace no es válido.'
+        );
+      }
 
-      // Convertir el token recibido en su hash.
       const tokenHash = hashToken(token);
 
-      // Validar vigencia, uso único
-      // y actualizar la contraseña.
-
+      // El repositorio comprueba el estado
+      // nuevamente y consume el token.
       await repository.consume(
         tokenHash,
         password
@@ -97,10 +98,6 @@ export function createRecoveryService(
     }
   };
 }
-
-// ============================================
-// TIPO DEL SERVICIO
-// ============================================
 
 export type RecoveryService =
   ReturnType<typeof createRecoveryService>;
