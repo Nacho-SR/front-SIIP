@@ -85,6 +85,15 @@ Confirmado por el equipo el 22/10/2026: verdes=1, amarillos=0.5, rojos=0; índic
 1) Alcance/MVP; 2) SRS con historias, RF/RNF y reglas; 3) flujos y matriz de permisos; 4) arquitectura/stack/Git/CI-CD; 5) ERD+diccionario SQL; 6) API OpenAPI; 7) UI/UX; 8) pruebas y aceptación; 9) despliegue/operación. Mantener registro de decisiones; no duplicar información innecesaria.
 
 ## 9. Trabajo actual
+
+Actualización DEC-045 (17/11/2026): el usuario solicita activación controlada y confirma
+inicio como mínimo en el siguiente periodo natural completo. Se integra DEC-044
+en develop y se prepara registro de activaciones, validaciones y bloqueo de la
+activación genérica. SQL 008 aplicado con autorización expresa solo en SIIP local,
+localhost:5432/public, tras dos integraciones reales aisladas aprobadas y esquemas
+eliminados. Ejemplo 130 activado desde 01/12/2026 con metodología v2, 75/90 % y DGSM,
+sin cambiar cuentas/responsables ni crear capturas/publicaciones.
+[Estado y límites](activacion-indicadores.md).
 Actualización 10/11/2026, DEC-043: vista administrativa de entradas y dependencias,
 GET/PUT con versión y auditoría, solo para fichas inactivas. SQL 006 aplicado con
 autorización expresa en SIIP local, localhost:5432/public; cuatro ejemplos ficticios

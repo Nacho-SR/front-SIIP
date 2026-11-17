@@ -48,6 +48,12 @@ import {
 import type {
   ClassificationsRepository
 } from './modules/indicadores/repositories/clasificaciones.repository.js';
+import { variablesRoutes } from './modules/indicadores/variables.routes.js';
+import type { VariablesRepository } from './modules/indicadores/repositories/variables.repository.js';
+import { metodologiaRoutes } from './modules/indicadores/metodologia.routes.js';
+import type { MetodologiaRepository } from './modules/indicadores/repositories/metodologia.repository.js';
+import { activacionRoutes } from './modules/indicadores/activacion.routes.js';
+import type { ActivacionRepository } from './modules/indicadores/repositories/activacion.repository.js';
 
 // --------------------------------------------
 // DEPENDENCIAS DE LA APLICACIÓN
@@ -57,6 +63,9 @@ type AppDependencies = AuthDependencies & {
   users?: UsersRepository;
   indicators?: IndicatorsRepository;
   classifications?: ClassificationsRepository;
+  variables?: VariablesRepository;
+  metodologias?: MetodologiaRepository;
+  activaciones?: ActivacionRepository;
 };
 
 // --------------------------------------------
@@ -97,6 +106,7 @@ export async function buildApp(
     methods: [
       'GET',
       'POST',
+      'PUT',
       'PATCH',
       'DELETE'
     ],
@@ -203,6 +213,9 @@ export async function buildApp(
         prefix: '/administracion',
         repository: auth?.classifications
       });
+      await api.register(variablesRoutes, { prefix: '/administracion', repository: auth?.variables });
+      await api.register(metodologiaRoutes, { prefix: '/administracion', repository: auth?.metodologias });
+      await api.register(activacionRoutes, { prefix: '/administracion', repository: auth?.activaciones });
 
     },
     {

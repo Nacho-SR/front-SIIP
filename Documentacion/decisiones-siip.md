@@ -52,6 +52,15 @@ Actualización técnica del 30/10/2026: DEC-029/035 completan la selección inic
 
 ## Alta persistente de fichas — 09/11/2026
 
+Actualización DEC-045 (17/11/2026): el usuario solicita activación controlada y confirma
+inicio como mínimo en el siguiente periodo natural completo. Se integra DEC-044
+en develop y se prepara registro de activaciones, validaciones y bloqueo de la
+activación genérica. SQL 008 aplicado con autorización expresa solo en SIIP local,
+localhost:5432/public, tras dos integraciones reales aisladas aprobadas y esquemas
+eliminados. Ejemplo 130 activado desde 01/12/2026 con metodología v2, 75/90 % y DGSM,
+sin cambiar cuentas/responsables ni crear capturas/publicaciones.
+[Estado y límites](activacion-indicadores.md).
+
 Actualización DEC-043, implementación solicitada el 10/11/2026: cargar los cuatro
 ejemplos ficticios 130–133 y configurar entradas/asignaciones desde Administrador.
 Una dependencia activa o ninguna por variable, sin activar indicadores ni Captura.

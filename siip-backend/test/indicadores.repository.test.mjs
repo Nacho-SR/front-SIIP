@@ -18,7 +18,7 @@ function fixture(override) {
     if (result) return result;
     if (sql.includes('FOR SHARE')) return { rows: [{ id: '35', codigo: 'F35', agrupacion_codigo: '05' }] };
     if (sql.includes('INSERT INTO indicadores')) return { rows: [{ id: row.id }] };
-    if (sql.includes('SELECT i.*')) return { rows: [row] };
+    if (/SELECT\s+i\.\*/.test(sql)) return { rows: [row] };
     return { rows: [] };
   }, release() { released = true; } };
   const pool = { connect: async () => client, query: client.query };

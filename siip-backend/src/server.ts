@@ -1,5 +1,8 @@
 
 import { config } from 'dotenv';
+import { createVariablesRepository } from './modules/indicadores/repositories/variables.repository.js';
+import { createMetodologiaRepository } from './modules/indicadores/repositories/metodologia.repository.js';
+import { createActivacionRepository } from './modules/indicadores/repositories/activacion.repository.js';
 
 import { buildApp } from './app.js';
 import { envSchema } from './env.js';
@@ -74,6 +77,9 @@ const app = await buildApp(
 
         // Indicadores
         indicators: createIndicatorsRepository(pool),
+        variables: createVariablesRepository(pool),
+        metodologias: createMetodologiaRepository(pool),
+        activaciones: createActivacionRepository(pool),
 
         // Agrupaciones temáticas y familias
         classifications:

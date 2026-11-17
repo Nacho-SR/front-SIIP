@@ -83,6 +83,7 @@ onMounted(() => { void cargar(); });
         <h2>Variables y dependencias</h2>
         <p v-if="indicador"><strong>{{ indicador.campos.clave }}</strong> — {{ indicador.campos.nombre }}</p>
       </div>
+      <router-link class="btn-secundario" :to="{ name: 'AdministradorMetodologiaIndicador', params: { id } }">Cálculo y semáforo</router-link>
     </div>
     <p v-if="cargando" role="status">Cargando variables y dependencias…</p>
     <div v-if="error" class="error" role="alert">

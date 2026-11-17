@@ -84,6 +84,14 @@ const routes: Array<RouteRecordRaw> = [
             path: 'indicadores/:id/variables', name: 'AdministradorVariablesIndicador',
             component: () => import('../modules/admin/VariablesIndicadorView.vue'),
           },
+          {
+            path: 'indicadores/:id/metodologia', name: 'AdministradorMetodologiaIndicador',
+            component: () => import('../modules/admin/MetodologiaIndicadorView.vue'),
+          },
+          {
+            path: 'indicadores/:id/activacion', name: 'AdministradorActivacionIndicador',
+            component: () => import('../modules/admin/ActivacionIndicadorView.vue'),
+          },
         ],
       },
     ]

@@ -147,11 +147,11 @@ function databaseError(error: unknown): never {
     );
   }
 
-  if (pg.code === '42P01') {
+  if (pg.code === '42P01' || pg.code === '42703') {
     throw new HttpError(
       503,
       'INDICADORES_NO_CONFIGURADOS',
-      'Faltan tablas de indicadores en PostgreSQL.'
+      'Faltan tablas de indicadores o activación en PostgreSQL. Comprueba SQL 005 a 008.'
     );
   }
 
@@ -443,7 +443,8 @@ export function createIndicatorsRepository(
           before.campos.agrupacion !== data.agrupacion ||
           before.campos.algoritmo !== data.algoritmo ||
           before.campos.semaforizacion !==
-            data.semaforizacion;
+            data.semaforizacion ||
+          ['frecuencia', 'unidad', 'sentido', 'condicionAcumulacion', 'variables'].some(key => before.campos[key as keyof typeof before.campos] !== data[key as keyof typeof data]);
 
         if (
           before.activo &&
@@ -543,6 +544,7 @@ export function createIndicatorsRepository(
     // ========================================
 
     async changeStatus(id, activo, actorId) {
+      if (activo) throw new HttpError(409, 'ACTIVACION_REQUIERE_CONFIGURACION', 'Activa desde la configuración de metodología y periodo inicial.');
       const client = await pool.connect();
 
       try {
@@ -580,37 +582,6 @@ export function createIndicatorsRepository(
           );
         }
 
-        // 3. Para reactivar, la familia
-        // y agrupación deben estar activas.
-        if (activo) {
-          const available = await client.query(
-            `
-            SELECT 1
-
-            FROM familias f
-
-            JOIN agrupaciones_tematicas g
-              ON g.id = f.agrupacion_id
-
-            WHERE
-              f.id = $1
-              AND f.activo
-              AND g.activo
-
-            FOR SHARE OF f, g
-            `,
-            [beforeRow.familia_id]
-          );
-
-          if (!available.rowCount) {
-            throw new HttpError(
-              422,
-              'FAMILIA_NO_DISPONIBLE',
-              'Activa primero la familia y su agrupación temática.'
-            );
-          }
-        }
-
         // 4. Modificar únicamente el estado.
         await client.query(
           `
@@ -627,6 +598,9 @@ export function createIndicatorsRepository(
             id
           ]
         );
+
+        await client.query(`UPDATE activaciones_indicador SET desactivado_en = now(), desactivado_por = $2
+          WHERE indicador_id = $1 AND desactivado_en IS NULL`, [id, actorId]);
 
         // 5. Obtener el estado actualizado.
         const afterResult =

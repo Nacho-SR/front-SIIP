@@ -65,3 +65,11 @@ El cierre y gris de DEC-039 están especificados en los contratos. No se afirma 
 ## Alojamiento seleccionado — 06/11/2026
 
 DEC-040: frontend compilado, API Node.js y PostgreSQL en el mismo Hostinger VPS KVM 1. DEC-041: evidencias y justificaciones PDF en Cloudflare R2, sustituyendo Supabase Storage. Se conserva autenticación SIIP. [Arquitectura, costos y fuentes vigentes](../Documentacion/infraestructura-hostinger-r2.md). Selección documental, sin despliegue ni integración R2 realizados.
+
+## Activación de indicadores (17/11/2026)
+
+Desde Administración → Indicadores → Activar: comprobación de metodología y
+asignaciones, fecha explícita desde el siguiente periodo completo y registro
+histórico auditado. Se integran las rutas de metodología/variables de DEC-044
+sin cambiar los CRUD actuales. Requiere SQL 007 y SQL 008 autorizado; no habilita
+Captura ni publicaciones. Ver Documentacion/activacion-indicadores.md.

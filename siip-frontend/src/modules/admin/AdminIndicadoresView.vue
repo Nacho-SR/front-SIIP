@@ -91,6 +91,10 @@ async function cargarIndicadores() {
 }
 
 function abrirEstado(indicador: IndicadorAdmin) {
+  if (!indicador.activo) {
+    void router.push({ name: 'AdministradorActivacionIndicador', params: { id: indicador.id } });
+    return;
+  }
   seleccionado.value = indicador;
   errorEstado.value = '';
   exito.value = '';
@@ -106,7 +110,7 @@ function cerrarEstado() {
 async function confirmarEstado(
   datos: { activo: boolean }
 ) {
-  if (!seleccionado.value || procesando.value) return;
+  if (!seleccionado.value || procesando.value || datos.activo) return;
 
   const id = seleccionado.value.id;
 
@@ -279,6 +283,8 @@ onMounted(() => {
 
             <td>
               <div class="acciones-iconos">
+                <router-link class="accion-icono editar" :to="{ name: 'AdministradorVariablesIndicador', params: { id: indicador.id } }"
+                  :aria-label="`Configurar variables de ${indicador.campos.nombre}`" title="Variables y dependencias">⚙</router-link>
 
                 <!-- EDITAR -->
                 <button
@@ -319,10 +325,10 @@ onMounted(() => {
                   :title="
                     indicador.activo
                       ? 'Desactivar indicador'
-                      : 'Reactivar indicador'
+                      : 'Configurar activación'
                   "
                   :aria-label="
-                    `${indicador.activo ? 'Desactivar' : 'Reactivar'} ${indicador.campos.nombre}`
+                    `${indicador.activo ? 'Desactivar' : 'Activar'} ${indicador.campos.nombre}`
                   "
                   :disabled="procesando"
                   @click="abrirEstado(indicador)"
@@ -390,6 +396,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
+th:last-child { text-align: center; }
 .filtros-indicadores {
   display: flex;
   flex-wrap: wrap;
@@ -417,13 +424,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-content: center;
 }
 
 .accion-icono {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 9px;
