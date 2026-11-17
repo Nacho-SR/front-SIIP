@@ -34,6 +34,29 @@ const errorEstado = ref('');
 const exito = ref('');
 
 // ============================================
+// CONTADORES DE INDICADORES
+// ============================================
+
+// Se calculan sobre el catálogo completo,
+// independientemente de la búsqueda y filtros.
+
+const totalIndicadores = computed(() =>
+  adminState.indicadores.length
+);
+
+const totalActivos = computed(() =>
+  adminState.indicadores.filter(
+    indicador => indicador.activo
+  ).length
+);
+
+const totalInactivos = computed(() =>
+  adminState.indicadores.filter(
+    indicador => !indicador.activo
+  ).length
+);
+
+// ============================================
 // FILTRADO DE INDICADORES
 // ============================================
 
@@ -257,6 +280,47 @@ onMounted(() => {
     </p>
 
     <!-- =====================================
+         CONTADORES DE INDICADORES
+    ====================================== -->
+
+    <div
+      class="contadores-indicadores"
+      aria-label="Resumen de indicadores"
+    >
+
+      <!-- TOTAL -->
+
+      <div class="contador-indicador">
+        <span>Total</span>
+
+        <strong>
+          {{ totalIndicadores }}
+        </strong>
+      </div>
+
+      <!-- ACTIVOS -->
+
+      <div class="contador-indicador">
+        <span>Activos</span>
+
+        <strong>
+          {{ totalActivos }}
+        </strong>
+      </div>
+
+      <!-- INACTIVOS -->
+
+      <div class="contador-indicador">
+        <span>Inactivos</span>
+
+        <strong>
+          {{ totalInactivos }}
+        </strong>
+      </div>
+
+    </div>
+
+    <!-- =====================================
          FILTROS
     ====================================== -->
 
@@ -405,6 +469,7 @@ onMounted(() => {
                     aria-hidden="true"
                   >
                     <circle cx="12" cy="12" r="3" />
+
                     <path
                       d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06-1.91 1.91-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V20h-2.7v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06-1.91-1.91.06-.06A1.65 1.65 0 0 0 7.9 15a1.65 1.65 0 0 0-1.51-1H6.3v-2.7h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06 1.91-1.91.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V5.3H15v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06 1.91 1.91-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21v2.7h-.09A1.65 1.65 0 0 0 19.4 15Z"
                     />
@@ -431,6 +496,7 @@ onMounted(() => {
                     aria-hidden="true"
                   >
                     <path d="M12 20h9" />
+
                     <path
                       d="M16.5 3.5a2.12 2.12 0 0 1 3 3L9 17l-4 1 1-4Z"
                     />
@@ -536,6 +602,46 @@ onMounted(() => {
 
 <style scoped>
 /* ============================================
+   CONTADORES DE INDICADORES
+============================================ */
+
+.contadores-indicadores {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 17px 0;
+}
+
+.contador-indicador {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 14px;
+
+  border: 1px solid #e6ebef;
+  border-radius: 10px;
+
+  background: #f5f7fa;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.contador-indicador span {
+  color: #757b85;
+  font-size: 11px;
+}
+
+.contador-indicador strong {
+  color: #245a81;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+/* ============================================
    FILTROS
 ============================================ */
 
@@ -590,6 +696,7 @@ th:last-child {
   border: 1px solid transparent;
   border-radius: 9px;
   cursor: pointer;
+
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
@@ -633,5 +740,28 @@ th:last-child {
 .accion-icono:focus-visible {
   outline: 2px solid #c69a4b;
   outline-offset: 2px;
+}
+
+/* ============================================
+   DISEÑO RESPONSIVO
+============================================ */
+
+@media (max-width: 480px) {
+  .contadores-indicadores {
+    gap: 8px;
+  }
+
+  .contador-indicador {
+    padding: 11px 9px;
+    border-radius: 9px;
+  }
+
+  .contador-indicador span {
+    font-size: 10px;
+  }
+
+  .contador-indicador strong {
+    font-size: 18px;
+  }
 }
 </style>
