@@ -70,6 +70,11 @@ const routes: Array<RouteRecordRaw> = [
     },
 
     children: [
+
+      // ======================================
+      // ESTADÍSTICAS
+      // ======================================
+
       {
         path: 'estadisticas',
         name: 'Estadisticas',
@@ -88,11 +93,17 @@ const routes: Array<RouteRecordRaw> = [
           )
       },
 
+      // ======================================
+      // CONSULTA
+      // ======================================
+
       {
         path: '',
         name: 'Consulta',
         component: () =>
-          import('../modules/consulta/ConsultaView.vue')
+          import(
+            '../modules/consulta/ConsultaView.vue'
+          )
       },
 
       // ======================================
@@ -103,7 +114,9 @@ const routes: Array<RouteRecordRaw> = [
         path: 'captura',
         name: 'Captura',
         component: () =>
-          import('../modules/capture/CaptureView.vue'),
+          import(
+            '../modules/capture/CaptureView.vue'
+          ),
 
         meta: {
           requiredRoles: ['captura']
@@ -126,7 +139,9 @@ const routes: Array<RouteRecordRaw> = [
             path: '',
             name: 'Seguimiento',
             component: () =>
-              import('../modules/review/ReviewView.vue')
+              import(
+                '../modules/review/ReviewView.vue'
+              )
           },
 
           {
@@ -148,13 +163,20 @@ const routes: Array<RouteRecordRaw> = [
         path: 'administrador',
 
         component: () =>
-          import('../modules/admin/AdminView.vue'),
+          import(
+            '../modules/admin/AdminView.vue'
+          ),
 
         meta: {
           requiredRoles: ['administrador']
         },
 
         children: [
+
+          // ----------------------------------
+          // REDIRECCIÓN PRINCIPAL
+          // ----------------------------------
+
           {
             path: '',
             name: 'Administrador',
@@ -162,6 +184,10 @@ const routes: Array<RouteRecordRaw> = [
               name: 'AdministradorUsuarios'
             }
           },
+
+          // ----------------------------------
+          // USUARIOS
+          // ----------------------------------
 
           {
             path: 'usuarios',
@@ -172,6 +198,10 @@ const routes: Array<RouteRecordRaw> = [
               )
           },
 
+          // ----------------------------------
+          // DEPENDENCIAS
+          // ----------------------------------
+
           {
             path: 'dependencias',
             name: 'AdministradorDependencias',
@@ -180,6 +210,10 @@ const routes: Array<RouteRecordRaw> = [
                 '../modules/admin/AdminDependenciasView.vue'
               )
           },
+
+          // ----------------------------------
+          // INDICADORES
+          // ----------------------------------
 
           {
             path: 'indicadores',
@@ -190,6 +224,62 @@ const routes: Array<RouteRecordRaw> = [
               )
           },
 
+          // ----------------------------------
+          // NUEVO / EDITAR INDICADOR
+          // ----------------------------------
+
+          {
+            path: 'indicadores/nuevo',
+            name: 'AdministradorNuevoIndicador',
+            component: () =>
+              import(
+                '../modules/admin/NuevoIndicadorView.vue'
+              )
+          },
+
+          // ----------------------------------
+          // VARIABLES Y DEPENDENCIAS
+          // ----------------------------------
+
+          {
+            path: 'indicadores/:id/variables',
+            name: 'AdministradorVariablesIndicador',
+            component: () =>
+              import(
+                '../modules/admin/VariablesIndicadorView.vue'
+              )
+          },
+
+          // ----------------------------------
+          // METODOLOGÍA
+          // ----------------------------------
+
+          {
+            path: 'indicadores/:id/metodologia',
+            name: 'AdministradorMetodologiaIndicador',
+            component: () =>
+              import(
+                '../modules/admin/MetodologiaIndicadorView.vue'
+              )
+          },
+
+          // ----------------------------------
+          // ACTIVACIÓN DE INDICADORES
+          // ----------------------------------
+
+          {
+            path: 'indicadores/:id/activacion',
+            name: 'AdministradorActivacionIndicador',
+            component: () =>
+              import(
+                '../modules/admin/ActivacionIndicadorView.vue'
+              )
+          },
+
+          // ----------------------------------
+          // AGRUPACIONES TEMÁTICAS
+          // ----------------------------------
+
           {
             path: 'agrupaciones',
             name: 'AdministradorAgrupaciones',
@@ -199,6 +289,10 @@ const routes: Array<RouteRecordRaw> = [
               )
           },
 
+          // ----------------------------------
+          // FAMILIAS
+          // ----------------------------------
+
           {
             path: 'familias',
             name: 'AdministradorFamilias',
@@ -206,16 +300,8 @@ const routes: Array<RouteRecordRaw> = [
               import(
                 '../modules/admin/AdminFamiliasView.vue'
               )
-          },
-
-          {
-            path: 'indicadores/nuevo',
-            name: 'AdministradorNuevoIndicador',
-            component: () =>
-              import(
-                '../modules/admin/NuevoIndicadorView.vue'
-              )
           }
+
         ]
       }
     ]
@@ -243,7 +329,7 @@ router.beforeEach(async to => {
 
   // Las páginas de recuperación son públicas.
   // Aunque falle consultar la sesión,
-  // el usuario debe poder abrirlas.
+  // deben permanecer accesibles.
 
   const rutasPublicas = [
     'Login',
@@ -255,9 +341,9 @@ router.beforeEach(async to => {
     String(to.name ?? '')
   );
 
-  // ------------------------------------------
+  // ==========================================
   // COMPROBAR SESIÓN
-  // ------------------------------------------
+  // ==========================================
 
   if (!authStore.initialized) {
     try {
@@ -269,9 +355,9 @@ router.beforeEach(async to => {
     }
   }
 
-  // ------------------------------------------
+  // ==========================================
   // RUTAS PROTEGIDAS
-  // ------------------------------------------
+  // ==========================================
 
   if (
     !rutaPublica &&
@@ -283,9 +369,9 @@ router.beforeEach(async to => {
     return { name: 'Login' };
   }
 
-  // ------------------------------------------
+  // ==========================================
   // USUARIO YA AUTENTICADO
-  // ------------------------------------------
+  // ==========================================
 
   if (
     to.name === 'Login' &&
@@ -294,9 +380,9 @@ router.beforeEach(async to => {
     return { name: 'Consulta' };
   }
 
-  // ------------------------------------------
+  // ==========================================
   // PERMISOS POR ROL
-  // ------------------------------------------
+  // ==========================================
 
   for (const record of to.matched) {
     const roles = record.meta.requiredRoles as

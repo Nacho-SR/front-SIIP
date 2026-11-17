@@ -1,5 +1,17 @@
 # Borrador del modelo PostgreSQL del SIIP
 
+**Actualización 17/11/2026, DEC-045:** SQL 008 propone `activaciones_indicador` para
+conservar metodología y primer periodo, con cierre histórico al desactivar. SQL
+aplicado con autorización el 17/11/2026 solo en SIIP local, tras pruebas reales
+aisladamente aprobadas y esquemas temporales eliminados. [Detalle](activacion-indicadores.md).
+
+**Actualización 10/11/2026, DEC-043:** SQL 006 añade `variables_indicador` para
+entradas periódicas (entero/decimal) y una dependencia nullable por entrada, junto
+con `version_variables` en indicadores. Aplicado con autorización en SIIP local;
+no implementa todos los campos ni ENUM propuestos en la sección 3.6. Las definiciones
+registradas se conservan y se editan solo asignaciones de fichas inactivas, con
+auditoría y control de concurrencia. [Alcance aplicado](variables-asignaciones.md).
+
 **Actualización de implementación 09/11/2026, DEC-042:** el alta documental de fichas
 ya usa tres tablas nuevas mediante SQL 005, aplicado con autorización en SIIP local.
 No equivale a aprobar estas 13 tablas. Los campos documentales de variables, meta,

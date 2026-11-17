@@ -12,7 +12,7 @@ const usuario = {
 };
 const anonymous = { usuario: null, csrf_token: 'csrf-anonimo-de-prueba' };
 const authenticated = { usuario, csrf_token: 'csrf-autenticado-de-prueba' };
-let vite, api, router, useAuthStore, auth, requests, responses, AdminUsuariosView, AdminDependenciasView, AdminView, AdminIndicadoresView, MainLayout, LoginView, DashboardView;
+let vite, api, router, useAuthStore, auth, requests, responses, AdminUsuariosView, AdminDependenciasView, AdminView, AdminIndicadoresView, VariablesIndicadorView, MetodologiaIndicadorView, ActivacionIndicadorView, MainLayout, LoginView, DashboardView;
 
 before(async () => {
   vite = await createServer({
@@ -35,6 +35,9 @@ before(async () => {
   ({ default: AdminDependenciasView } = await vite.ssrLoadModule('/src/modules/admin/AdminDependenciasView.vue'));
   ({ default: AdminView } = await vite.ssrLoadModule('/src/modules/admin/AdminView.vue'));
   ({ default: AdminIndicadoresView } = await vite.ssrLoadModule('/src/modules/admin/AdminIndicadoresView.vue'));
+  ({ default: VariablesIndicadorView } = await vite.ssrLoadModule('/src/modules/admin/VariablesIndicadorView.vue'));
+  ({ default: MetodologiaIndicadorView } = await vite.ssrLoadModule('/src/modules/admin/MetodologiaIndicadorView.vue'));
+  ({ default: ActivacionIndicadorView } = await vite.ssrLoadModule('/src/modules/admin/ActivacionIndicadorView.vue'));
   ({ default: MainLayout } = await vite.ssrLoadModule('/src/layouts/MainLayout.vue'));
   ({ default: LoginView } = await vite.ssrLoadModule('/src/modules/auth/LoginView.vue'));
   ({ default: DashboardView } = await vite.ssrLoadModule('/src/modules/dashboard/DashboardView.vue'));
@@ -120,6 +123,7 @@ test('rutas de captura, revisión y administración mantienen roles exclusivos',
       ['/seguimiento/7', 'revision'], ['/administrador', 'administrador'],
       ['/administrador/usuarios', 'administrador'], ['/administrador/dependencias', 'administrador'],
       ['/administrador/indicadores', 'administrador'],
+      ['/administrador/indicadores/1/variables', 'administrador'],
       ['/administrador/indicadores/nuevo', 'administrador'],
     ]) {
       await router.replace(path);
@@ -592,4 +596,148 @@ test('Indicadores carga su catálogo sin consultar usuarios ni dependencias', as
   responses.push({ data: [] });
   await state.cargarIndicadores();
   assert.deepEqual(requests.map(request => request.url), ['/administracion/indicadores']);
+});
+
+async function variablesForm() {
+  auth.initialized = true;
+  auth.user = { ...usuario, rol: 'administrador', dependencia_id: null };
+  await router.replace('/administrador/indicadores/1/variables');
+  return (await renderComponent(VariablesIndicadorView)).state;
+}
+const entrada = { id: '9007199254740993', codigo: 'N', descripcion: 'Reportes reparados', unidadMedida: 'reportes', tipoDato: 'entero', dependenciaId: null,
+  dependenciaNombre: null, dependenciaActiva: null };
+test('variables carga contexto y asigna solo después de confirmar la API, conservando IDs largos', async () => {
+  const form = await variablesForm();
+  responses.push({ data: { id: '1', campos: { clave: 'SIIP.05.F35.004', nombre: 'Ejemplo' }, activo: false } },
+    { data: { indicadorId: '1', version: 1, variables: [entrada] } },
+    { data: [{ id: '7', clave: 'PLAN', nombre: 'Planeación', activo: true }] });
+  await form.cargar();
+  assert.equal(form.hayCambios, false);
+  form.variables[0].dependenciaId = '7';
+  assert.equal(form.hayCambios, true);
+  responses.push({ data: { indicadorId: '1', version: 2, variables: [{ ...entrada, dependenciaId: '7', dependenciaNombre: 'Planeación', dependenciaActiva: true }] } });
+  await form.guardar();
+  assert.equal(requests.at(-1).method, 'put');
+  assert.deepEqual(JSON.parse(requests.at(-1).data), { version: 1, variables: [{
+    id: entrada.id, codigo: 'N', descripcion: entrada.descripcion, unidadMedida: 'reportes', tipoDato: 'entero', dependenciaId: '7',
+  }] });
+  assert.equal(form.version, 2);
+  assert.equal(form.hayCambios, false);
+  assert.match(form.mensaje, /continúa inactivo/);
+});
+test('un conflicto conserva cambios sin fingir éxito; la carga fallida no permite guardar', async () => {
+  const form = await variablesForm();
+  responses.push({ status: 503, data: { detail: 'Falta SQL 006.' } }, { data: { indicadorId: '1', version: 0, variables: [] } }, { data: [] });
+  await form.cargar();
+  assert.match(form.error, /Falta SQL 006/);
+  const count = requests.length;
+  form.agregar(); await form.guardar();
+  assert.equal(requests.length, count);
+  form.indicador = { id: '1', campos: {}, activo: false };
+  form.variables = [{ ...entrada, dependenciaId: '7' }];
+  form.original = '[]';
+  responses.push({ status: 409, data: { codigo: 'CONFIGURACION_DESACTUALIZADA', detail: 'Otra persona modificó las variables.' } });
+  await form.guardar();
+  assert.equal(form.variables[0].dependenciaId, '7');
+  assert.equal(form.hayCambios, true);
+  assert.equal(form.mensaje, '');
+  assert.equal(form.guardando, false);
+  assert.match(form.error, /Otra persona/);
+});
+
+const reglaMetodologia = { tipo: 'porcentaje_parte_total', numeradorId: '9007199254740993', denominadorId: '2', amarilloDesde: 75, verdeDesde: 90 };
+const fichaMetodologia = { id: '1', activo: false, campos: { clave: 'SIIP.05.F35.004', nombre: 'Luminarias', unidad: '%', sentido: 'Ascendente', condicionAcumulacion: 'No acumulable', frecuencia: 'Mensual', algoritmo: 'N/D × 100', semaforizacion: '75/90' } };
+const varsMetodologia = { version: 1, variables: [entrada, { ...entrada, id: '2', codigo: 'D' }] };
+const configMetodologia = { indicadorId: '1', version: 1, metodologias: [{ id: '8', version: 1, regla: reglaMetodologia,
+  contexto: { versionVariables: 1, frecuencia: 'Mensual', variables: varsMetodologia.variables, ficha: { clave: fichaMetodologia.campos.clave, algoritmo: fichaMetodologia.campos.algoritmo, semaforizacion: fichaMetodologia.campos.semaforizacion } }, creadoEn: '2026-11-10T12:00:00Z', creadoPor: '1' }] };
+async function metodologiaForm() {
+  auth.initialized = true; auth.user = { ...usuario, rol: 'administrador', dependencia_id: null };
+  await router.replace('/administrador/indicadores/1/metodologia');
+  return (await renderComponent(MetodologiaIndicadorView)).state;
+}
+function cargarMetodologia() {
+  const config = structuredClone(configMetodologia);
+  config.metodologias[0].regla = Object.fromEntries(Object.entries(config.metodologias[0].regla).reverse());
+  responses.push({ data: fichaMetodologia }, { data: varsMetodologia }, { data: config });
+}
+test('metodología carga la versión guardada y la simulación usa la API sin persistir capturas', async () => {
+  const form = await metodologiaForm(); cargarMetodologia(); await form.cargar();
+  assert.equal(form.hayCambios, false); assert.equal(form.bloqueado, false);
+  form.numerador = 90; form.denominador = 100;
+  responses.push({ data: { valor: '90.0000', semaforo: 'verde', motivo: null } });
+  await form.simular();
+  assert.equal(requests.at(-1).url, '/administracion/indicadores/1/metodologia/simular');
+  assert.equal(requests.at(-1).method, 'post'); assert.equal(form.resultado.semaforo, 'verde');
+  assert.equal(form.configuracion.version, 1);
+});
+test('metodología conserva parámetros en conflicto y solo confirma guardado después de la API', async () => {
+  const form = await metodologiaForm(); cargarMetodologia(); await form.cargar();
+  form.verdeDesde = 95;
+  responses.push({ status: 409, data: { detail: 'Otra persona guardó una metodología.' } });
+  await form.guardar();
+  assert.equal(form.verdeDesde, 95); assert.equal(form.configuracion.version, 1); assert.equal(form.mensaje, '');
+  assert.equal(form.hayCambios, true);
+  const next = { ...configMetodologia, version: 2, metodologias: [{ ...configMetodologia.metodologias[0], id: '9', version: 2, regla: { ...reglaMetodologia, verdeDesde: 95 } }, ...configMetodologia.metodologias] };
+  responses.push({ data: next }); await form.guardar();
+  assert.match(form.mensaje, /Versión 2 guardada/); assert.match(form.mensaje, /inactivo/);
+  assert.equal(form.configuracion.metodologias.length, 2); assert.equal(form.hayCambios, false);
+  assert.equal(JSON.parse(requests.at(-1).data).versionVariables, 1);
+});
+test('una recarga fallida impide guardar o simular con contexto viejo', async () => {
+  const form = await metodologiaForm(); cargarMetodologia(); await form.cargar();
+  responses.push({ data: fichaMetodologia }, { data: varsMetodologia }, { status: 503, data: { detail: 'Falta SQL 007.' } });
+  await form.cargar(); assert.equal(form.bloqueado, true);
+  const count = requests.length;
+  form.verdeDesde = 95; form.numerador = 90; form.denominador = 100;
+  await form.guardar(); await form.simular(); assert.equal(requests.length, count);
+});
+test('la ruta de metodología conserva la exclusividad de Administrador', async () => {
+  auth.initialized = true;
+  for (const rol of ['captura', 'revision', 'consulta']) {
+    auth.user = { ...usuario, rol, dependencia_id: rol === 'consulta' ? null : '7' };
+    await router.replace('/administrador/indicadores/1/metodologia');
+    assert.notEqual(router.currentRoute.value.name, 'AdministradorMetodologiaIndicador');
+  }
+});
+
+const preparacionActivacion = { indicadorId: '1', activo: false, metodologiaId: '8', versionMetodologia: 1,
+  frecuencia: 'Mensual', minimoInicio: '2026-12-01', puedeActivar: true, pendientes: [], historial: [] };
+async function activacionForm() {
+  auth.initialized = true; auth.user = { ...usuario, rol: 'administrador', dependencia_id: null };
+  await router.replace('/administrador/indicadores/1/activacion');
+  return (await renderComponent(ActivacionIndicadorView)).state;
+}
+function cargarActivacion() { responses.push({ data: structuredClone(fichaMetodologia) }, { data: structuredClone(preparacionActivacion) }); }
+test('activación exige confirmación y solo muestra éxito después de la respuesta del servidor', async () => {
+  const form = await activacionForm(); cargarActivacion(); await form.cargar();
+  form.primerPeriodo = '2026-12-01'; const count = requests.length;
+  await form.activar(); assert.equal(requests.length, count);
+  form.confirmar = true;
+  responses.push({ data: { ...preparacionActivacion, activo: true, puedeActivar: false } });
+  await form.activar();
+  assert.equal(requests.at(-1).url, '/administracion/indicadores/1/activacion');
+  assert.deepEqual(JSON.parse(requests.at(-1).data), { metodologiaId: '8', primerPeriodo: '2026-12-01' });
+  assert.equal(form.indicador.activo, true); assert.match(form.mensaje, /inicio el 2026-12-01/);
+});
+test('un conflicto de activación conserva la fecha y requiere nueva confirmación; recarga fallida bloquea', async () => {
+  const form = await activacionForm(); cargarActivacion(); await form.cargar();
+  form.primerPeriodo = '2026-12-01'; form.confirmar = true;
+  responses.push({ status: 409, data: { detail: 'Cambió la metodología.' } }); await form.activar();
+  assert.equal(form.primerPeriodo, '2026-12-01'); assert.equal(form.confirmar, false);
+  assert.equal(form.preparacion.activo, false); assert.equal(form.mensaje, '');
+  responses.push({ data: fichaMetodologia }, { status: 503, data: { detail: 'Falta SQL 008.' } }); await form.cargar();
+  form.confirmar = true; const count = requests.length; await form.activar();
+  assert.equal(requests.length, count); assert.equal(form.cargaCompleta, false);
+});
+test('los requisitos pendientes impiden activar desde el formulario y los otros perfiles no entran', async () => {
+  const form = await activacionForm();
+  responses.push({ data: fichaMetodologia }, { data: { ...preparacionActivacion, puedeActivar: false, pendientes: ['Falta responsable'] } });
+  await form.cargar(); form.primerPeriodo = '2026-12-01'; form.confirmar = true;
+  const count = requests.length; await form.activar(); assert.equal(requests.length, count);
+  for (const rol of ['captura','revision','consulta']) {
+    auth.user = { ...usuario, rol, dependencia_id: rol === 'consulta' ? null : '7' };
+    await router.replace('/estadisticas');
+    await router.replace('/administrador/indicadores/1/activacion');
+    assert.notEqual(router.currentRoute.value.name, 'AdministradorActivacionIndicador');
+  }
 });

@@ -1,11 +1,10 @@
+
 import { config } from 'dotenv';
 
 import { buildApp } from './app.js';
 import { envSchema } from './env.js';
 
-import {
-  createPool
-} from './database/pool.js';
+import { createPool } from './database/pool.js';
 
 // ============================================
 // AUTENTICACIÓN
@@ -15,21 +14,13 @@ import {
   createAuthRepository
 } from './modules/auth/repositories/auth.repository.js';
 
+// ============================================
+// SESIONES
+// ============================================
+
 import {
   PostgresSessionStore
 } from './modules/auth/repositories/session.repository.js';
-
-// ============================================
-// RECUPERACIÓN DE CONTRASEÑA
-// ============================================
-
-import {
-  createRecoveryRepository
-} from './modules/auth/repositories/recovery.repository.js';
-
-import {
-  createRecoveryMailer
-} from './modules/auth/services/recovery.mail.js';
 
 // ============================================
 // USUARIOS Y DEPENDENCIAS
@@ -56,19 +47,39 @@ import {
 } from './modules/indicadores/repositories/clasificaciones.repository.js';
 
 // ============================================
+// VARIABLES
+// ============================================
+
+import {
+  createVariablesRepository
+} from './modules/indicadores/repositories/variables.repository.js';
+
+// ============================================
+// METODOLOGÍAS
+// ============================================
+
+import {
+  createMetodologiaRepository
+} from './modules/indicadores/repositories/metodologia.repository.js';
+
+// ============================================
+// ACTIVACIONES
+// ============================================
+
+import {
+  createActivacionRepository
+} from './modules/indicadores/repositories/activacion.repository.js';
+
+// ============================================
 // VARIABLES DE ENTORNO
 // ============================================
 
 config({ quiet: true });
 
-const result = envSchema.safeParse(
-  process.env
-);
+const result = envSchema.safeParse(process.env);
 
 if (!result.success) {
-  console.error(
-    'Configuración de entorno inválida:'
-  );
+  console.error('Configuración de entorno inválida:');
 
   for (const issue of result.error.issues) {
     console.error(
@@ -79,18 +90,18 @@ if (!result.success) {
   process.exit(1);
 }
 
-// ============================================
-// CONFIGURACIÓN POSTGRESQL
-// ============================================
-
 const env = result.data;
+
+// ============================================
+// CONEXIÓN A POSTGRESQL
+// ============================================
 
 const pool = env.DATABASE_URL
   ? createPool(env.DATABASE_URL)
   : undefined;
 
 // ============================================
-// INICIALIZACIÓN DE FASTIFY
+// CONSTRUCCIÓN DE LA APLICACIÓN FASTIFY
 // ============================================
 
 const app = await buildApp(
@@ -101,53 +112,62 @@ const app = await buildApp(
         // AUTENTICACIÓN
         // ------------------------------------
 
-        repository:
-          createAuthRepository(pool),
-
-        sessionStore:
-          new PostgresSessionStore(pool),
+        repository: createAuthRepository(pool),
 
         // ------------------------------------
-        // RECUPERACIÓN DE CONTRASEÑA
+        // SESIONES
         // ------------------------------------
 
-        recovery:
-          createRecoveryRepository(pool),
-
-        recoveryMailer:
-          createRecoveryMailer(env),
+        sessionStore: new PostgresSessionStore(pool),
 
         // ------------------------------------
         // USUARIOS Y DEPENDENCIAS
         // ------------------------------------
 
-        users:
-          createUsersRepository(pool),
+        users: createUsersRepository(pool),
 
         // ------------------------------------
         // INDICADORES
         // ------------------------------------
 
-        indicators:
-          createIndicatorsRepository(pool),
+        indicators: createIndicatorsRepository(pool),
 
         // ------------------------------------
-        // AGRUPACIONES Y FAMILIAS
+        // AGRUPACIONES TEMÁTICAS Y FAMILIAS
         // ------------------------------------
 
         classifications:
-          createClassificationsRepository(pool)
+          createClassificationsRepository(pool),
+
+        // ------------------------------------
+        // VARIABLES
+        // ------------------------------------
+
+        variables: createVariablesRepository(pool),
+
+        // ------------------------------------
+        // METODOLOGÍAS
+        // ------------------------------------
+
+        metodologias: createMetodologiaRepository(pool),
+
+        // ------------------------------------
+        // ACTIVACIONES
+        // ------------------------------------
+
+        activaciones: createActivacionRepository(pool)
       }
     : undefined
 );
 
 // ============================================
-// CONEXIONES POSTGRESQL
+// MANEJO DE CONEXIONES POSTGRESQL
 // ============================================
 
 if (pool) {
-  pool.on('error', () => {
+  pool.on('error', (error) => {
     app.log.error(
+      { err: error },
       'Se perdió una conexión inactiva con PostgreSQL.'
     );
   });
@@ -185,6 +205,7 @@ try {
     host: env.HOST,
     port: env.PORT
   });
+
 } catch (error) {
   app.log.error(
     error,

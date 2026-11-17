@@ -1,5 +1,10 @@
 # Alta persistente de indicadores — 09/11/2026
 
+Actualización 10/11/2026: [DEC-043](variables-asignaciones.md) añade configuración
+estructurada de entradas/asignaciones y carga los cuatro ejemplos 130–133 en SIIP
+local, conservándolos inactivos. Los límites de este documento describen el alcance
+original DEC-042; Captura y cálculo todavía no se habilitan.
+
 Solicitud del equipo: sustituir el guardado demostrativo por un alta de ficha en PostgreSQL.
 Este alcance autoriza preparar su implementación; no aprueba el resto del modelo de negocio.
 

@@ -1,5 +1,11 @@
 # Backend SIIP
 
+Variables y dependencias (10/11/2026): GET/PUT
+`/api/v1/administracion/indicadores/{id}/variables`, solo Administrador. Requiere SQL
+006 en la base autorizada. Carga técnica local de cuatro ejemplos:
+`npm run indicadores:cargar-prueba` (vista previa), con `-- --aplicar --actor=ID`
+para confirmar la escritura. [Contrato y pruebas](../Documentacion/variables-asignaciones.md).
+
 Alta persistente de indicadores (09/11/2026): POST/GET `/api/v1/administracion/indicadores`
 y GET `/api/v1/administracion/indicadores/{id}` para Administrador. SQL 005 crea
 las tres tablas del alcance documental y catálogos, sin ejecutarse al arrancar.
@@ -287,3 +293,11 @@ DEC-039 confirma cierre de captura, gris por faltantes y justificación exclusiv
 ## Alojamiento seleccionado — 06/11/2026
 
 DEC-040: frontend compilado, API Node.js y PostgreSQL en el mismo Hostinger VPS KVM 1. DEC-041: evidencias y justificaciones PDF en Cloudflare R2, sustituyendo Supabase Storage. Se conserva autenticación SIIP. [Arquitectura, costos y fuentes vigentes](../Documentacion/infraestructura-hostinger-r2.md). Selección documental, sin despliegue ni integración R2 realizados.
+
+## Activación de indicadores (17/11/2026)
+
+Desde Administración → Indicadores → Activar: comprobación de metodología y
+asignaciones, fecha explícita desde el siguiente periodo completo y registro
+histórico auditado. Se integran las rutas de metodología/variables de DEC-044
+sin cambiar los CRUD actuales. Requiere SQL 007 y SQL 008 autorizado; no habilita
+Captura ni publicaciones. Ver Documentacion/activacion-indicadores.md.

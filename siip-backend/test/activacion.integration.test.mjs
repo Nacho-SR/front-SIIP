@@ -1,0 +1,77 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { test } from 'node:test';
+import { config } from 'dotenv';
+import { createPool } from '../src/database/pool.ts';
+import { createUsersRepository } from '../src/modules/administracion/repositories/usuarios.repository.ts';
+import { createUsersService } from '../src/modules/administracion/services/usuarios.service.ts';
+import { createIndicatorsRepository } from '../src/modules/indicadores/repositories/indicadores.repository.ts';
+import { createVariablesRepository } from '../src/modules/indicadores/repositories/variables.repository.ts';
+import { createMetodologiaRepository } from '../src/modules/indicadores/repositories/metodologia.repository.ts';
+import { createActivacionRepository } from '../src/modules/indicadores/repositories/activacion.repository.ts';
+
+config({ quiet: true });
+test('PostgreSQL: activación, bloqueos, rollback, concurrencia, desactivación e historia de reactivación', { skip: !process.env.TEST_DATABASE_URL, timeout: 90000 }, async () => {
+  const schema = 'siip_test_' + randomUUID().replaceAll('-', '');
+  const database = createPool(process.env.TEST_DATABASE_URL);
+  let pool, created = false;
+  try {
+    await database.query(`CREATE SCHEMA "${schema}"`); created = true;
+    const connection = new URL(process.env.TEST_DATABASE_URL); connection.searchParams.set('options', '-c search_path=' + schema);
+    pool = createPool(connection.toString());
+    assert.equal((await pool.query('SELECT current_schema() AS schema')).rows[0].schema, schema);
+    for (const file of ['001_auth_propuesta.sql','002_auditoria_configuracion.sql','005_alta_indicadores.sql','006_variables_dependencias.sql','007_metodologias_indicador.sql','008_activacion_indicadores.sql'])
+      await pool.query(await readFile(new URL('../sql/' + file, import.meta.url), 'utf8'));
+    const users = createUsersService(createUsersRepository(pool));
+    const admin = await users.createInitialAdmin({ nombre: 'Admin sintético', correo: 'admin@example.test', password: 'Synthetic-integration-password-2026!' });
+    const dep = await users.createDependency({ clave: 'QA', nombre: 'Servicios Municipales' }, admin.id);
+    const { fichas } = JSON.parse(await readFile(new URL('./fixtures/indicadores-prueba.json', import.meta.url), 'utf8'));
+    const indicators = createIndicatorsRepository(pool), vars = createVariablesRepository(pool), methods = createMetodologiaRepository(pool);
+    const ficha = await indicators.create(fichas[0].campos, admin.id);
+    const repo = createActivacionRepository(pool, () => new Date('2026-11-17T18:00:00Z'));
+    assert.equal((await repo.find(ficha.id)).puedeActivar, false);
+    const v1 = await vars.save(ficha.id, { version: 0, variables: ['N','D'].map(codigo => ({ codigo, descripcion: 'Reportes', unidadMedida: 'reportes', tipoDato: 'entero', dependenciaId: null })) }, admin.id);
+    const regla = { tipo: 'porcentaje_parte_total', numeradorId: v1.variables[0].id, denominadorId: v1.variables[1].id, amarilloDesde: 75, verdeDesde: 90 };
+    const m1 = await methods.save(ficha.id, { version: 0, versionVariables: v1.version, regla }, admin.id);
+    assert.equal((await repo.find(ficha.id)).puedeActivar, false);
+    const v2 = await vars.save(ficha.id, { version: v1.version, variables: v1.variables.map(({ dependenciaNombre, dependenciaActiva, ...v }) => ({ ...v, dependenciaId: dep.id })) }, admin.id);
+    await assert.rejects(repo.activate(ficha.id, { metodologiaId: m1.metodologias[0].id, primerPeriodo: '2026-12-01' }, admin.id), { codigo: 'ACTIVACION_INCOMPLETA' });
+    const m2 = await methods.save(ficha.id, { version: 1, versionVariables: v2.version, regla }, admin.id);
+    const payload = { metodologiaId: m2.metodologias[0].id, primerPeriodo: '2026-12-01' };
+    const ready = await repo.find(ficha.id); assert.equal(ready.puedeActivar, true); assert.equal(ready.minimoInicio, '2026-12-01');
+    await assert.rejects(repo.activate(ficha.id, { ...payload, metodologiaId: m1.metodologias[0].id }, admin.id), { codigo: 'METODOLOGIA_DESACTUALIZADA' });
+    for (const primerPeriodo of ['2026-11-01','2026-10-01','2026-12-15']) await assert.rejects(repo.activate(ficha.id, { ...payload, primerPeriodo }, admin.id));
+    await pool.query('UPDATE dependencias SET activo=false WHERE id=$1', [dep.id]);
+    await assert.rejects(repo.activate(ficha.id, payload, admin.id), { codigo: 'ACTIVACION_INCOMPLETA' });
+    await pool.query('UPDATE dependencias SET activo=true WHERE id=$1', [dep.id]);
+    await pool.query('UPDATE familias SET activo=false WHERE codigo=$1', ['F35']);
+    assert.equal((await repo.find(ficha.id)).puedeActivar, false);
+    await pool.query('UPDATE familias SET activo=true WHERE codigo=$1', ['F35']);
+    await pool.query("ALTER TABLE auditoria_configuracion ADD CONSTRAINT qa_auditoria CHECK (accion <> 'activar') NOT VALID");
+    await assert.rejects(repo.activate(ficha.id, payload, admin.id), { code: '23514' });
+    assert.equal((await indicators.find(ficha.id)).activo, false); assert.equal((await repo.find(ficha.id)).historial.length, 0);
+    await pool.query('ALTER TABLE auditoria_configuracion DROP CONSTRAINT qa_auditoria');
+    const concurrent = await Promise.allSettled([repo.activate(ficha.id, payload, admin.id), repo.activate(ficha.id, payload, admin.id)]);
+    assert.equal(concurrent.filter(r => r.status === 'fulfilled').length, 1);
+    assert.equal((await repo.find(ficha.id)).historial.length, 1);
+    await assert.rejects(indicators.changeStatus(ficha.id, true, admin.id), { codigo: 'ACTIVACION_REQUIERE_CONFIGURACION' });
+    await assert.rejects(indicators.update(ficha.id, { ...fichas[0].campos, frecuencia: 'Trimestral' }, admin.id), { codigo: 'DESACTIVA_PRIMERO' });
+    await assert.rejects(methods.save(ficha.id, { version: 2, versionVariables: v2.version, regla }, admin.id), { codigo: 'INDICADOR_ACTIVO' });
+    await indicators.changeStatus(ficha.id, false, admin.id);
+    assert.ok((await repo.find(ficha.id)).historial[0].desactivadoEn);
+    assert.equal((await repo.find(ficha.id)).minimoInicio, '2026-12-01');
+    await repo.activate(ficha.id, payload, admin.id);
+    await indicators.changeStatus(ficha.id, false, admin.id);
+    await repo.activate(ficha.id, { ...payload, primerPeriodo: '2027-01-01' }, admin.id);
+    const saved = await repo.find(ficha.id); assert.equal(saved.historial.length, 3);
+    assert.equal(saved.historial[1].primerPeriodo, '2026-12-01'); assert.equal(saved.historial[0].primerPeriodo, '2027-01-01');
+    assert.equal(saved.historial.filter(a => !a.desactivadoEn).length, 1);
+    await pool.end(); pool = createPool(connection.toString());
+    assert.deepEqual(await createActivacionRepository(pool, () => new Date('2026-11-17T18:00:00Z')).find(ficha.id), saved);
+  } finally {
+    await pool?.end();
+    if (created && /^siip_test_[a-f0-9]{32}$/.test(schema)) await database.query(`DROP SCHEMA "${schema}" CASCADE`);
+    await database.end();
+  }
+});

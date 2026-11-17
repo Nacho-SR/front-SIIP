@@ -15,20 +15,32 @@ import {
   type IndicadorAdmin
 } from './data/admin.store';
 
+// ============================================
+// ESTADO DEL COMPONENTE
+// ============================================
+
 const router = useRouter();
 
 const busqueda = ref('');
+
 const filtro = ref<'todos' | 'activos' | 'inactivos'>(
   'todos'
 );
 
 const seleccionado = ref<IndicadorAdmin | null>(null);
+
 const procesando = ref(false);
 const errorEstado = ref('');
 const exito = ref('');
 
+// ============================================
+// FILTRADO DE INDICADORES
+// ============================================
+
 const filtrados = computed(() => {
-  const termino = busqueda.value.trim().toLocaleLowerCase('es');
+  const termino = busqueda.value
+    .trim()
+    .toLocaleLowerCase('es');
 
   return adminState.indicadores.filter(indicador => {
     const campos = indicador.campos;
@@ -52,6 +64,10 @@ const filtrados = computed(() => {
   });
 });
 
+// ============================================
+// NAVEGACIÓN
+// ============================================
+
 function nuevoIndicador() {
   void router.push({
     name: 'AdministradorNuevoIndicador'
@@ -64,6 +80,24 @@ function editarIndicador(id: string) {
     query: { ver: id }
   });
 }
+
+function configurarVariables(id: string) {
+  void router.push({
+    name: 'AdministradorVariablesIndicador',
+    params: { id }
+  });
+}
+
+function configurarActivacion(id: string) {
+  void router.push({
+    name: 'AdministradorActivacionIndicador',
+    params: { id }
+  });
+}
+
+// ============================================
+// MANEJO DE ERRORES
+// ============================================
 
 function mensajeError(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -82,6 +116,10 @@ function mensajeError(error: unknown): string {
   return 'Ocurrió un error inesperado.';
 }
 
+// ============================================
+// CARGAR INDICADORES
+// ============================================
+
 async function cargarIndicadores() {
   try {
     await refrescarAdmin();
@@ -90,7 +128,24 @@ async function cargarIndicadores() {
   }
 }
 
+// ============================================
+// ACTIVAR / DESACTIVAR
+// ============================================
+
 function abrirEstado(indicador: IndicadorAdmin) {
+  if (procesando.value) return;
+
+  // Los indicadores inactivos requieren
+  // configuración de metodología y periodo.
+
+  if (!indicador.activo) {
+    configurarActivacion(indicador.id);
+    return;
+  }
+
+  // Los activos pueden desactivarse
+  // mediante el modal de confirmación.
+
   seleccionado.value = indicador;
   errorEstado.value = '';
   exito.value = '';
@@ -103,20 +158,31 @@ function cerrarEstado() {
   errorEstado.value = '';
 }
 
+// ============================================
+// CONFIRMAR DESACTIVACIÓN
+// ============================================
+
 async function confirmarEstado(
   datos: { activo: boolean }
 ) {
-  if (!seleccionado.value || procesando.value) return;
+  if (
+    !seleccionado.value ||
+    procesando.value ||
+    datos.activo
+  ) {
+    return;
+  }
 
   const id = seleccionado.value.id;
 
   procesando.value = true;
   errorEstado.value = '';
+  exito.value = '';
 
   try {
     const { data } = await api.patch<IndicadorAdmin>(
       `/administracion/indicadores/${encodeURIComponent(id)}/estado`,
-      datos
+      { activo: false }
     );
 
     const index = adminState.indicadores.findIndex(
@@ -127,17 +193,21 @@ async function confirmarEstado(
       adminState.indicadores.splice(index, 1, data);
     }
 
-    exito.value = data.activo
-      ? 'Indicador reactivado correctamente.'
-      : 'Indicador desactivado correctamente.';
+    exito.value = 'Indicador desactivado correctamente.';
 
     seleccionado.value = null;
+
   } catch (error) {
     errorEstado.value = mensajeError(error);
+
   } finally {
     procesando.value = false;
   }
 }
+
+// ============================================
+// INICIALIZACIÓN
+// ============================================
 
 onMounted(() => {
   void cargarIndicadores();
@@ -146,6 +216,11 @@ onMounted(() => {
 
 <template>
   <section class="panel indicadores-admin">
+
+    <!-- =====================================
+         ENCABEZADO
+    ====================================== -->
+
     <div class="panel-header">
       <div>
         <span class="eyebrow">
@@ -155,9 +230,8 @@ onMounted(() => {
         <h2>Gestión de indicadores</h2>
 
         <p>
-          Consulta, edita, desactiva y reactiva
-          las fichas metodológicas registradas
-          en el SIIP Salamanca.
+          Consulta, edita y administra las fichas
+          metodológicas registradas en SIIP Salamanca.
         </p>
       </div>
 
@@ -170,6 +244,10 @@ onMounted(() => {
       </button>
     </div>
 
+    <!-- =====================================
+         MENSAJES
+    ====================================== -->
+
     <p
       v-if="exito"
       class="mensaje"
@@ -178,8 +256,12 @@ onMounted(() => {
       {{ exito }}
     </p>
 
-    <!-- FILTROS -->
+    <!-- =====================================
+         FILTROS
+    ====================================== -->
+
     <div class="filtros-indicadores">
+
       <input
         v-model="busqueda"
         type="search"
@@ -204,9 +286,13 @@ onMounted(() => {
       >
         Actualizar
       </button>
+
     </div>
 
-    <!-- CARGA -->
+    <!-- =====================================
+         ESTADO DE CARGA
+    ====================================== -->
+
     <p
       v-if="adminState.cargando"
       class="nota"
@@ -229,7 +315,10 @@ onMounted(() => {
       </button>
     </div>
 
-    <!-- TABLA -->
+    <!-- =====================================
+         TABLA DE INDICADORES
+    ====================================== -->
+
     <div v-else class="tabla-scroll">
       <table>
         <thead>
@@ -249,16 +338,30 @@ onMounted(() => {
             v-for="indicador in filtrados"
             :key="indicador.id"
           >
+
             <td>
               <strong>
                 {{ indicador.campos.clave }}
               </strong>
             </td>
 
-            <td>{{ indicador.campos.nombre }}</td>
-            <td>{{ indicador.campos.agrupacion }}</td>
-            <td>{{ indicador.campos.familia }}</td>
-            <td>{{ indicador.campos.frecuencia }}</td>
+            <td>
+              {{ indicador.campos.nombre }}
+            </td>
+
+            <td>
+              {{ indicador.campos.agrupacion }}
+            </td>
+
+            <td>
+              {{ indicador.campos.familia }}
+            </td>
+
+            <td>
+              {{ indicador.campos.frecuencia }}
+            </td>
+
+            <!-- ESTADO -->
 
             <td>
               <span
@@ -277,17 +380,44 @@ onMounted(() => {
               </span>
             </td>
 
+            <!-- ACCIONES -->
+
             <td>
               <div class="acciones-iconos">
 
-                <!-- EDITAR -->
+                <!-- CONFIGURAR VARIABLES -->
+
+                <button
+                  type="button"
+                  class="accion-icono variables"
+                  title="Variables y dependencias"
+                  :aria-label="`Configurar variables de ${indicador.campos.nombre}`"
+                  :disabled="procesando"
+                  @click="configurarVariables(indicador.id)"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="3" />
+                    <path
+                      d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06-1.91 1.91-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V20h-2.7v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06-1.91-1.91.06-.06A1.65 1.65 0 0 0 7.9 15a1.65 1.65 0 0 0-1.51-1H6.3v-2.7h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06 1.91-1.91.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V5.3H15v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06 1.91 1.91-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21v2.7h-.09A1.65 1.65 0 0 0 19.4 15Z"
+                    />
+                  </svg>
+                </button>
+
+                <!-- EDITAR INDICADOR -->
+
                 <button
                   type="button"
                   class="accion-icono editar"
-                  :title="'Editar indicador'"
-                  :aria-label="
-                    `Editar ${indicador.campos.nombre}`
-                  "
+                  title="Editar indicador"
+                  :aria-label="`Editar ${indicador.campos.nombre}`"
                   :disabled="procesando"
                   @click="editarIndicador(indicador.id)"
                 >
@@ -307,7 +437,8 @@ onMounted(() => {
                   </svg>
                 </button>
 
-                <!-- DESACTIVAR / REACTIVAR -->
+                <!-- DESACTIVAR / CONFIGURAR ACTIVACIÓN -->
+
                 <button
                   type="button"
                   class="accion-icono"
@@ -319,14 +450,17 @@ onMounted(() => {
                   :title="
                     indicador.activo
                       ? 'Desactivar indicador'
-                      : 'Reactivar indicador'
+                      : 'Configurar activación'
                   "
                   :aria-label="
-                    `${indicador.activo ? 'Desactivar' : 'Reactivar'} ${indicador.campos.nombre}`
+                    `${indicador.activo ? 'Desactivar' : 'Configurar activación de'} ${indicador.campos.nombre}`
                   "
                   :disabled="procesando"
                   @click="abrirEstado(indicador)"
                 >
+
+                  <!-- ICONO DESACTIVAR -->
+
                   <svg
                     v-if="indicador.activo"
                     viewBox="0 0 24 24"
@@ -343,6 +477,8 @@ onMounted(() => {
                     <path d="M12 2v10" />
                   </svg>
 
+                  <!-- ICONO ACTIVACIÓN -->
+
                   <svg
                     v-else
                     viewBox="0 0 24 24"
@@ -358,11 +494,15 @@ onMounted(() => {
                     />
                     <path d="M3 3v5h5" />
                   </svg>
+
                 </button>
 
               </div>
             </td>
+
           </tr>
+
+          <!-- SIN RESULTADOS -->
 
           <tr v-if="filtrados.length === 0">
             <td colspan="7" class="vacio">
@@ -370,11 +510,15 @@ onMounted(() => {
               con la búsqueda.
             </td>
           </tr>
+
         </tbody>
       </table>
     </div>
 
-    <!-- MODAL DE ESTADO -->
+    <!-- =====================================
+         MODAL DE DESACTIVACIÓN
+    ====================================== -->
+
     <EstadoRegistroModal
       v-if="seleccionado"
       :abierto="true"
@@ -386,10 +530,15 @@ onMounted(() => {
       @cerrar="cerrarEstado"
       @confirmar="confirmarEstado"
     />
+
   </section>
 </template>
 
 <style scoped>
+/* ============================================
+   FILTROS
+============================================ */
+
 .filtros-indicadores {
   display: flex;
   flex-wrap: wrap;
@@ -413,9 +562,22 @@ onMounted(() => {
   font-size: 12px;
 }
 
+/* ============================================
+   TABLA
+============================================ */
+
+th:last-child {
+  text-align: center;
+}
+
+/* ============================================
+   ACCIONES
+============================================ */
+
 .acciones-iconos {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -428,12 +590,19 @@ onMounted(() => {
   border: 1px solid transparent;
   border-radius: 9px;
   cursor: pointer;
-  transition: transform .2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .accion-icono svg {
   width: 17px;
   height: 17px;
+}
+
+.accion-icono.variables {
+  background: #f1eefb;
+  color: #635099;
 }
 
 .accion-icono.editar {
@@ -453,10 +622,11 @@ onMounted(() => {
 
 .accion-icono:hover:not(:disabled) {
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
 }
 
 .accion-icono:disabled {
-  opacity: .5;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 

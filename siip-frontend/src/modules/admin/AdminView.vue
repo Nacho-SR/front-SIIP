@@ -1,6 +1,11 @@
+
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import './admin.css';
+
+// ============================================
+// CONFIGURACIÓN DE RUTAS
+// ============================================
 
 const route = useRoute();
 
@@ -32,6 +37,10 @@ const secciones: SeccionAdmin[] = [
   }
 ];
 
+// ============================================
+// IDENTIFICAR SECCIÓN ACTIVA
+// ============================================
+
 function activa(ruta: string): boolean {
   return (
     route.path === ruta ||
@@ -42,6 +51,11 @@ function activa(ruta: string): boolean {
 
 <template>
   <div class="admin">
+
+    <!-- =====================================
+         ENCABEZADO
+    ====================================== -->
+
     <header
       v-if="route.name !== 'AdministradorNuevoIndicador'"
       class="encabezado"
@@ -65,6 +79,10 @@ function activa(ruta: string): boolean {
       </span>
     </header>
 
+    <!-- =====================================
+         NAVEGACIÓN ADMINISTRATIVA
+    ====================================== -->
+
     <nav
       class="admin-nav"
       aria-label="Secciones de administración"
@@ -86,6 +104,11 @@ function activa(ruta: string): boolean {
       </router-link>
     </nav>
 
-    <router-view />
+    <!-- =====================================
+         CONTENIDO DE LA RUTA
+    ====================================== -->
+
+    <router-view :key="route.path" />
+
   </div>
 </template>

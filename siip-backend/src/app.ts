@@ -62,6 +62,42 @@ import type {
 } from './modules/indicadores/repositories/clasificaciones.repository.js';
 
 // ============================================
+// VARIABLES
+// ============================================
+
+import {
+  variablesRoutes
+} from './modules/indicadores/variables.routes.js';
+
+import type {
+  VariablesRepository
+} from './modules/indicadores/repositories/variables.repository.js';
+
+// ============================================
+// METODOLOGÍAS
+// ============================================
+
+import {
+  metodologiaRoutes
+} from './modules/indicadores/metodologia.routes.js';
+
+import type {
+  MetodologiaRepository
+} from './modules/indicadores/repositories/metodologia.repository.js';
+
+// ============================================
+// ACTIVACIONES
+// ============================================
+
+import {
+  activacionRoutes
+} from './modules/indicadores/activacion.routes.js';
+
+import type {
+  ActivacionRepository
+} from './modules/indicadores/repositories/activacion.repository.js';
+
+// ============================================
 // DEPENDENCIAS DE LA APLICACIÓN
 // ============================================
 
@@ -69,6 +105,9 @@ type AppDependencies = AuthDependencies & {
   users?: UsersRepository;
   indicators?: IndicatorsRepository;
   classifications?: ClassificationsRepository;
+  variables?: VariablesRepository;
+  metodologias?: MetodologiaRepository;
+  activaciones?: ActivacionRepository;
 };
 
 // ============================================
@@ -109,6 +148,7 @@ export async function buildApp(
     methods: [
       'GET',
       'POST',
+      'PUT',
       'PATCH',
       'DELETE'
     ],
@@ -176,7 +216,8 @@ export async function buildApp(
             issue => ({
               campo: issue.instancePath || '/',
               codigo: 'DATO_INVALIDO',
-              detalle: issue.message ?? 'Valor no válido.'
+              detalle:
+                issue.message ?? 'Valor no válido.'
             })
           ) ?? [],
 
@@ -229,6 +270,33 @@ export async function buildApp(
       await api.register(classificationsRoutes, {
         prefix: '/administracion',
         repository: auth?.classifications
+      });
+
+      // ----------------------------------------
+      // VARIABLES
+      // ----------------------------------------
+
+      await api.register(variablesRoutes, {
+        prefix: '/administracion',
+        repository: auth?.variables
+      });
+
+      // ----------------------------------------
+      // METODOLOGÍAS
+      // ----------------------------------------
+
+      await api.register(metodologiaRoutes, {
+        prefix: '/administracion',
+        repository: auth?.metodologias
+      });
+
+      // ----------------------------------------
+      // ACTIVACIONES
+      // ----------------------------------------
+
+      await api.register(activacionRoutes, {
+        prefix: '/administracion',
+        repository: auth?.activaciones
       });
 
     },
