@@ -74,15 +74,13 @@ export function createIndicatorsService(
     ) {
       const fields = updateIndicatorSchema.parse(data);
 
-      // Impedir que una ficha administrada en
-      // PostgreSQL utilice claves reservadas
-      // para el catálogo original.
+      // La carga técnica permite editar la ficha base, sin ocupar otra clave reservada.
       if (clavesBase.includes(fields.clave)) {
-        throw new HttpError(
-          409,
-          'INDICADOR_YA_REGISTRADO',
-          'La clave pertenece al catálogo base de 63 indicadores.'
-        );
+        const current = await repository.find(id);
+        if (!current) throw new HttpError(404, 'INDICADOR_NO_ENCONTRADO', 'No se encontró la ficha del indicador.');
+        if (current.campos.clave !== fields.clave) {
+          throw new HttpError(409, 'INDICADOR_YA_REGISTRADO', 'La clave pertenece al catálogo base de 63 indicadores.');
+        }
       }
 
       return repository.update(

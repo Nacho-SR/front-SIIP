@@ -1,5 +1,12 @@
 # Alta persistente de indicadores — 09/11/2026
 
+Actualización DEC-046, 20/11/2026: el usuario solicita la carga técnica de las 63
+fichas originales en PostgreSQL, conservándolas inactivas. Sustituye para esta carga
+la exclusión del catálogo base descrita en el alcance inicial; no añade importación
+UI/API ni activa indicadores. El alta normal conserva la reserva de claves; una
+ficha base persistida puede editarse conservando su clave.
+[Estado, reglas y procedencia](carga-anexo-indicadores.md).
+
 Actualización 10/11/2026: [DEC-043](variables-asignaciones.md) añade configuración
 estructurada de entradas/asignaciones y carga los cuatro ejemplos 130–133 en SIIP
 local, conservándolos inactivos. Los límites de este documento describen el alcance

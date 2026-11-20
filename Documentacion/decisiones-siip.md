@@ -52,6 +52,21 @@ Actualización técnica del 30/10/2026: DEC-029/035 completan la selección inic
 
 ## Alta persistente de fichas — 09/11/2026
 
+Actualización DEC-046 (20/11/2026): carga técnica del anexo solicitada y autorizada.
+Se añadieron 63 fichas documentales inactivas en SIIP local, localhost:5432/public,
+con auditoría del Administrador ID 1; total 67, conservando los cuatro ejemplos.
+Prueba real aislada aprobada y esquema eliminado; repetición sin duplicados y
+rollback completo verificados. Sin configuración/activación automática ni importación
+UI/API. [Procedencia, formatos y comprobaciones](carga-anexo-indicadores.md).
+
+DEC-046 (20/11/2026): el usuario solicita cargar todas las 63 fichas del anexo Excel.
+Se prepara una carga técnica documental auditada, atómica e idempotente, sin
+sobrescribir datos previos ni añadir importación al MVP. Porcentajes según formato,
+frecuencia trimestral normalizada y consecutivo de origen conservado en auditoría.
+Fichas inactivas, sin asignaciones/metodologías ni activación automática.
+Prueba real y aplicación pendientes de autorización de SIIP concreta.
+[Detalle](carga-anexo-indicadores.md).
+
 Actualización DEC-045 (17/11/2026): el usuario solicita activación controlada y confirma
 inicio como mínimo en el siguiente periodo natural completo. Se integra DEC-044
 en develop y se prepara registro de activaciones, validaciones y bloqueo de la
