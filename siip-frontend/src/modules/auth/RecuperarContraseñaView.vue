@@ -30,27 +30,41 @@ async function solicitarRecuperacion() {
     });
 
     enviado.value = true;
-  } catch (err: unknown) {
-    if (axios.isAxiosError(err)) {
-      const status = err.response?.status;
+  
+} catch (err: unknown) {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
 
-      if (status === 429) {
-        error.value =
-          'Has realizado demasiadas solicitudes. Inténtalo más tarde.';
-      } else if (status === 503) {
-        error.value =
-          'El servicio de recuperación no está disponible temporalmente.';
-      } else {
-        error.value =
-          'No pudimos procesar la solicitud. Inténtalo nuevamente.';
-      }
+    // Diagnóstico temporal.
+    // No imprimir datos del formulario ni
+    // encabezados que puedan contener tokens.
+    console.error('Error recuperación SIIP:', {
+      status,
+      codigo: err.code,
+      respuesta: err.response?.data
+    });
+
+    if (status === 429) {
+      error.value =
+        'Has realizado demasiadas solicitudes. Inténtalo más tarde.';
+    } else if (status === 503) {
+      error.value =
+        'El servicio de recuperación no está disponible temporalmente.';
     } else {
       error.value =
-        'Ocurrió un error inesperado. Inténtalo nuevamente.';
+        'No pudimos procesar la solicitud. Inténtalo nuevamente.';
     }
-  } finally {
-    enviando.value = false;
+  } else {
+    console.error(
+      'Error inesperado en recuperación:',
+      err instanceof Error ? err.name : 'Desconocido'
+    );
+
+    error.value =
+      'Ocurrió un error inesperado. Inténtalo nuevamente.';
   }
+}
+
 }
 </script>
 

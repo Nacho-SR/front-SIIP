@@ -97,9 +97,18 @@ export async function registerAuth(
 
   // ==========================================
   // SIN POSTGRESQL
-  // ============================================
+  // ==========================================
 
   if (!options.dependencies) {
+    app.log.warn(
+      {
+        authDependencies: false,
+        recoveryRepository: false,
+        recoveryMailer: false
+      },
+      'Autenticación no configurada: no se recibieron dependencias.'
+    );
+
     const unavailable = async () => {
       throw new HttpError(
         503,
@@ -134,7 +143,7 @@ export async function registerAuth(
 
   // ==========================================
   // COOKIES Y SESIONES
-  // ============================================
+  // ==========================================
 
   await app.register(cookie);
 
@@ -158,7 +167,7 @@ export async function registerAuth(
 
   // ==========================================
   // PROTECCIÓN CSRF
-  // ============================================
+  // ==========================================
 
   await app.register(csrf, {
     sessionPlugin: '@fastify/session',
@@ -173,6 +182,7 @@ export async function registerAuth(
   });
 
   app.decorateRequest('usuario', null);
+
   app.decorate(
     'requireSession',
     controller.requireSession
@@ -210,7 +220,7 @@ export async function registerAuth(
 
   // ==========================================
   // CONSULTAR SESIÓN
-  // ============================================
+  // ==========================================
 
   app.get(
     '/auth/sesion',
@@ -226,7 +236,7 @@ export async function registerAuth(
 
   // ==========================================
   // INICIAR SESIÓN
-  // ============================================
+  // ==========================================
 
   app.post<{
     Body: Credentials;
@@ -253,13 +263,43 @@ export async function registerAuth(
   );
 
   // ==========================================
+  // DIAGNÓSTICO DE RECUPERACIÓN
+  // ==========================================
+
+  // Informa si el módulo recibió las dos
+  // dependencias necesarias.
+  //
+  // No registra correos, tokens, contraseñas
+  // ni credenciales SMTP.
+
+  app.log.info(
+    {
+      authDependencies: true,
+      recoveryRepository: Boolean(
+        dependencies.recovery
+      ),
+      recoveryMailer: Boolean(
+        dependencies.recoveryMailer
+      )
+    },
+    'Diagnóstico de inicialización del módulo de recuperación.'
+  );
+
+  // ==========================================
   // RECUPERACIÓN DE CONTRASEÑA
-  // ============================================
+  // ==========================================
 
   if (
     dependencies.recovery &&
     dependencies.recoveryMailer
   ) {
+    app.log.info(
+      {
+        recoveryEnabled: true
+      },
+      'El módulo de recuperación está habilitado.'
+    );
+
     const recovery = createRecoveryService(
       dependencies.recovery,
       dependencies.recoveryMailer
@@ -292,16 +332,51 @@ export async function registerAuth(
           await recovery.request(
             request.body.correo
           );
+
         } catch (error) {
           if (
             error instanceof HttpError &&
             error.codigo === 'CORREO_NO_CONFIGURADO'
           ) {
+            // Diagnóstico de configuración.
+            // Se conserva el error original.
+            request.log.error(
+              {
+                codigo: error.codigo,
+                etapa: 'configuracion_correo'
+              },
+              'El servicio de correo no está configurado.'
+            );
+
             throw error;
           }
 
+          // Se conserva la respuesta genérica
+          // para no revelar si el correo existe.
+          //
+          // Durante el diagnóstico, registrar
+          // únicamente códigos técnicos seguros.
+
+          const diagnostic =
+            error instanceof Error
+              ? error as Error & {
+                  code?: string;
+                  responseCode?: number;
+                  command?: string;
+                }
+              : null;
+
           request.log.error(
-            { codigo: 'RECUPERACION_FALLIDA' },
+            {
+              codigo: 'RECUPERACION_FALLIDA',
+              tipo: diagnostic?.name ?? 'Desconocido',
+              codigoTecnico:
+                diagnostic?.code ?? 'SIN_CODIGO',
+              codigoSMTP:
+                diagnostic?.responseCode ?? null,
+              comandoSMTP:
+                diagnostic?.command ?? null
+            },
             'No se pudo procesar la recuperación.'
           );
         }
@@ -385,7 +460,25 @@ export async function registerAuth(
         });
       }
     );
+
   } else {
+    // ========================================
+    // RECUPERACIÓN NO CONFIGURADA
+    // ========================================
+
+    app.log.warn(
+      {
+        recoveryEnabled: false,
+        recoveryRepository: Boolean(
+          dependencies.recovery
+        ),
+        recoveryMailer: Boolean(
+          dependencies.recoveryMailer
+        )
+      },
+      'Recuperación deshabilitada porque faltan dependencias.'
+    );
+
     const unavailable = async () => {
       throw new HttpError(
         503,
@@ -401,7 +494,7 @@ export async function registerAuth(
 
   // ==========================================
   // CERRAR SESIÓN
-  // ============================================
+  // ==========================================
 
   app.delete(
     '/auth/sesion',

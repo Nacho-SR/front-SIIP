@@ -23,6 +23,18 @@ import {
 } from './modules/auth/repositories/session.repository.js';
 
 // ============================================
+// RECUPERACIÓN DE CONTRASEÑA
+// ============================================
+
+import {
+  createRecoveryRepository
+} from './modules/auth/repositories/recovery.repository.js';
+
+import {
+  createRecoveryMailer
+} from './modules/auth/services/recovery.mail.js';
+
+// ============================================
 // USUARIOS Y DEPENDENCIAS
 // ============================================
 
@@ -79,7 +91,9 @@ config({ quiet: true });
 const result = envSchema.safeParse(process.env);
 
 if (!result.success) {
-  console.error('Configuración de entorno inválida:');
+  console.error(
+    'Configuración de entorno inválida:'
+  );
 
   for (const issue of result.error.issues) {
     console.error(
@@ -101,6 +115,23 @@ const pool = env.DATABASE_URL
   : undefined;
 
 // ============================================
+// CONFIGURACIÓN DE RECUPERACIÓN
+// ============================================
+
+// El mailer se inicializa únicamente
+// cuando existe una conexión PostgreSQL.
+//
+// Su propiedad "enabled" indica si están
+// configuradas las variables necesarias
+// para enviar correos.
+//
+// Nunca se imprimen credenciales SMTP.
+
+const recoveryMailer = pool
+  ? createRecoveryMailer(env)
+  : undefined;
+
+// ============================================
 // CONSTRUCCIÓN DE LA APLICACIÓN FASTIFY
 // ============================================
 
@@ -118,7 +149,26 @@ const app = await buildApp(
         // SESIONES
         // ------------------------------------
 
-        sessionStore: new PostgresSessionStore(pool),
+        sessionStore:
+          new PostgresSessionStore(pool),
+
+        // ------------------------------------
+        // RECUPERACIÓN DE CONTRASEÑA
+        // ------------------------------------
+
+        recovery: createRecoveryRepository(pool),
+
+        // Solo entregar el servicio si
+        // la configuración SMTP está completa.
+        //
+        // De lo contrario, auth.routes.ts
+        // mantendrá la ruta indisponible
+        // hasta que se configure el correo.
+
+        recoveryMailer:
+          recoveryMailer?.enabled
+            ? recoveryMailer
+            : undefined,
 
         // ------------------------------------
         // USUARIOS Y DEPENDENCIAS
@@ -130,7 +180,8 @@ const app = await buildApp(
         // INDICADORES
         // ------------------------------------
 
-        indicators: createIndicatorsRepository(pool),
+        indicators:
+          createIndicatorsRepository(pool),
 
         // ------------------------------------
         // AGRUPACIONES TEMÁTICAS Y FAMILIAS
@@ -143,21 +194,48 @@ const app = await buildApp(
         // VARIABLES
         // ------------------------------------
 
-        variables: createVariablesRepository(pool),
+        variables:
+          createVariablesRepository(pool),
 
         // ------------------------------------
         // METODOLOGÍAS
         // ------------------------------------
 
-        metodologias: createMetodologiaRepository(pool),
+        metodologias:
+          createMetodologiaRepository(pool),
 
         // ------------------------------------
         // ACTIVACIONES
         // ------------------------------------
 
-        activaciones: createActivacionRepository(pool)
+        activaciones:
+          createActivacionRepository(pool)
       }
     : undefined
+);
+
+// ============================================
+// DIAGNÓSTICO DE RECUPERACIÓN
+// ============================================
+
+// Solo se registra información booleana.
+// No se muestran contraseñas, tokens,
+// direcciones de correo ni secretos.
+
+app.log.info(
+  {
+    postgresConfigurado: Boolean(pool),
+
+    repositorioRecuperacion:
+      Boolean(pool),
+
+    smtpConfigurado:
+      recoveryMailer?.enabled ?? false,
+
+    recuperacionHabilitada:
+      Boolean(pool && recoveryMailer?.enabled)
+  },
+  'Estado de configuración de recuperación de contraseña.'
 );
 
 // ============================================
