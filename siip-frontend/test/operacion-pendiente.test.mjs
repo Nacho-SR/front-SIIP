@@ -167,11 +167,22 @@ test('una advertencia metodológica no habilita validar ni se presenta como gris
   assert.match(html.match(/<button[^>]*>\s*Validar expediente\s*<\/button>/)[0], /disabled/);
 });
 
+function clasificaciones(state, indicadores) {
+  const registro = (texto, id) => {
+    const [codigo, ...nombre] = texto.split('. ');
+    return { id, codigo, nombre: nombre.join('. '), activo: true };
+  };
+  state.agrupaciones = indicadores.map((item, index) => registro(item.agrupacion, String(index + 1)));
+  state.familias = indicadores.map((item, index) => ({ ...registro(item.familia, String(index + 1)), agrupacion_id: String(index + 1) }));
+  state.clasificacionesCargadas = true;
+}
+
 test('cambiar agrupación filtra familias y borra una familia incompatible', async () => {
   useAuthStore().user.rol = 'administrador';
   const primero = catalogo[0];
   const otro = catalogo.find(indicador => indicador.agrupacion !== primero.agrupacion);
   const { html } = await render(NuevoIndicadorView, state => {
+    clasificaciones(state, [primero, otro]);
     state.formulario.agrupacion = primero.agrupacion;
     state.formulario.familia = primero.familia;
     assert.ok(state.familiasDisponibles.includes(primero.familia));
@@ -188,8 +199,14 @@ test('el guardado también rechaza una familia de otra agrupación sin escribir'
   const otro = catalogo.find(indicador => indicador.agrupacion !== primero.agrupacion);
   let escrituras = 0;
   await conAlmacenamiento('localStorage', { setItem() { escrituras++; } }, async () => {
-    await assert.rejects(admin.guardarIndicador({ clave: 'FICHA-PRUEBA', nombre: 'Ejemplo',
-      agrupacion: primero.agrupacion, familia: otro.familia }), /familia que pertenezca/);
+    const { state } = await render(NuevoIndicadorView, state => {
+      clasificaciones(state, [primero, otro]);
+      for (const campo of state.camposRequeridos) state.formulario[campo.clave] = 'Ejemplo';
+      Object.assign(state.formulario, { clave: 'FICHA-PRUEBA', agrupacion: primero.agrupacion, familia: otro.familia });
+    });
+    api.defaults.adapter = async () => assert.fail('La familia incompatible no debe enviarse');
+    await state.guardar();
+    assert.match(state.error, /familia que pertenezca/);
     assert.equal(escrituras, 0);
     assert.equal(admin.adminState.indicadores.length, 0);
   });

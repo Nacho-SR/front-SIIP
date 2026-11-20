@@ -10,6 +10,7 @@ function fixture(override) {
   let released = false;
   const client = {
     async query(sql, params) {
+      sql = sql.replace(/\s+/g, ' ').trim();
       calls.push({ sql, params });
       const result = override?.(sql, params);
       if (result) return result;
@@ -27,7 +28,9 @@ test('alta y auditoría se confirman juntas sin guardar hashes en la bitácora',
   assert.deepEqual(await f.repository.createUser(account, '1'), publicUser);
   const audit = f.calls.find((call) => call.sql.includes('INSERT INTO auditoria_configuracion'));
   assert.deepEqual(audit.params.slice(0, 3), ['1', 'usuarios', '2']);
-  assert.equal(audit.params[3].includes('password'), false);
+  assert.equal(audit.params[3], 'crear');
+  assert.equal(audit.params[4], null);
+  assert.deepEqual(JSON.parse(audit.params[5]), publicUser);
   assert.equal(f.calls.at(-1).sql, 'COMMIT');
   assert.equal(f.released(), true);
 });
@@ -51,7 +54,7 @@ test('Consulta se inserta con dependencia nula y auditoría en la misma transacc
   assert.equal(insert.params[3], 'consulta');
   assert.equal(insert.params[4], null);
   const audit = f.calls.find(({ sql }) => sql.includes('INSERT INTO auditoria_configuracion'));
-  assert.equal(JSON.parse(audit.params[3]).rol, 'consulta');
+  assert.equal(JSON.parse(audit.params[5]).rol, 'consulta');
   assert.equal(f.calls.at(-1).sql, 'COMMIT');
 });
 
@@ -81,13 +84,15 @@ test('dependencia inactiva o inexistente impide insertar Captura y Revisión', a
   }
 });
 
-test('el catálogo consulta solo dependencias activas y usa un orden estable', async () => {
+test('el catálogo administrativo incluye dependencias activas e inactivas y usa un orden estable', async () => {
   let query;
-  const expected = [{ id: '9007199254740993', clave: 'REV', nombre: 'Revisión', activo: true }];
+  const expected = [{ id: '9007199254740993', clave: 'REV', nombre: 'Revisión', activo: true },
+    { id: '8', clave: 'ANT', nombre: 'Anterior', activo: false }];
   const repository = createUsersRepository({ async query(sql) { query = sql; return { rows: expected }; } });
   assert.deepEqual(await repository.listDependencies(), expected);
   assert.match(query, /id::text/);
-  assert.match(query, /WHERE activo ORDER BY nombre, id/);
+  assert.match(query, /ORDER BY nombre, id/);
+  assert.doesNotMatch(query, /WHERE|password|SELECT\s+\*/i);
 });
 
 test('el listado selecciona solo datos administrativos sin excluir cuentas o dependencias inactivas', async () => {
@@ -100,4 +105,26 @@ test('el listado selecciona solo datos administrativos sin excluir cuentas o dep
   assert.match(query, /LEFT JOIN dependencias/);
   assert.match(query, /ORDER BY u.nombre, u.id/);
   assert.doesNotMatch(query, /password|SELECT\s+\*|WHERE/i);
+});
+
+test('las cuentas administradoras se protegen al editar y cambiar estado sin escrituras', async () => {
+  const admin = { ...publicUser, id: '1', rol: 'administrador', dependencia_id: null, activo: true };
+  for (const method of ['updateUser', 'changeUserStatus']) {
+    const f = fixture(sql => sql.startsWith('SELECT u.id::text') ? { rows: [admin], rowCount: 1 } : undefined);
+    const data = method === 'updateUser' ? { nombre: 'Cambio', correo: 'otro@example.test', rol: 'consulta', dependencia_id: null } : { activo: false };
+    await assert.rejects(f.repository[method]('1', data, '1'), { codigo: 'ADMIN_PROTEGIDO' });
+    assert.equal(f.calls.some(c => /^UPDATE|^INSERT/.test(c.sql)), false);
+    assert.equal(f.calls.at(-1).sql, 'ROLLBACK'); assert.equal(f.released(), true);
+  }
+});
+
+test('desactivar una dependencia con usuarios activos revierte sin modificarla', async () => {
+  const dependency = { id: '7', clave: 'PLAN', nombre: 'Planeación', activo: true };
+  const f = fixture(sql => {
+    if (sql.includes('FROM dependencias WHERE id')) return { rows: [dependency], rowCount: 1 };
+    if (sql.includes('FROM usuarios WHERE dependencia_id')) return { rows: [{ one: 1 }], rowCount: 1 };
+  });
+  await assert.rejects(f.repository.changeDependencyStatus('7', { activo: false }, '1'), { codigo: 'DEPENDENCIA_CON_USUARIOS_ACTIVOS' });
+  assert.equal(f.calls.some(c => c.sql.startsWith('UPDATE dependencias')), false);
+  assert.equal(f.calls.at(-1).sql, 'ROLLBACK'); assert.equal(f.released(), true);
 });

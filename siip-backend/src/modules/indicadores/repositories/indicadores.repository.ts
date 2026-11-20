@@ -78,7 +78,6 @@ const select = `
     i.*,
     i.id::text AS id,
     i.consecutivo::text AS consecutivo,
-
     g.codigo || '. ' || g.nombre AS agrupacion,
     f.codigo || '. ' || f.nombre AS familia
 
@@ -111,6 +110,7 @@ function indicator(row: Row): Indicator {
       consecutivo: row.consecutivo,
       agrupacion: row.agrupacion,
       familia: row.familia
+
     } as Indicator['campos'],
 
     creadoEn: row.creado_en.toISOString(),
@@ -147,11 +147,14 @@ function databaseError(error: unknown): never {
     );
   }
 
-  if (pg.code === '42P01' || pg.code === '42703') {
+  if (
+    pg.code === '42P01' ||
+    pg.code === '42703'
+  ) {
     throw new HttpError(
       503,
       'INDICADORES_NO_CONFIGURADOS',
-      'Faltan tablas de indicadores o activación en PostgreSQL. Comprueba SQL 005 a 008.'
+      'Faltan tablas o columnas de indicadores o activación en PostgreSQL. Comprueba SQL 005 a 008.'
     );
   }
 
@@ -159,17 +162,18 @@ function databaseError(error: unknown): never {
 }
 
 // ============================================
-// REPOSITORIO
+// REPOSITORIO DE INDICADORES
 // ============================================
 
 export function createIndicatorsRepository(
   pool: Pool
 ): IndicatorsRepository {
+
   return {
 
-    // ----------------------------------------
+    // ========================================
     // CONSULTAR TODOS LOS INDICADORES
-    // ----------------------------------------
+    // ========================================
 
     async list() {
       try {
@@ -187,9 +191,9 @@ export function createIndicatorsRepository(
       }
     },
 
-    // ----------------------------------------
+    // ========================================
     // CONSULTAR INDICADOR POR ID
-    // ----------------------------------------
+    // ========================================
 
     async find(id) {
       try {
@@ -210,9 +214,9 @@ export function createIndicatorsRepository(
       }
     },
 
-    // ----------------------------------------
+    // ========================================
     // CREAR INDICADOR
-    // ----------------------------------------
+    // ========================================
 
     async create(data, actorId) {
       const client = await pool.connect();
@@ -220,8 +224,8 @@ export function createIndicatorsRepository(
       try {
         await client.query('BEGIN');
 
-        // Verificamos que la familia y
-        // su agrupación estén activas.
+        // 1. Verificar familia y agrupación activas
+
         const familyResult =
           await client.query<FamilyRow>(
             `
@@ -259,8 +263,8 @@ export function createIndicatorsRepository(
           );
         }
 
-        // La clave debe corresponder a
-        // la clasificación seleccionada.
+        // 2. Validar la clave del indicador
+
         const prefix =
           `SIIP.${family.agrupacion_codigo}.${family.codigo}.`;
 
@@ -272,8 +276,8 @@ export function createIndicatorsRepository(
           );
         }
 
-        // Las columnas provienen de un
-        // mapeo constante y controlado.
+        // 3. Preparar columnas y parámetros
+
         const params = [
           family.id,
           ...entries.map(([key]) => data[key])
@@ -286,6 +290,8 @@ export function createIndicatorsRepository(
         const placeholders = params
           .map((_, index) => `$${index + 1}`)
           .join(', ');
+
+        // 4. Insertar indicador
 
         const inserted = await client.query<{
           id: string;
@@ -303,6 +309,8 @@ export function createIndicatorsRepository(
 
         const id = inserted.rows[0].id;
 
+        // 5. Obtener el indicador creado
+
         const result = await client.query<Row>(
           `
           ${select}
@@ -313,7 +321,8 @@ export function createIndicatorsRepository(
 
         const created = indicator(result.rows[0]);
 
-        // Auditoría de creación.
+        // 6. Registrar auditoría
+
         await client.query(
           `
           INSERT INTO auditoria_configuracion (
@@ -361,7 +370,8 @@ export function createIndicatorsRepository(
       try {
         await client.query('BEGIN');
 
-        // 1. Obtener el indicador anterior.
+        // 1. Obtener y bloquear el indicador
+
         const beforeResult =
           await client.query<Row>(
             `
@@ -384,7 +394,8 @@ export function createIndicatorsRepository(
 
         const before = indicator(beforeRow);
 
-        // 2. Comprobar la familia y agrupación.
+        // 2. Comprobar familia y agrupación
+
         const familyResult =
           await client.query<FamilyRow>(
             `
@@ -422,8 +433,8 @@ export function createIndicatorsRepository(
           );
         }
 
-        // 3. Comprobar que la clave
-        // coincida con su clasificación.
+        // 3. Validar la clave
+
         const prefix =
           `SIIP.${family.agrupacion_codigo}.${family.codigo}.`;
 
@@ -435,8 +446,17 @@ export function createIndicatorsRepository(
           );
         }
 
-        // 4. Proteger campos importantes
-        // mientras el indicador está activo.
+        // 4. Proteger campos críticos
+        // mientras el indicador esté activo
+
+        const camposCriticos = [
+          'frecuencia',
+          'unidad',
+          'sentido',
+          'condicionAcumulacion',
+          'variables'
+        ] as const;
+
         const modificaCamposCriticos =
           before.campos.clave !== data.clave ||
           before.campos.familia !== data.familia ||
@@ -444,7 +464,10 @@ export function createIndicatorsRepository(
           before.campos.algoritmo !== data.algoritmo ||
           before.campos.semaforizacion !==
             data.semaforizacion ||
-          ['frecuencia', 'unidad', 'sentido', 'condicionAcumulacion', 'variables'].some(key => before.campos[key as keyof typeof before.campos] !== data[key as keyof typeof data]);
+          camposCriticos.some((key) =>
+            JSON.stringify(before.campos[key]) !==
+            JSON.stringify(data[key])
+          );
 
         if (
           before.activo &&
@@ -457,7 +480,8 @@ export function createIndicatorsRepository(
           );
         }
 
-        // 5. Actualizar la ficha.
+        // 5. Preparar actualización
+
         const values = [
           family.id,
           ...entries.map(([key]) => data[key]),
@@ -470,6 +494,8 @@ export function createIndicatorsRepository(
               `${column} = $${index + 2}`
           )
           .join(', ');
+
+        // 6. Actualizar la ficha
 
         await client.query(
           `
@@ -485,7 +511,8 @@ export function createIndicatorsRepository(
           values
         );
 
-        // 6. Obtener información actualizada.
+        // 7. Obtener información actualizada
+
         const afterResult =
           await client.query<Row>(
             `
@@ -497,7 +524,8 @@ export function createIndicatorsRepository(
 
         const after = indicator(afterResult.rows[0]);
 
-        // 7. Registrar auditoría.
+        // 8. Registrar auditoría
+
         await client.query(
           `
           INSERT INTO auditoria_configuracion (
@@ -508,7 +536,6 @@ export function createIndicatorsRepository(
             antes,
             despues
           )
-
           VALUES (
             $1,
             'indicadores',
@@ -540,17 +567,29 @@ export function createIndicatorsRepository(
     },
 
     // ========================================
-    // DESACTIVAR / REACTIVAR INDICADOR
+    // DESACTIVAR INDICADOR
     // ========================================
 
     async changeStatus(id, activo, actorId) {
-      if (activo) throw new HttpError(409, 'ACTIVACION_REQUIERE_CONFIGURACION', 'Activa desde la configuración de metodología y periodo inicial.');
+
+      // La activación requiere configurar
+      // metodología y periodo inicial.
+
+      if (activo) {
+        throw new HttpError(
+          409,
+          'ACTIVACION_REQUIERE_CONFIGURACION',
+          'Activa desde la configuración de metodología y periodo inicial.'
+        );
+      }
+
       const client = await pool.connect();
 
       try {
         await client.query('BEGIN');
 
-        // 1. Obtener y bloquear el indicador.
+        // 1. Obtener y bloquear indicador
+
         const beforeResult =
           await client.query<Row>(
             `
@@ -573,7 +612,8 @@ export function createIndicatorsRepository(
 
         const before = indicator(beforeRow);
 
-        // 2. Evitar operaciones repetidas.
+        // 2. Evitar operaciones repetidas
+
         if (before.activo === activo) {
           throw new HttpError(
             409,
@@ -582,7 +622,8 @@ export function createIndicatorsRepository(
           );
         }
 
-        // 4. Modificar únicamente el estado.
+        // 3. Actualizar estado del indicador
+
         await client.query(
           `
           UPDATE indicadores
@@ -599,10 +640,27 @@ export function createIndicatorsRepository(
           ]
         );
 
-        await client.query(`UPDATE activaciones_indicador SET desactivado_en = now(), desactivado_por = $2
-          WHERE indicador_id = $1 AND desactivado_en IS NULL`, [id, actorId]);
+        // 4. Cerrar activaciones vigentes
 
-        // 5. Obtener el estado actualizado.
+        await client.query(
+          `
+          UPDATE activaciones_indicador
+
+          SET
+            desactivado_en = now(),
+            desactivado_por = $2
+
+          WHERE indicador_id = $1
+            AND desactivado_en IS NULL
+          `,
+          [
+            id,
+            actorId
+          ]
+        );
+
+        // 5. Obtener indicador actualizado
+
         const afterResult =
           await client.query<Row>(
             `
@@ -614,7 +672,8 @@ export function createIndicatorsRepository(
 
         const after = indicator(afterResult.rows[0]);
 
-        // 6. Registrar auditoría.
+        // 6. Registrar auditoría
+
         await client.query(
           `
           INSERT INTO auditoria_configuracion (
@@ -625,20 +684,18 @@ export function createIndicatorsRepository(
             antes,
             despues
           )
-
           VALUES (
             $1,
             'indicadores',
             $2,
-            $3,
-            $4::jsonb,
-            $5::jsonb
+            'desactivar',
+            $3::jsonb,
+            $4::jsonb
           )
           `,
           [
             actorId,
             id,
-            activo ? 'activar' : 'desactivar',
             JSON.stringify(before),
             JSON.stringify(after)
           ]

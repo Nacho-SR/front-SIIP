@@ -105,6 +105,14 @@ El rol/dependencia se releen de la cuenta: desactivar usuario/dependencia impide
 el acceso. Un cambio de hash de contraseña invalida las sesiones anteriores por
 huella HMAC; no se guardan contraseñas ni hashes Argon2 en la sesión.
 
+Al cambiar el correo desde administración se invalidan todos los enlaces de
+recuperación pendientes de esa cuenta, dentro de la misma transacción. Editar sin
+cambiar el correo los conserva. El cambio de correo requiere la tabla preparada
+por `sql/009_password_recovery.sql`; si falla la revocación, se revierte la edición.
+El SQL no se aplica automáticamente y requiere autorización de la base concreta.
+El alta, el administrador inicial y el restablecimiento comparten la política de
+contraseñas de 15 a 1024 caracteres, sin recortar espacios.
+
 Valor técnico inicial: vencimiento absoluto de 30 minutos, sin renovación por
 consultas; `SESSION_TTL_MS` lo define. El login admite 5 intentos/IP/minuto, además
 del límite global. Son valores iniciales para revisar antes de operación. Los

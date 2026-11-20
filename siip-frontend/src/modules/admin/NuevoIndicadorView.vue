@@ -15,11 +15,11 @@ import {
 } from 'vue-router';
 
 import catalogo from '../consulta/data/indicadores-siip.json';
+import api from '../../core/api';
 
 import {
   guardarIndicador,
-  obtenerIndicadorAdmin,
-  familiasDeAgrupacion
+  obtenerIndicadorAdmin
 } from './data/admin.store';
 
 type Seccion =
@@ -60,6 +60,16 @@ const error = ref('');
 const mensaje = ref('');
 const guardando = ref(false);
 const cargandoFicha = ref(false);
+interface Agrupacion { id: string; codigo: string; nombre: string; activo: boolean; }
+interface Familia extends Agrupacion { agrupacion_id: string; }
+const agrupaciones = ref<Agrupacion[]>([]);
+const familias = ref<Familia[]>([]);
+const cargandoClasificaciones = ref(false);
+const clasificacionesCargadas = ref(false);
+const errorClasificaciones = ref('');
+const etiqueta = (registro: Agrupacion) => `${registro.codigo}. ${registro.nombre}`;
+const agrupacionesDisponibles = computed(() => agrupaciones.value
+  .filter(grupo => grupo.activo).map(etiqueta).sort((a, b) => a.localeCompare(b, 'es')));
 
 const idEdicion = computed(() =>
   typeof route.query.ver === 'string'
@@ -191,7 +201,6 @@ const grupos: GrupoCampos[] = [
         columna: 11,
         tipo: 'select',
         requerido: true,
-        opciones: opcionesUnicas('agrupacion')
       },
       {
         clave: 'familia',
@@ -419,10 +428,44 @@ const formulario = reactive<Record<string, string>>({
   ...datosIniciales
 });
 
-const familiasDisponibles = computed(() => familiasDeAgrupacion(formulario.agrupacion ?? ''));
+const familiasDisponibles = computed(() => {
+  const grupo = agrupaciones.value.find(item => item.activo && etiqueta(item) === formulario.agrupacion);
+  return familias.value.filter(familia => familia.activo && familia.agrupacion_id === grupo?.id)
+    .map(etiqueta).sort((a, b) => a.localeCompare(b, 'es'));
+});
 watch(() => formulario.agrupacion, () => {
-  if (!familiasDisponibles.value.includes(formulario.familia ?? '')) formulario.familia = '';
+  if (!idEdicion.value && !familiasDisponibles.value.includes(formulario.familia ?? '')) formulario.familia = '';
 }, { flush: 'sync' });
+
+function opcionesCampo(campo: CampoDefinicion): string[] {
+  if (campo.clave === 'agrupacion' || campo.clave === 'familia') {
+    if (idEdicion.value) return [formulario[campo.clave] ?? ''];
+    return campo.clave === 'agrupacion' ? agrupacionesDisponibles.value : familiasDisponibles.value;
+  }
+  return campo.opciones ?? [];
+}
+
+async function cargarClasificaciones() {
+  if (cargandoClasificaciones.value || guardando.value) return;
+  cargandoClasificaciones.value = true;
+  clasificacionesCargadas.value = false;
+  errorClasificaciones.value = '';
+  try {
+    const [grupos, entradas] = await Promise.all([
+      api.get<Agrupacion[]>('/administracion/agrupaciones'),
+      api.get<Familia[]>('/administracion/familias')
+    ]);
+    agrupaciones.value = grupos.data;
+    familias.value = entradas.data;
+    if (!agrupacionesDisponibles.value.includes(formulario.agrupacion ?? '')) formulario.agrupacion = '';
+    if (!familiasDisponibles.value.includes(formulario.familia ?? '')) formulario.familia = '';
+    clasificacionesCargadas.value = true;
+  } catch (cause) {
+    errorClasificaciones.value = axios.isAxiosError(cause)
+      ? cause.response?.data?.detail || 'No se pudieron cargar las agrupaciones y familias. Reintenta sin perder la ficha.'
+      : 'No se pudieron cargar las agrupaciones y familias. Reintenta sin perder la ficha.';
+  } finally { cargandoClasificaciones.value = false; }
+}
 
 // ======================================================
 // INICIALIZAR NUEVO O EDICIÓN
@@ -439,7 +482,7 @@ onMounted(async () => {
         ? e.response?.data?.detail || 'No se pudo cargar la ficha. Recarga para reintentar.'
         : 'No se pudo cargar la ficha.';
     } finally { cargandoFicha.value = false; }
-  }
+  } else { await cargarClasificaciones(); }
 });
 
 // ======================================================
@@ -536,7 +579,7 @@ function validarFormulario(): boolean {
 // ======================================================
 
 async function guardar() {
-  if (guardando.value || cargandoFicha.value || idEdicion.value) return;
+  if (guardando.value || cargandoFicha.value || idEdicion.value || !clasificacionesCargadas.value) return;
   if (!validarFormulario()) return;
 
   guardando.value = true;
@@ -604,6 +647,11 @@ function volver() {
 
     <p v-if="mensaje" class="nota" role="status">{{ mensaje }}</p>
     <p v-if="cargandoFicha" class="nota" role="status">Cargando ficha…</p>
+    <p v-if="cargandoClasificaciones" class="nota" role="status">Cargando agrupaciones y familias…</p>
+    <div v-if="errorClasificaciones" class="error" role="alert">
+      <p>{{ errorClasificaciones }}</p>
+      <button type="button" class="btn-secundario" @click="cargarClasificaciones">Reintentar carga de agrupaciones y familias</button>
+    </div>
 
     <!-- PROGRESO -->
     <section class="progreso-panel">
@@ -727,14 +775,14 @@ function volver() {
                 v-else-if="campo.tipo === 'select'"
                 :name="campo.clave"
                 v-model="formulario[campo.clave]"
-                :disabled="guardando || cargandoFicha || !!idEdicion || (campo.clave === 'familia' && !formulario.agrupacion)"
+                :disabled="guardando || cargandoFicha || !!idEdicion || ((campo.clave === 'agrupacion' || campo.clave === 'familia') && !clasificacionesCargadas) || (campo.clave === 'familia' && !formulario.agrupacion)"
               >
                 <option value="">
                   Selecciona una opción
                 </option>
 
                 <option
-                  v-for="opcion in (campo.clave === 'familia' ? familiasDisponibles : campo.opciones)"
+                  v-for="opcion in opcionesCampo(campo)"
                   :key="opcion"
                   :value="opcion"
                 >
@@ -779,7 +827,7 @@ function volver() {
           v-if="!idEdicion"
           type="submit"
           class="btn-principal"
-          :disabled="guardando"
+          :disabled="guardando || !clasificacionesCargadas"
         >
           {{
             guardando

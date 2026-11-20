@@ -125,6 +125,174 @@ export function createClassificationsRepository(
 ) {
   return {
 
+
+    // ========================================
+    // CREAR AGRUPACIÓN TEMÁTICA
+    // ========================================
+
+    async createAgrupacion(
+      data: EditAgrupacion,
+      actor: string
+    ): Promise<Agrupacion> {
+      const client = await pool.connect();
+
+      try {
+        await client.query('BEGIN');
+
+        const result = await client.query<Agrupacion>(
+          `
+          INSERT INTO agrupaciones_tematicas (
+            codigo,
+            nombre,
+            activo
+          )
+          VALUES ($1, $2, true)
+          RETURNING
+            id::text,
+            codigo,
+            nombre,
+            activo
+          `,
+          [data.codigo, data.nombre]
+        );
+
+        const creado = result.rows[0]!;
+
+        await client.query(
+          `
+          INSERT INTO auditoria_configuracion (
+            actor_id,
+            entidad,
+            registro_id,
+            accion,
+            despues
+          )
+          VALUES (
+            $1,
+            'agrupaciones_tematicas',
+            $2,
+            'crear',
+            $3::jsonb
+          )
+          `,
+          [
+            actor,
+            creado.id,
+            JSON.stringify(creado)
+          ]
+        );
+
+        await client.query('COMMIT');
+
+        return creado;
+
+      } catch (error) {
+        await client.query('ROLLBACK');
+        return dbError(error);
+      } finally {
+        client.release();
+      }
+    },
+
+    // ========================================
+    // CREAR FAMILIA
+    // ========================================
+
+    async createFamilia(
+      data: EditFamilia,
+      actor: string
+    ): Promise<Familia> {
+      const client = await pool.connect();
+
+      try {
+        await client.query('BEGIN');
+
+        // Una familia nueva solo puede
+        // pertenecer a una agrupación activa.
+        const parent = await client.query(
+          `
+          SELECT id
+          FROM agrupaciones_tematicas
+          WHERE id = $1
+            AND activo = true
+          FOR SHARE
+          `,
+          [data.agrupacion_id]
+        );
+
+        if (parent.rowCount !== 1) {
+          throw new HttpError(
+            422,
+            'AGRUPACION_NO_DISPONIBLE',
+            'Selecciona una agrupación temática activa.'
+          );
+        }
+
+        const insertado = await client.query<{
+          id: string;
+        }>(
+          `
+          INSERT INTO familias (
+            agrupacion_id,
+            codigo,
+            nombre,
+            activo
+          )
+          VALUES ($1, $2, $3, true)
+          RETURNING id::text
+          `,
+          [
+            data.agrupacion_id,
+            data.codigo,
+            data.nombre
+          ]
+        );
+
+        const nuevoId = insertado.rows[0]!.id;
+
+        const creado = (
+          await client.query<Familia>(
+            `${qF} WHERE f.id = $1`,
+            [nuevoId]
+          )
+        ).rows[0]!;
+
+        await client.query(
+          `
+          INSERT INTO auditoria_configuracion (
+            actor_id,
+            entidad,
+            registro_id,
+            accion,
+            despues
+          )
+          VALUES (
+            $1,
+            'familias',
+            $2,
+            'crear',
+            $3::jsonb
+          )
+          `,
+          [
+            actor,
+            nuevoId,
+            JSON.stringify(creado)
+          ]
+        );
+
+        await client.query('COMMIT');
+
+        return creado;
+
+      } catch (error) {
+        await client.query('ROLLBACK');
+        return dbError(error);
+      } finally {
+        client.release();
+      }
+    },
+    
     // LISTAR AGRUPACIONES
     async listAgrupaciones() {
       try {

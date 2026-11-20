@@ -12,7 +12,7 @@ const usuario = {
 };
 const anonymous = { usuario: null, csrf_token: 'csrf-anonimo-de-prueba' };
 const authenticated = { usuario, csrf_token: 'csrf-autenticado-de-prueba' };
-let vite, api, router, useAuthStore, auth, requests, responses, AdminUsuariosView, AdminDependenciasView, AdminView, AdminIndicadoresView, VariablesIndicadorView, MetodologiaIndicadorView, ActivacionIndicadorView, MainLayout, LoginView, DashboardView;
+let vite, api, router, useAuthStore, auth, requests, responses, AdminUsuariosView, AdminDependenciasView, AdminView, AdminIndicadoresView, VariablesIndicadorView, MetodologiaIndicadorView, ActivacionIndicadorView, MainLayout, LoginView, DashboardView, NuevoIndicadorView, RestablecerView, ClasificacionesGestion;
 
 before(async () => {
   vite = await createServer({
@@ -41,6 +41,9 @@ before(async () => {
   ({ default: MainLayout } = await vite.ssrLoadModule('/src/layouts/MainLayout.vue'));
   ({ default: LoginView } = await vite.ssrLoadModule('/src/modules/auth/LoginView.vue'));
   ({ default: DashboardView } = await vite.ssrLoadModule('/src/modules/dashboard/DashboardView.vue'));
+  ({ default: NuevoIndicadorView } = await vite.ssrLoadModule('/src/modules/admin/NuevoIndicadorView.vue'));
+  ({ default: RestablecerView } = await vite.ssrLoadModule('/src/modules/auth/RestablecerContraseñaView.vue'));
+  ({ default: ClasificacionesGestion } = await vite.ssrLoadModule('/src/modules/admin/components/ClasificacionesGestion.vue'));
   for (const route of router.getRoutes()) {
     if (route.components) route.components.default = { render: () => null };
   }
@@ -145,9 +148,9 @@ test('Consulta recupera su sesión sin dependencia y accede a las rutas de lectu
   assert.equal(auth.isCapturista || auth.isRevisor || auth.isAdmin, false);
 });
 
-async function renderComponent(component, preparar) {
+async function renderComponent(component, preparar, props = {}) {
   let state;
-  const app = createSSRApp(component).use(router);
+  const app = createSSRApp(component, props).use(router);
   app.mixin({ created() {
     if (!this.$parent) { state = this.$.setupState; preparar?.(state); }
   } });
@@ -321,14 +324,13 @@ test('alta de dependencia actualiza el selector y permite crear Revisión con es
   const form = await adminForm();
   responses.push({ data: [dependency] });
   await form.loadDependencies();
-  form.userForm.dependencia_id = dependency.id;
-  await form.nuevoUsuario();
+  await form.nuevoUsuario(dependency.id);
   assert.equal(form.userForm.dependencia_id, dependency.id);
 
   Object.assign(form.userForm, { nombre: 'Revisión de prueba', correo: 'revision@example.test',
     password: 'contraseña-sintética-2026', rol: 'revision' });
   responses.push({ status: 201, data: { ...usuario, nombre: form.userForm.nombre, rol: 'revision', dependencia_id: dependency.id } });
-  await form.createUser();
+  await form.guardarUsuario();
   const request = requests.at(-1);
   assert.equal(request.url, '/administracion/usuarios');
   assert.equal(request.headers.get('X-CSRF-Token'), authenticated.csrf_token);
@@ -342,14 +344,14 @@ test('altas sin dependencia o con error del servidor no muestran éxito', async 
   const form = await adminForm();
   responses.push({ data: [] });
   await form.loadDependencies();
-  await form.createUser();
+  await form.guardarUsuario();
   assert.equal(requests.length, 1);
-  assert.match(form.userError, /dependencia activa/);
+  assert.equal(form.dependencyUnavailable, true);
   const dependency = { id: '7', clave: 'REV', nombre: 'Revisión', activo: true };
   form.dependencies.push(dependency);
   Object.assign(form.userForm, { dependencia_id: '7', password: 'contraseña-sintética-2026' });
   responses.push({ status: 409, data: { detail: 'Ya existe una cuenta con ese correo.' } });
-  await form.createUser();
+  await form.guardarUsuario();
   assert.equal(form.userError, 'Ya existe una cuenta con ese correo.');
   assert.equal(form.userSuccess, '');
   assert.equal(form.userForm.password, '');
@@ -370,7 +372,7 @@ test('fallo al cargar dependencias bloquea altas hasta que se reintenta', async 
   const form = await adminForm();
   responses.push({ status: 503, data: { detail: 'Servicio no disponible.' } });
   await form.loadDependencies();
-  await form.createUser();
+  await form.guardarUsuario();
   assert.equal(requests.length, 1);
   assert.equal(form.dependenciesError, 'Servicio no disponible.');
   responses.push({ data: [] });
@@ -395,7 +397,7 @@ test('Consulta se crea sin dependencia incluso si falla el catálogo y no se gua
       setItem() { assert.fail('Las altas no escriben localStorage'); } },
   });
   try {
-    await form.createUser();
+    await form.guardarUsuario();
   } finally {
     if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
     else delete globalThis.localStorage;
@@ -422,9 +424,9 @@ test('el alta pendiente evita duplicados y solo el éxito del servidor cierra el
   Object.assign(form.userForm, { nombre: usuario.nombre, correo: usuario.correo,
     dependencia_id: usuario.dependencia_id, password: 'contraseña-sintética-2026', rol: 'revision' });
   responses.push({ status: 422, data: { detail: 'La dependencia ya no está activa.' } });
-  const pending = form.createUser();
+  const pending = form.guardarUsuario();
   assert.equal(form.savingUser, true);
-  await form.createUser();
+  await form.guardarUsuario();
   await form.cerrarModal();
   assert.equal(form.modalAbierto, true);
   await pending;
@@ -438,7 +440,7 @@ test('el alta pendiente evita duplicados y solo el éxito del servidor cierra el
 
   form.userForm.password = 'otra-contraseña-sintética';
   responses.push({ status: 201, data: { ...usuario, rol: 'revision' } });
-  await form.createUser();
+  await form.guardarUsuario();
   assert.equal(form.modalAbierto, false);
   assert.equal(form.users.length, 1);
   assert.equal(form.userError, '');
@@ -453,11 +455,11 @@ test('reintentar el catálogo invalida una selección eliminada o inactiva', asy
   await form.loadDependencies();
   assert.equal(form.userForm.dependencia_id, '');
   assert.equal(form.dependencyUnavailable, true);
-  await form.createUser();
-  assert.match(form.userError, /dependencia activa/);
+  await form.guardarUsuario();
+  assert.equal(form.dependencyUnavailable, true);
   form.dependencies.push({ id: '7', clave: 'REV', nombre: 'Revisión', activo: false });
   form.userForm.dependencia_id = '7';
-  await form.createUser();
+  await form.guardarUsuario();
   assert.equal(requests.length, 2);
   assert.equal(form.users.length, 0);
 });
@@ -490,7 +492,7 @@ test('el modal muestra contraseña inicial y dependencia solo para Captura y Rev
     assert.match(modal, /value="revision"/);
     assert.doesNotMatch(modal, /value="seguimiento"|Usuario activo|Editar usuario/);
     assert.equal(modal.includes('Selecciona una dependencia activa del catálogo institucional.'), rol !== 'consulta');
-    assert.match(html, /Se muestran las cuentas registradas, incluidas las inactivas/);
+    assert.match(html, /Se muestran cuentas activas e inactivas/);
   }
 });
 
@@ -520,7 +522,7 @@ test('el listado informa un fallo, permite reintentar y no duplica peticiones pe
   const pending = form.loadUsers();
   assert.equal(form.loadingUsers, true);
   await form.loadUsers();
-  await form.createUser();
+  await form.guardarUsuario();
   await pending;
   assert.equal(requests.length, 1);
   assert.equal(form.usersError, 'Listado no disponible.');
@@ -537,7 +539,7 @@ test('el formulario de Consulta conserva datos ante correo duplicado y permite o
     password: 'contraseña-sintética-2026', rol: 'consulta' });
   form.modalAbierto = true;
   responses.push({ status: 409, data: { codigo: 'CORREO_YA_REGISTRADO', detail: 'Ya existe una cuenta con ese correo.' } });
-  await form.createUser();
+  await form.guardarUsuario();
   assert.equal(form.userError, 'Ya existe una cuenta con ese correo.');
   assert.equal(form.modalAbierto, true);
   assert.equal(form.userForm.correo, 'existe@example.test');
@@ -546,7 +548,7 @@ test('el formulario de Consulta conserva datos ante correo duplicado y permite o
   assert.equal(form.users.length, 0);
   Object.assign(form.userForm, { correo: 'nueva@example.test', password: 'contraseña-sintética-2026' });
   responses.push({ status: 201, data: { ...usuario, correo: form.userForm.correo, rol: 'consulta', dependencia_id: null } });
-  await form.createUser();
+  await form.guardarUsuario();
   assert.equal(form.users.length, 1);
   assert.equal(form.modalAbierto, false);
   assert.equal(JSON.parse(requests.at(-1).data).dependencia_id, null);
@@ -561,7 +563,7 @@ test('la navegación administrativa reconoce la sección de indicadores al crear
   const { state, html } = await renderComponent(AdminView);
   assert.equal(state.activa('/administrador/indicadores'), true);
   assert.equal(state.activa('/administrador/usuarios'), false);
-  assert.deepEqual(state.secciones.map(s => s.nombre), ['Usuarios', 'Dependencias', 'Indicadores']);
+  assert.deepEqual(state.secciones.map(s => s.nombre), ['Usuarios', 'Dependencias', 'Indicadores', 'Agrupaciones Temáticas', 'Familias']);
   assert.match(html, /aria-label="Secciones de administración"/);
   assert.match(html, /administrador\/usuarios/);
   assert.match(html, /administrador\/dependencias/);
@@ -633,9 +635,11 @@ test('un conflicto conserva cambios sin fingir éxito; la carga fallida no permi
   const count = requests.length;
   form.agregar(); await form.guardar();
   assert.equal(requests.length, count);
-  form.indicador = { id: '1', campos: {}, activo: false };
-  form.variables = [{ ...entrada, dependenciaId: '7' }];
-  form.original = '[]';
+  responses.push({ data: { id: '1', campos: {}, activo: false } },
+    { data: { indicadorId: '1', version: 1, variables: [entrada] } },
+    { data: [{ id: '7', clave: 'PLAN', nombre: 'Planeación', activo: true }] });
+  await form.cargar();
+  form.variables[0].dependenciaId = '7';
   responses.push({ status: 409, data: { codigo: 'CONFIGURACION_DESACTUALIZADA', detail: 'Otra persona modificó las variables.' } });
   await form.guardar();
   assert.equal(form.variables[0].dependenciaId, '7');
@@ -740,4 +744,110 @@ test('los requisitos pendientes impiden activar desde el formulario y los otros 
     await router.replace('/administrador/indicadores/1/activacion');
     assert.notEqual(router.currentRoute.value.name, 'AdministradorActivacionIndicador');
   }
+});
+
+const grupoNuevo = { id: '90', codigo: '09', nombre: 'Agrupación nueva', activo: true };
+const familiaNueva = { id: '91', codigo: 'F55', nombre: 'Familia nueva', activo: true, agrupacion_id: '90', agrupacion_nombre: '09. Agrupación nueva' };
+async function fichaNueva() {
+  auth.initialized = true; auth.user = { ...usuario, rol: 'administrador', dependencia_id: null };
+  await router.replace('/administrador/indicadores/nuevo');
+  return (await renderComponent(NuevoIndicadorView)).state;
+}
+function responderClasificaciones() {
+  responses.push({ data: [grupoNuevo, { ...grupoNuevo, id: '92', codigo: '10', activo: false }] },
+    { data: [familiaNueva, { ...familiaNueva, id: '93', codigo: 'F56', activo: false },
+      { ...familiaNueva, id: '94', codigo: 'F57', agrupacion_id: '92' }] });
+}
+
+test('el alta usa familias nuevas de la API, filtra inactivas y guarda con el nombre vigente', async () => {
+  const form = await fichaNueva(); responderClasificaciones(); await form.cargarClasificaciones();
+  assert.deepEqual(requests.map(r => r.url), ['/administracion/agrupaciones', '/administracion/familias']);
+  assert.deepEqual(form.agrupacionesDisponibles, ['09. Agrupación nueva']);
+  for (const campo of form.camposRequeridos) form.formulario[campo.clave] = 'Dato documental';
+  Object.assign(form.formulario, { clave: 'SIIP.09.F55.001', agrupacion: '09. Agrupación nueva', familia: 'F55. Familia nueva' });
+  assert.deepEqual(form.familiasDisponibles, ['F55. Familia nueva']);
+  const creada = { id: '92', campos: { ...form.formulario, consecutivo: '197' }, activo: false };
+  responses.push({ status: 201, data: creada }); await form.guardar();
+  assert.equal(requests.at(-1).url, '/administracion/indicadores');
+  const body = JSON.parse(requests.at(-1).data);
+  assert.equal(body.familia, 'F55. Familia nueva'); assert.equal(body.agrupacion, '09. Agrupación nueva');
+  assert.equal(body.consecutivo, undefined); assert.match(form.mensaje, /Estado: inactivo/);
+  assert.equal(router.currentRoute.value.query.ver, creada.id);
+});
+
+test('una carga fallida bloquea guardar y el reintento conserva los demás campos de la ficha', async () => {
+  const form = await fichaNueva(); form.formulario.nombre = 'Ficha sin perder';
+  responses.push({ status: 503, data: { detail: 'Catálogo no disponible.' } }, { data: [] });
+  await form.cargarClasificaciones(); const count = requests.length; await form.guardar();
+  assert.equal(requests.length, count); assert.equal(form.clasificacionesCargadas, false);
+  assert.match(form.errorClasificaciones, /Catálogo no disponible/);
+  responderClasificaciones(); await form.cargarClasificaciones();
+  assert.equal(form.formulario.nombre, 'Ficha sin perder'); assert.equal(form.errorClasificaciones, '');
+  Object.assign(form.formulario, { agrupacion: '09. Agrupación nueva', familia: 'F55. Familia nueva' });
+  responses.push({ data: [{ ...grupoNuevo, nombre: 'Nombre actualizado' }] }, { data: [familiaNueva] });
+  await form.cargarClasificaciones();
+  assert.equal(form.formulario.agrupacion, ''); assert.equal(form.formulario.familia, '');
+  assert.deepEqual(form.agrupacionesDisponibles, ['09. Nombre actualizado']);
+  assert.equal(form.formulario.nombre, 'Ficha sin perder');
+});
+
+test('consultar una ficha conserva la clasificación guardada aunque ya no esté activa', async () => {
+  auth.initialized = true; auth.user = { ...usuario, rol: 'administrador', dependencia_id: null };
+  await router.replace('/administrador/indicadores/nuevo?ver=22');
+  const { state, html } = await renderComponent(NuevoIndicadorView, form => {
+    Object.assign(form.formulario, { agrupacion: '09. Nombre anterior', familia: 'F55. Familia inactiva' });
+  });
+  assert.deepEqual(state.opcionesCampo({ clave: 'agrupacion' }), ['09. Nombre anterior']);
+  assert.match(html, /F55\. Familia inactiva/); assert.match(html, /09\. Nombre anterior/);
+  assert.equal(requests.length, 0);
+});
+
+test('editar un usuario no envía contraseña, conserva el modal ante conflicto y permite desactivarlo', async () => {
+  const form = await adminForm(); const user = { ...usuario, rol: 'consulta', dependencia_id: null, activo: true, dependencia_nombre: null };
+  form.users = [user]; form.editarUsuario(user); form.userForm.nombre = 'Nombre editado';
+  responses.push({ status: 409, data: { detail: 'Correo ocupado.' } }); await form.guardarUsuario();
+  assert.equal(form.modalAbierto, true); assert.equal(form.userForm.nombre, 'Nombre editado'); assert.match(form.userError, /Correo ocupado/);
+  responses.push({ data: { ...user, nombre: 'Nombre editado' } }); await form.guardarUsuario();
+  assert.equal('password' in JSON.parse(requests.at(-1).data), false); assert.equal(requests.at(-1).method, 'patch');
+  assert.equal(form.modalAbierto, false); form.abrirEstado(form.users[0]);
+  responses.push({ data: { ...form.users[0], activo: false } }); await form.confirmarEstado({ activo: false });
+  assert.equal(form.users[0].activo, false); assert.equal(form.usuarioEstado, null);
+  form.editarUsuario({ ...user, rol: 'administrador' }); assert.equal(form.modalAbierto, false);
+});
+
+test('editar y cambiar estado de dependencias confirma solo después del servidor', async () => {
+  const { state: form } = await renderComponent(AdminDependenciasView);
+  const dependency = { id: '7', clave: 'PLAN', nombre: 'Planeación', activo: true };
+  responses.push({ data: [dependency] }); await form.loadDependencies(); form.abrirEditar(dependency);
+  form.editForm.nombre = 'Planeación actualizada';
+  responses.push({ status: 409, data: { detail: 'Clave ocupada.' } }); await form.guardarEdicion();
+  assert.equal(form.modalEditarAbierto, true); assert.equal(form.dependencies[0].nombre, 'Planeación');
+  responses.push({ data: { ...dependency, nombre: form.editForm.nombre } }); await form.guardarEdicion();
+  assert.equal(form.modalEditarAbierto, false); assert.equal(form.dependencies[0].nombre, 'Planeación actualizada');
+  form.abrirEstado(form.dependencies[0]); responses.push({ data: { ...form.dependencies[0], activo: false } });
+  await form.confirmarEstado({ activo: false }); assert.equal(form.dependencies[0].activo, false);
+});
+
+test('crear y editar una familia recarga el catálogo, y un conflicto conserva el formulario', async () => {
+  const { state: form } = await renderComponent(ClasificacionesGestion, undefined, { tipo: 'familias' });
+  form.abrirCrear(); Object.assign(form.form, { codigo: 'F55', nombre: 'Familia nueva', agrupacion_id: '90' });
+  responses.push({ status: 409, data: { detail: 'Clave duplicada.' } }); await form.guardar();
+  assert.equal(form.creando, true); assert.equal(form.form.nombre, 'Familia nueva'); assert.equal(form.registros.length, 0);
+  responses.push({ status: 201, data: familiaNueva }, { data: [familiaNueva] }, { data: [grupoNuevo] });
+  await form.guardar(); assert.equal(form.creando, false); assert.equal(form.registros[0].id, '91');
+  form.abrirEditar(familiaNueva); form.form.nombre = 'Familia editada';
+  const editada = { ...familiaNueva, nombre: 'Familia editada' };
+  responses.push({ data: editada }, { data: [editada] }, { data: [grupoNuevo] }); await form.guardar();
+  assert.equal(form.registros[0].nombre, 'Familia editada'); assert.equal(form.editar, null);
+});
+
+test('restablecimiento exige 15–1024 caracteres y muestra los mismos límites en ambos campos', async () => {
+  auth.initialized = true; await router.replace('/restablecer-contrasena');
+  const { state, html } = await renderComponent(RestablecerView, form => { form.estadoEnlace = 'valido'; });
+  for (const [length, valid] of [[12, false], [14, false], [15, true], [129, true], [1024, true], [1025, false]]) {
+    state.password = 'a'.repeat(length); state.confirmarPassword = state.password;
+    assert.equal(state.passwordValida, valid); assert.equal(state.puedeGuardar, valid);
+  }
+  assert.equal((html.match(/minlength="15" maxlength="1024"/g) ?? []).length, 2);
+  assert.equal(requests.length, 0);
 });

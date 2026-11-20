@@ -19,6 +19,10 @@ export const credentialsSchema = z.strictObject({
   password: z.string().min(1).max(1024),
 });
 
+export const newPasswordSchema = z.string()
+  .min(15, 'La contraseña debe tener al menos 15 caracteres.')
+  .max(1024, 'La contraseña no puede superar los 1024 caracteres.');
+
 export const sessionSchema = z.object({
   usuario: userSchema.nullable(),
   csrf_token: z.string().min(16),

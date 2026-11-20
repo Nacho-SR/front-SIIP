@@ -23,6 +23,10 @@ Este alcance autoriza preparar su implementación; no aprueba el resto del model
 - El ID interno y el consecutivo se devuelven como cadenas. El código SIIP es independiente y único, sin distinción de mayúsculas.
 - Se reservan las claves de las 63 fichas base. No se copian ni alteran esas fichas; permanecen en el catálogo de referencia del frontend.
 - Se valida que familia y agrupación existan, estén activas, pertenezcan entre sí y coincidan con los segmentos de la clave.
+- El alta obtiene agrupaciones y familias vigentes de la API administrativa. Incluye
+  las creadas o renombradas desde administración y excluye las inactivas. Un fallo
+  de carga bloquea guardar y permite reintentar sin perder los demás campos de la ficha.
+  La consulta en modo lectura conserva la clasificación que devuelve la ficha.
 - Cada alta queda `activo=false`. No crea capturas, variables operativas, asignaciones, resultados, periodos exigibles ni publicaciones.
 - Consulta de ficha en modo lectura. Edición, activación y cambio de metodología siguen pendientes de sus contratos y vigencias.
 
