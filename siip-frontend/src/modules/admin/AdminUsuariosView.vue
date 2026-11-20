@@ -120,6 +120,7 @@ async function loadDependencies() {
   try {
     const { data } = await api.get<Dependency[]>('/administracion/dependencias');
     dependencies.value = data;
+    if (!usuarioEditando.value && !selectedDependencyActive.value) userForm.dependencia_id = '';
   } catch (error) {
     dependenciesError.value = errorMessage(error);
   } finally {

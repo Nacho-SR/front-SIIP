@@ -484,6 +484,19 @@ export function createUsersRepository(
           ]
         );
 
+        if (before.correo !== data.correo) {
+          // Los enlaces enviados al correo anterior ya no deben autorizar la cuenta.
+          await client.query(
+            `
+            UPDATE recuperaciones_password
+            SET utilizado_en = now()
+            WHERE usuario_id = $1
+              AND utilizado_en IS NULL
+            `,
+            [id]
+          );
+        }
+
         const after = await readManagedUser(client, id);
 
         if (!after) {

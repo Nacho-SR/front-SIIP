@@ -10,6 +10,8 @@
     "test": "node --import tsx --test",
     "admin:create": "tsx src/scripts/create-admin.ts",
     "indicadores:cargar-prueba": "tsx src/scripts/cargar-indicadores-prueba.ts",
+    "indicadores:validar-originales": "tsx src/scripts/importar-catalogo-original.ts",
+    "indicadores:importar-originales": "tsx src/scripts/importar-catalogo-original.ts --aplicar",
     "test:integration": "node --import tsx --test test/usuarios.integration.test.mjs test/indicadores.integration.test.mjs test/variables.integration.test.mjs test/metodologia.integration.test.mjs test/activacion.integration.test.mjs"
   },
   "keywords": [],
@@ -45,8 +47,6 @@
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.11",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
-    "indicadores:validar-originales": "tsx src/scripts/importar-catalogo-original.ts",  
-    "indicadores:importar-originales": "tsx src/scripts/importar-catalogo-original.ts --aplicar"
+    "typescript": "^7.0.2"
   }
 }

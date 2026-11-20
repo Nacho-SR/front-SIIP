@@ -74,8 +74,8 @@ const formatoValido = computed(() =>
 // ============================================
 
 const passwordValida = computed(() =>
-  password.value.length >= 12 &&
-  password.value.length <= 128
+  password.value.length >= 15 &&
+  password.value.length <= 1024
 );
 
 const contrasenasCoinciden = computed(() =>
@@ -171,7 +171,7 @@ async function restablecerContrasena() {
 
   if (!passwordValida.value) {
     error.value =
-      'La contraseña debe tener entre 12 y 128 caracteres.';
+      'La contraseña debe tener entre 15 y 1024 caracteres.';
     return;
   }
 
@@ -445,7 +445,7 @@ watch(
         <p class="recovery-description">
           El enlace está disponible.
           Establece una contraseña nueva de
-          al menos 12 caracteres.
+          entre 15 y 1024 caracteres.
         </p>
 
         <!-- NUEVA CONTRASEÑA -->
@@ -464,8 +464,8 @@ watch(
                   : 'password'
               "
               autocomplete="new-password"
-              minlength="12"
-              maxlength="128"
+              minlength="15"
+              maxlength="1024"
               :disabled="guardando"
               placeholder="Ingresa tu nueva contraseña"
               required
@@ -494,7 +494,7 @@ watch(
               'is-valid': passwordValida
             }"
           >
-            Mínimo 12 caracteres
+            De 15 a 1024 caracteres
           </span>
         </div>
 
@@ -514,8 +514,8 @@ watch(
                   : 'password'
               "
               autocomplete="new-password"
-              minlength="12"
-              maxlength="128"
+              minlength="15"
+              maxlength="1024"
               :disabled="guardando"
               placeholder="Repite tu contraseña"
               required

@@ -6,6 +6,8 @@ import { buildApp } from '../src/app.ts';
 import { envSchema } from '../src/env.ts';
 import { requireRoles } from '../src/modules/auth/guards/auth.guard.ts';
 import { PostgresSessionStore } from '../src/modules/auth/repositories/session.repository.ts';
+import { hashToken } from '../src/modules/auth/repositories/recovery.repository.ts';
+import { HttpError } from '../src/shared/http-error.ts';
 
 const origin = 'http://localhost:5173';
 const secret = 'synthetic-test-secret-with-at-least-32-characters';
@@ -13,7 +15,7 @@ const password = 'Synthetic-test-password-2026!';
 const passwordHash = await hash(password, { type: argon2id });
 const url = '/api/v1/auth/sesion';
 
-async function fixture(t, sessionStore) {
+async function fixture(t, sessionStore, additions = {}) {
   const account = {
     id: '9007199254740993', nombre: 'Cuenta sintética', correo: 'captura@example.test',
     rol: 'captura', dependencia_id: '7', activo: true, dependencia_activa: true,
@@ -26,7 +28,7 @@ async function fixture(t, sessionStore) {
   // Exclusivamente pruebas: la aplicación real solo construye PostgresSessionStore.
   const store = sessionStore ?? new session.MemoryStore();
   const env = envSchema.parse({ FRONTEND_ORIGIN: origin, SESSION_SECRET: secret });
-  const app = await buildApp(env, { repository, sessionStore: store });
+  const app = await buildApp(env, { repository, sessionStore: store, ...additions });
   app.log.level = 'silent';
   t.after(() => app.close());
   return { app, account, repository, store };
@@ -315,4 +317,80 @@ test('el adaptador conserva la serialización y generación requeridas por Fasti
   assert.ok((await bootstrap(app, authenticated.cookie)).usuario);
   assert.equal((await app.inject({ method: 'DELETE', url, headers: headers(authenticated) })).statusCode, 204);
   assert.equal((await bootstrap(app, authenticated.cookie)).usuario, null);
+});
+
+async function recoveryFixture(t, { enabled = true, mailFailure = false } = {}) {
+  const tokens = new Map(); const deliveries = []; const confirmations = [];
+  const recovery = {
+    async issue(correo, tokenHash) {
+      if (correo !== 'captura@example.test') return null;
+      tokens.set(tokenHash, { used: false, expires: Date.now() + 1200000 });
+      return { nombre: 'Cuenta sintética', correo };
+    },
+    async validate(tokenHash) {
+      const token = tokens.get(tokenHash);
+      return Boolean(token && !token.used && token.expires > Date.now());
+    },
+    async consume(tokenHash, password) {
+      if (!await this.validate(tokenHash)) throw new HttpError(400, 'ENLACE_INVALIDO', 'Enlace inválido.');
+      tokens.get(tokenHash).used = true; confirmations.push(password);
+    },
+  };
+  const recoveryMailer = { enabled, async send(nombre, correo, token) {
+    if (mailFailure) throw new Error('Fallo SMTP simulado');
+    deliveries.push({ correo, token });
+  } };
+  const { app } = await fixture(t, undefined, { recovery, recoveryMailer });
+  const state = await bootstrap(app);
+  const post = (path, payload, extraHeaders = {}) => app.inject({ method: 'POST', url: '/api/v1/auth/' + path,
+    headers: { ...headers(state), ...extraHeaders }, payload });
+  return { app, state, post, tokens, deliveries, confirmations };
+}
+
+test('recuperación responde igual para un correo existente o desconocido y nunca devuelve el token', async t => {
+  const f = await recoveryFixture(t);
+  const known = await f.post('recuperacion', { correo: ' CAPTURA@EXAMPLE.TEST ' });
+  const unknown = await f.post('recuperacion', { correo: 'unknown@example.test' });
+  assert.equal(known.statusCode, 202); assert.equal(unknown.statusCode, 202);
+  assert.deepEqual(known.json(), unknown.json()); assert.equal(f.deliveries.length, 1);
+  const token = f.deliveries[0].token;
+  assert.match(token, /^[a-f0-9]{64}$/); assert.equal(known.body.includes(token), false);
+  assert.equal(f.tokens.has(hashToken(token)), true); assert.equal(f.tokens.has(token), false);
+});
+
+test('recuperación exige Origin y CSRF, rechaza contraseñas cortas y no reutiliza enlaces', async t => {
+  const f = await recoveryFixture(t);
+  const denied = await f.app.inject({ method: 'POST', url: '/api/v1/auth/recuperacion',
+    headers: { origin, cookie: f.state.cookie }, payload: { correo: 'captura@example.test' } });
+  assert.equal(denied.statusCode, 403); assert.equal(f.deliveries.length, 0);
+  assert.equal((await f.post('recuperacion', { correo: 'captura@example.test' }, { origin: 'https://foreign.example.test' })).statusCode, 403);
+  await f.post('recuperacion', { correo: 'captura@example.test' }); const { token } = f.deliveries[0];
+  assert.deepEqual((await f.post('validar-recuperacion', { token })).json(), { valido: true });
+  assert.equal((await f.post('restablecer', { token, password: 'a'.repeat(14) })).statusCode, 422);
+  assert.equal(f.confirmations.length, 0);
+  assert.equal((await f.post('restablecer', { token, password: 'a'.repeat(15) })).statusCode, 200);
+  assert.deepEqual(f.confirmations, ['a'.repeat(15)]);
+  assert.deepEqual((await f.post('validar-recuperacion', { token })).json(), { valido: false });
+  assert.equal((await f.post('restablecer', { token, password: 'a'.repeat(15) })).statusCode, 400);
+  assert.equal(f.confirmations.length, 1);
+});
+
+test('un enlace caducado no cambia contraseña y la solicitud limita intentos', async t => {
+  const f = await recoveryFixture(t);
+  await f.post('recuperacion', { correo: 'captura@example.test' }); const { token } = f.deliveries[0];
+  f.tokens.get(hashToken(token)).expires = Date.now() - 1;
+  assert.deepEqual((await f.post('validar-recuperacion', { token })).json(), { valido: false });
+  assert.equal((await f.post('restablecer', { token, password })).statusCode, 400);
+  assert.equal(f.confirmations.length, 0);
+  await f.post('recuperacion', { correo: 'unknown@example.test' });
+  await f.post('recuperacion', { correo: 'unknown@example.test' });
+  assert.equal((await f.post('recuperacion', { correo: 'unknown@example.test' })).statusCode, 429);
+});
+
+test('sin correo configurado responde 503 y un fallo SMTP conserva la respuesta genérica', async t => {
+  const disabled = await recoveryFixture(t, { enabled: false });
+  assert.equal((await disabled.post('recuperacion', { correo: 'captura@example.test' })).statusCode, 503);
+  const failed = await recoveryFixture(t, { mailFailure: true });
+  const response = await failed.post('recuperacion', { correo: 'captura@example.test' });
+  assert.equal(response.statusCode, 202); assert.doesNotMatch(response.body, /SMTP/);
 });

@@ -14,7 +14,7 @@ const sessionUrl = '/api/v1/auth/sesion';
 const usersUrl = '/api/v1/administracion/usuarios';
 const depsUrl = '/api/v1/administracion/dependencias';
 
-async function fixture(t) {
+async function fixture(t, additions = {}) {
   const accounts = new Map([['1', {
     id: '1', nombre: 'Admin sintético', correo: 'admin@example.test', password_hash: passwordHash,
     rol: 'administrador', dependencia_id: null, activo: true, dependencia_activa: null,
@@ -27,7 +27,7 @@ async function fixture(t) {
       return [...accounts.values()].map((user) => ({ ...user,
         dependencia_nombre: dependencies.get(user.dependencia_id)?.nombre ?? null }));
     },
-    async listDependencies() { return [...dependencies.values()].filter((item) => item.activo); },
+    async listDependencies() { return [...dependencies.values()]; },
     async createUser(account, actorId) {
       if ([...accounts.values()].some((user) => user.correo === account.correo)) {
         throw new HttpError(409, 'CORREO_YA_REGISTRADO', 'Correo duplicado.');
@@ -61,7 +61,7 @@ async function fixture(t) {
     async findById(id) { return currentAccount(accounts.get(id)); },
   };
   const app = await buildApp(envSchema.parse({ FRONTEND_ORIGIN: origin, SESSION_SECRET: 'synthetic-secret-for-tests-with-more-than-32-characters' }), {
-    repository, users, sessionStore: new session.MemoryStore(),
+    repository, users, sessionStore: new session.MemoryStore(), ...additions,
   });
   app.log.level = 'silent';
   t.after(() => app.close());
@@ -223,7 +223,7 @@ test('bootstrap fuerza rol administrador y no recibe una contraseña en el repos
   await assert.rejects(service.createInitialAdmin({ nombre: 'Demo', correo: 'demo@example.test', password, rol: 'revision' }));
 });
 
-test('solo administrador consulta dependencias activas y el catálogo incluye las recién creadas', async (t) => {
+test('solo administrador consulta dependencias y el catálogo incluye las nuevas e inactivas', async (t) => {
   const { app, dependencies } = await fixture(t);
   assert.equal((await app.inject(depsUrl)).statusCode, 401);
   const headers = await login(app);
@@ -233,7 +233,7 @@ test('solo administrador consulta dependencias activas y el catálogo incluye la
   dependencies.set('99', { id: '99', clave: 'INACTIVA', nombre: 'Inactiva', activo: false });
   const response = await app.inject({ url: depsUrl, headers });
   assert.equal(response.statusCode, 200);
-  assert.deepEqual(response.json(), [created.json()]);
+  assert.deepEqual(response.json(), [created.json(), dependencies.get('99')]);
   assert.equal(response.headers['cache-control'], 'no-store');
 });
 
@@ -284,4 +284,60 @@ test('Revisión exige dependencia activa y su desactivación invalida la sesión
   dependencies.get(dependencia_id).activo = false;
   const current = await app.inject({ url: sessionUrl, headers: { cookie: reviewHeaders.cookie } });
   assert.equal(current.json().usuario, null);
+});
+
+test('edición, estado y clasificaciones requieren Administrador, Origin y CSRF; conservan IDs y actor', async t => {
+  const group = { id: '90', codigo: '09', nombre: 'Agrupación sintética', activo: true };
+  const family = { id: '91', codigo: 'F55', nombre: 'Familia sintética', agrupacion_id: '90', agrupacion_nombre: '09. Agrupación sintética', activo: true };
+  const calls = [];
+  const classifications = {};
+  for (const [method, record] of Object.entries({ createAgrupacion: group, createFamilia: family,
+    editAgrupacion: group, editFamilia: family, estadoAgrupacion: group, estadoFamilia: family })) {
+    classifications[method] = async (...args) => { calls.push({ method, args }); return record; };
+  }
+  const f = await fixture(t, { classifications });
+  const user = { id: '9007199254740993', nombre: 'Consulta', correo: 'consulta@example.test', rol: 'consulta', dependencia_id: null, activo: true, dependencia_nombre: null };
+  const dependency = { id: '7', clave: 'PLAN', nombre: 'Planeación', activo: true };
+  for (const [method, record] of Object.entries({ updateUser: user, changeUserStatus: user,
+    updateDependency: dependency, changeDependencyStatus: dependency })) {
+    f.users[method] = async (...args) => { calls.push({ method, args }); return record; };
+  }
+  const edits = [
+    ['PATCH', `${usersUrl}/${user.id}`, { nombre: user.nombre, correo: user.correo, rol: 'consulta', dependencia_id: null }, 'updateUser'],
+    ['PATCH', `${usersUrl}/${user.id}/estado`, { activo: false }, 'changeUserStatus'],
+    ['PATCH', `${depsUrl}/7`, { clave: 'PLAN', nombre: 'Planeación' }, 'updateDependency'],
+    ['PATCH', `${depsUrl}/7/estado`, { activo: false }, 'changeDependencyStatus'],
+    ['POST', '/api/v1/administracion/agrupaciones', { codigo: '09', nombre: group.nombre }, 'createAgrupacion'],
+    ['POST', '/api/v1/administracion/familias', { codigo: 'F55', nombre: family.nombre, agrupacion_id: group.id }, 'createFamilia'],
+    ['PATCH', '/api/v1/administracion/agrupaciones/90', { codigo: '09', nombre: group.nombre }, 'editAgrupacion'],
+    ['PATCH', '/api/v1/administracion/familias/91', { codigo: 'F55', nombre: family.nombre, agrupacion_id: group.id }, 'editFamilia'],
+    ['PATCH', '/api/v1/administracion/agrupaciones/90/estado', { activo: false }, 'estadoAgrupacion'],
+    ['PATCH', '/api/v1/administracion/familias/91/estado', { activo: false }, 'estadoFamilia'],
+  ];
+  const anonymous = await f.app.inject(sessionUrl);
+  const anonymousHeaders = { origin, cookie: cookieOf(anonymous), 'x-csrf-token': anonymous.json().csrf_token };
+  for (const [method, url, payload] of edits) assert.equal((await f.app.inject({ method, url, payload, headers: anonymousHeaders })).statusCode, 401);
+  f.dependencies.set('7', dependency);
+  for (const [index, rol] of ['captura', 'revision', 'consulta'].entries()) {
+    f.accounts.set(String(index + 2), { id: String(index + 2), nombre: rol, correo: `${rol}@example.test`,
+      rol, dependencia_id: rol === 'consulta' ? null : '7', dependencia_activa: rol === 'consulta' ? null : true,
+      activo: true, password_hash: passwordHash });
+    const nonAdmin = await login(f.app, `${rol}@example.test`);
+    for (const [method, url, payload] of edits) assert.equal((await f.app.inject({ method, url, payload, headers: nonAdmin })).statusCode, 403);
+  }
+  assert.equal(calls.length, 0);
+  const admin = await login(f.app);
+  const [method, url, payload] = edits[0];
+  assert.equal((await f.app.inject({ method, url, payload, headers: { origin, cookie: admin.cookie } })).statusCode, 403);
+  assert.equal((await f.app.inject({ method, url, payload, headers: { ...admin, origin: 'https://foreign.example.test' } })).statusCode, 403);
+  assert.equal((await f.app.inject({ method, url, payload: { ...payload, rol: 'administrador' }, headers: admin })).statusCode, 422);
+  assert.equal(calls.length, 0);
+  for (const [method, url, payload, expectedMethod] of edits) {
+    const response = await f.app.inject({ method, url, payload, headers: admin });
+    assert.equal(response.statusCode, method === 'POST' ? 201 : 200, response.body);
+    assert.equal(calls.at(-1).method, expectedMethod);
+    assert.equal(calls.at(-1).args.at(-1), '1');
+  }
+  assert.equal(calls[0].args[0], user.id);
+  assert.deepEqual(calls[0].args[1], edits[0][2]);
 });

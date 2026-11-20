@@ -4,13 +4,14 @@ import { z } from 'zod';
 import {
   credentialsSchema,
   idSchema,
+  newPasswordSchema,
   userSchema
 } from '../../auth/schemas/auth.schema.js';
 
 const accountFields = {
   nombre: z.string().trim().min(1).max(200),
   correo: credentialsSchema.shape.correo,
-  password: z.string().min(15).max(1024)
+  password: newPasswordSchema
 };
 
 // Administrador inicial

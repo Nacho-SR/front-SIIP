@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { newPasswordSchema } from './auth.schema.js';
 
 // ============================================
 // SOLICITUD DE RECUPERACIÓN
@@ -22,10 +23,7 @@ export const recoveryConfirmSchema = z.strictObject({
     .string()
     .regex(/^[a-f0-9]{64}$/i),
 
-  password: z
-    .string()
-    .min(12, 'La contraseña debe tener al menos 12 caracteres.')
-    .max(128, 'La contraseña no puede superar los 128 caracteres.')
+  password: newPasswordSchema
 });
 
 // ============================================
