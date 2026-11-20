@@ -86,6 +86,18 @@ Confirmado por el equipo el 22/10/2026: verdes=1, amarillos=0.5, rojos=0; índic
 
 ## 9. Trabajo actual
 
+Actualización DEC-046 (20/11/2026): carga técnica del anexo solicitada y autorizada.
+Se añadieron 63 fichas documentales inactivas en SIIP local, localhost:5432/public,
+con auditoría del Administrador ID 1; total 67, conservando los cuatro ejemplos.
+Prueba real aislada aprobada y esquema eliminado; repetición sin duplicados y
+rollback completo verificados. Sin configuración/activación automática ni importación
+UI/API. [Procedencia, formatos y comprobaciones](carga-anexo-indicadores.md).
+
+DEC-046 (20/11/2026): preparada carga técnica de las 63 fichas originales del anexo,
+inactivas, conservando fuente y datos anteriores. Prueba real y aplicación pendientes
+de autorización concreta. No se configura ni activa el catálogo automáticamente.
+[Estado](carga-anexo-indicadores.md).
+
 Actualización DEC-045 (17/11/2026): el usuario solicita activación controlada y confirma
 inicio como mínimo en el siguiente periodo natural completo. Se integra DEC-044
 en develop y se prepara registro de activaciones, validaciones y bloqueo de la
