@@ -91,6 +91,16 @@ aplicación del indicador. Se actualizan al cargar, recuperar foco o pulsar Actu
 
 El cierre y gris de DEC-039 están especificados en los contratos. No se afirma que los prototipos apliquen cierre, persistan justificaciones o publiquen indicadores.
 
+## Limpieza de código — 23/11/2026
+
+Limpieza del 23/11/2026: retirados el componente inicial `HelloWorld.vue` y sus
+imágenes/iconos sin referencias, el tipo antiguo `IndicadorCaptura`, la función
+de corrección local ya no utilizada y su interfaz. `date-fns` se elimina de las
+dependencias por no tener uso. Se conservan las vistas/datos de demostración que
+todavía consumen Consulta, Estadísticas y Seguimiento; eliminarlos impediría
+revisar esas pantallas mientras sus API siguen pendientes. No se habilitan
+escrituras locales ni se cambia el diseño de las vistas actuales.
+
 ## Alojamiento seleccionado — 06/11/2026
 
 DEC-040: frontend compilado, API Node.js y PostgreSQL en el mismo Hostinger VPS KVM 1. DEC-041: evidencias y justificaciones PDF en Cloudflare R2, sustituyendo Supabase Storage. Se conserva autenticación SIIP. [Arquitectura, costos y fuentes vigentes](../Documentacion/infraestructura-hostinger-r2.md). Selección documental, sin despliegue ni integración R2 realizados.

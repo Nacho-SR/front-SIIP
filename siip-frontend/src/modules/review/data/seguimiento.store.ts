@@ -90,17 +90,3 @@ export function actualizarExpediente(
 ): ExpedienteSeguimiento {
   throw new Error(MOTIVO_OPERACION_PENDIENTE);
 }
-
-export interface DatosCorreccion {
-  valor: number;
-  descripcion: string;
-  evidenciaNombre: string;
-  variablesCaptura?: Record<string, number>;
-}
-
-export function reenviarCorreccion(
-  _id: string,
-  _datos: DatosCorreccion
-): ExpedienteSeguimiento {
-  throw new Error(MOTIVO_OPERACION_PENDIENTE);
-}

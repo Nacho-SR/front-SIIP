@@ -29,7 +29,7 @@ export async function leerMetodologias(database: Database, id: string): Promise<
     metodologias: rows.map(row => ({ ...row, creadoEn: row.creadoEn.toISOString() })) };
 }
 export async function leerContextoMetodologia(database: Database, id: string, row: Indicator, version: number, regla: ReglaPorcentaje): Promise<ContextoMetodologia> {
-  if (row.activo) throw new HttpError(409, 'INDICADOR_ACTIVO', 'La metodología de un indicador activo requiere un flujo de cambio específico.');
+  if (row.activo) throw new HttpError(409, 'INDICADOR_ACTIVO', 'La metodología de un indicador activo no se puede modificar.');
   if (version !== row.version_variables) throw new HttpError(409, 'VARIABLES_DESACTUALIZADAS', 'Cambiaron las variables o sus responsables. Recarga antes de continuar.');
   const variables = (await database.query<Variable>(`SELECT v.id::text, v.codigo, v.descripcion, v.unidad_medida AS "unidadMedida",
     v.tipo_dato AS "tipoDato", v.dependencia_id::text AS "dependenciaId", d.nombre AS "dependenciaNombre", d.activo AS "dependenciaActiva"

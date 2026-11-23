@@ -95,9 +95,6 @@ test('las funciones de escritura rechazan cambios sin alterar valores, variables
     for (const accion of ['revisar', 'observar', 'validar']) {
       assert.throws(() => seguimiento.actualizarExpediente('envio-original', accion, 'Comentario'), /Vista previa/);
     }
-    assert.throws(() => seguimiento.reenviarCorreccion('envio-original', {
-      valor: 9, variablesCaptura: { A: 9 }, evidenciaNombre: 'nuevo.pdf', descripcion: 'Cambio',
-    }), /Vista previa/);
     assert.equal(escrituras, 0);
     assert.equal(contenido, original);
     assert.deepEqual(seguimiento.obtenerExpedientes(), JSON.parse(original));

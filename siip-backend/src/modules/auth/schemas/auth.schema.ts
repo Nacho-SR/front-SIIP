@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { FastifyRequest } from 'fastify';
 
 export const idSchema = z.string().max(19).regex(/^[1-9]\d*$/).refine(
   (value) => /^[1-9]\d{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n,

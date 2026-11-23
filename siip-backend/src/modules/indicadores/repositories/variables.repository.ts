@@ -41,7 +41,7 @@ export function createVariablesRepository(pool: Pool): VariablesRepository {
           'SELECT id::text, activo, version_variables FROM indicadores WHERE id = $1 FOR UPDATE', [id],
         )).rows[0];
         if (!context) throw new HttpError(404, 'INDICADOR_NO_ENCONTRADO', 'No se encontró el indicador.');
-        if (context.activo) throw new HttpError(409, 'INDICADOR_ACTIVO', 'La configuración de un indicador activo requiere un flujo de cambio de metodología.');
+        if (context.activo) throw new HttpError(409, 'INDICADOR_ACTIVO', 'La configuración de un indicador activo no se puede modificar.');
         if (context.version_variables !== data.version) {
           throw new HttpError(409, 'CONFIGURACION_DESACTUALIZADA', 'Otra persona modificó las variables. Recarga la configuración antes de guardar.');
         }

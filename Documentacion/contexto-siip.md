@@ -34,6 +34,16 @@ denegadas, alteración de rol/dependencia y revocación. Usa sesiones sintética
 doble de PostgreSQL; no acredita BD real ni navegador. No requirió modificar los
 permisos de producción. Alcance y reproducción en `matriz-permisos.md`.
 
+Limpieza y revisión SQL, 23/11/2026: retirados restos sin referencias de la plantilla
+Vite/Vue, tipos/corrección local de Captura y cuatro dependencias no usadas.
+Compilación backend comprueba locales/parámetros sin uso. Los 85 módulos TS/Vue/JSON
+restantes tienen referencias desde las aplicaciones o sus CLI; esto no descarta
+por sí solo ramas o exports preparados aún sin uso operativo. Se conservan
+migraciones, herramientas técnicas y prototipos que sí tienen consumidores.
+No se hallaron entradas externas interpoladas al SQL en los repositorios revisados;
+cinco pruebas nuevas comprueban parámetros y rechazo de IDs SQL. Se usan dobles:
+no se consultó la BD real ni se afirma una auditoría de infraestructura desplegada.
+
 ## 2. Fuentes originales del proyecto
 Buscar dentro del repositorio (los archivos pueden estar en distintas subcarpetas):
 - `05 Arquitectura del sistema.docx` — consultor, documento funcional de ~80 páginas; no equivale a especificación técnica terminada. Contiene comentarios de revisión del equipo.

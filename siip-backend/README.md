@@ -314,6 +314,35 @@ simulador de porcentaje reutiliza el cociente conservando su API y colores.
 No habilita metodologías nuevas ni requiere SQL. Ver
 [contratos y precisión técnica](src/modules/evaluacion/README.md).
 
+## Limpieza y revisión SQL — 23/11/2026
+
+Limpieza y revisión SQL del 23/11/2026: se retiraron `@fastify/multipart`,
+`drizzle-orm` y `drizzle-kit`, sin uso en código/configuración/comandos. No cambia
+el acceso PostgreSQL mediante `pg`. Los scripts SQL históricos y la carga técnica
+de ejemplos se conservan porque siguen siendo herramientas de preparación.
+Se activa `noUnusedLocals`/`noUnusedParameters` en TypeScript y se retira un import
+sin uso. Los mensajes de bloqueo de variables/metodología activa ya no sugieren
+un flujo de cambio que no está implementado; conservan código y estado HTTP.
+
+No se encontraron entradas externas concatenadas al SQL en los repositorios
+revisados. Autenticación, sesiones, recuperación, cuentas/dependencias,
+clasificaciones, indicadores, variables, metodologías, activaciones y bandeja usan
+valores parametrizados. Las columnas dinámicas de indicadores proceden únicamente
+de `indicatorColumns`; las otras interpolaciones SQL son consultas constantes o
+cláusulas de bloqueo elegidas por el backend, no nombres/campos enviados por HTTP.
+
+`test/sql-seguridad.test.mjs` añade cinco pruebas: correo/ID/token, sesiones,
+cuentas/dependencias/auditoría, alta/edición de indicadores y rechazo de IDs SQL
+en la API. Usan valores con comillas, comentarios y sentencias SQL con repositorios
+reales y dobles de `pg`: comprueban que viajen como parámetros y que campos de texto
+legítimos con comillas no se alteren. No se ejecutan esas cadenas contra una BD.
+
+Resultado: 116 pruebas de backend sin PostgreSQL, 70 de frontend y cuatro del
+recorrido integrado aprobadas; ambas compilaciones aprobadas. La revisión de código
+y los dobles no sustituyen una prueba de penetración o la verificación de permisos,
+extensiones/procedimientos y configuración de una base desplegada. No se conectó
+a la BD real, no se ejecutaron migraciones ni se actualizaron versiones de paquetes.
+
 ## Alojamiento seleccionado — 06/11/2026
 
 DEC-040: frontend compilado, API Node.js y PostgreSQL en el mismo Hostinger VPS KVM 1. DEC-041: evidencias y justificaciones PDF en Cloudflare R2, sustituyendo Supabase Storage. Se conserva autenticación SIIP. [Arquitectura, costos y fuentes vigentes](../Documentacion/infraestructura-hostinger-r2.md). Selección documental, sin despliegue ni integración R2 realizados.

@@ -33,6 +33,7 @@ Este repositorio corresponde al **Sistema Integrado de Indicadores de Planeació
 - Nunca inventes respuestas del cliente ni presentes el documento del consultor como especificación definitiva.
 - No ejecutes migraciones destructivas, no hagas deploy, no envíes cambios al remoto y no modifiques datos productivos sin autorización.
 - Mantén secretos, contraseñas, tokens y archivos `.env` fuera del control de versiones.
+- SQL: pasa valores externos mediante parámetros de `pg` (`$1`, `$2`, etc.). Los identificadores dinámicos solo pueden proceder de constantes/listas cerradas del backend; nunca de claves, nombres o fragmentos enviados por HTTP. Mantener `test/sql-seguridad.test.mjs` sin conectarlo a una BD real.
 
 ## Integración visual en develop — 09/11/2026
 
