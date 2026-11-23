@@ -2,6 +2,20 @@
 
 Versión 0.1 · 26/10/2026 · API de negocio propuesta; autenticación y altas iniciales implementadas en código. Base relativa `/api/v1`. Se conserva la carpeta real `Documentacion`; las rutas HTTP son independientes de esa capitalización.
 
+Actualización implementada el 23/11/2026: `GET /captura/indicadores`, exclusivamente
+Captura con sesión y dependencia activa. Devuelve dependencia, indicadores con
+variables propias asignadas, frecuencia e inicio vigente. No acepta parámetros
+de consulta; no concede captura, semaforización ni acceso a variables ajenas.
+Es una bandeja de lectura del catálogo persistido, incluyendo asignaciones en
+preparación. No sustituye ni implementa los contratos operativos propuestos abajo.
+Detalle: `siip-backend/src/modules/operacion/README.md`.
+
+Punto 2 del 23/11/2026: esa respuesta incorpora `fechaServidor` (fecha local),
+`zonaHoraria: 'America/Mexico_City'` y `periodoActual: {inicio, fin}` por indicador,
+con fechas inclusivas del mes/trimestre/semestre/año natural. No acepta parámetros
+para sustituir el reloj; es referencia de fechas, sin permisos de envío ni estados
+de cierre/incumplimiento. No añade rutas ni tablas.
+
 P0: primer recorrido con configuración conciliada de una dependencia. P1: observaciones/corrección, reapertura, evaluación temática y avisos. P2: administración y reportes después de cerrar contratos específicos; diferidos no significa fuera de MVP.
 
 Todos los contratos son borradores. `T` = propuesta técnica; `C` = contrato condicionado por pendientes de negocio/configuración. En OpenAPI se indican mediante `x-estado-contrato`, `x-pendientes`, `x-roles` y `x-prioridad`. El YAML contiene las 21 operaciones P0/P1 siguientes, no todos los candidatos P2.

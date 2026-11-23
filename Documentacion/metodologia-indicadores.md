@@ -29,7 +29,16 @@ a incumplimiento gris, rojo ni cero. Con total positivo, cero sí es un valor v�
 Umbrales finitos entre 0 y 100, amarillo estrictamente menor que verde. Rojo bajo
 amarillo; amarillo desde su umbral hasta antes del verde; verde desde su umbral.
 La simulación compara productos decimales antes de redondear y presenta cuatro
-decimales. Usa decimal.js ya instalado, con precisión local de 40 dígitos.
+decimales. Usa decimal.js ya instalado, con precisión local de 40 dígitos para
+comparar productos. Desde el punto 3 del 23/11/2026, el valor numérico se obtiene
+del módulo matemático común (100 dígitos internos antes de presentar cuatro),
+sin alterar esos colores, restricciones o el contrato de la simulación.
+
+Se prepararon también funciones puras de variación, complemento y crecimiento
+real, separadas del semáforo. Su existencia no amplía las reglas seleccionables
+ni habilita indicadores nuevos: fuentes, historia, rangos, precisión de negocio
+y configuración por ficha siguen sujetos a conciliación. Contratos y límites
+en `siip-backend/src/modules/evaluacion/README.md`.
 
 El ejemplo 130 conserva sus parámetros fuente: amarillo desde 75 %, verde desde
 90 %, mensual, no acumulable. Los valores 75/90 se expresan en porcentaje, no

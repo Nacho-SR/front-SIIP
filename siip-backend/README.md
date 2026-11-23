@@ -298,6 +298,22 @@ SQL 004 extiende el ENUM existente y debe confirmarse antes de usar el rol. **No
 
 DEC-039 confirma cierre de captura, gris por faltantes y justificación exclusivamente PDF. Los módulos `indicadores`, `operacion` y `evaluacion` todavía no implementan ese flujo. Véase `../Documentacion/flujos-negocio.md` y los pendientes P-15/16.
 
+## Bandeja propia de Captura (23/11/2026)
+
+`GET /api/v1/captura/indicadores` requiere Captura y una dependencia activa.
+Solo lee las asignaciones de la dependencia de la sesión, sus variables y el
+inicio de activación vigente. No admite seleccionar otra dependencia ni escribir
+capturas. Reutiliza las tablas existentes de SQL 001–008; no hay migración nueva.
+Contrato, estados y límites de verificación en [Operación](src/modules/operacion/README.md).
+
+## Funciones matemáticas separadas del semáforo (23/11/2026)
+
+Punto 3 (23/11/2026): se prepararon funciones puras de cociente con factor,
+variación, complemento y crecimiento real, sin semáforo ni acceso a BD. El
+simulador de porcentaje reutiliza el cociente conservando su API y colores.
+No habilita metodologías nuevas ni requiere SQL. Ver
+[contratos y precisión técnica](src/modules/evaluacion/README.md).
+
 ## Alojamiento seleccionado — 06/11/2026
 
 DEC-040: frontend compilado, API Node.js y PostgreSQL en el mismo Hostinger VPS KVM 1. DEC-041: evidencias y justificaciones PDF en Cloudflare R2, sustituyendo Supabase Storage. Se conserva autenticación SIIP. [Arquitectura, costos y fuentes vigentes](../Documentacion/infraestructura-hostinger-r2.md). Selección documental, sin despliegue ni integración R2 realizados.

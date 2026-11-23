@@ -1,16 +1,36 @@
 # Contexto de trabajo — SIIP Salamanca
 
-**Corte de contexto:** 6 de noviembre de 2026.
+**Corte de contexto:** 23 de noviembre de 2026; bandeja propia de Captura de solo lectura y conciliación metodológica documental pendiente de respuestas.
 **Origen:** conversación de requisitos entre equipo desarrollador y ChatGPT, Word del consultor, Excel de fichas técnicas, diagrama ERD de draw.io.  
 **Naturaleza:** resumen de trabajo; **no es transcripción literal completa de la conversación** ni evidencia de aprobación formal por parte del cliente.
 
 ## 1. Objetivo
 Sistema Integrado de Indicadores de Planeación de Salamanca, Guanajuato: administrar indicadores municipales y sus fichas, capturar variables/evidencias por periodo, revisar y validar, calcular resultados y semáforos, conservar historia y consultar información publicada.
 
+Avance técnico del 23/11/2026: Captura consulta sus asignaciones persistidas por
+`GET /api/v1/captura/indicadores`, con dependencia de la sesión, únicamente sus
+variables, frecuencia e inicio de activación vigente. Muestra fichas asignadas
+inactivas como preparación; no concede captura por mostrar una asignación.
+Sustituye el formulario de ejemplo, sin escrituras ni nuevas tablas. Envíos,
+evidencias, calendario operativo y cálculo siguen pendientes. Ver contrato y
+límites de comprobación en `siip-backend/src/modules/operacion/README.md`.
+
+Punto 2, 23/11/2026: el servicio compartido calcula inicio/fin inclusivos del
+periodo natural mensual, trimestral, semestral o anual. La bandeja recibe la fecha
+del servidor en America/Mexico_City y muestra el intervalo de referencia de cada
+indicador; el navegador no determina fechas de negocio. Se conserva el siguiente
+periodo completo para activar. Esto no implementa exigibilidad, cierres ni grises.
+
+Punto 3, 23/11/2026: funciones matemáticas puras en el backend para cociente con
+factor, variación, complemento y crecimiento real con inflación. Entradas decimales
+explícitas y resultado numérico o causa matemática; sin semáforo, BD ni resolución
+de referencias. El simulador de parte/total reutiliza el cociente y conserva sus
+colores/contrato. No amplía las metodologías seleccionables ni la activación.
+
 ## 2. Fuentes originales del proyecto
 Buscar dentro del repositorio (los archivos pueden estar en distintas subcarpetas):
 - `05 Arquitectura del sistema.docx` — consultor, documento funcional de ~80 páginas; no equivale a especificación técnica terminada. Contiene comentarios de revisión del equipo.
-- `Anexo 3_4 SIIP Sist(2).xlsx` — hoja `IPSM`, 63 indicadores y 36 columnas de ficha técnica.
+- `Anexo 3_4 SIIP Sist.xlsx` — fuente indicada por el usuario el 20/11/2026 para repetir la conciliación: hoja `IPSM`, 63 indicadores y 36 columnas. Su SHA-256 y cambios están en decisiones-siip.md. `(2).xlsx` se conserva como antecedente y origen de la carga de DEC-046; esa BD no se ha actualizado automáticamente con la nueva fuente.
 - `Diagrama 2drawio.html` — modelo ERD inicial, editable en diagrams.net, **borrador**, no contrato definitivo.
 - `SIIP_01_Alcance_MVP_borrador_v0_2.docx` y `SIIP_Registro_de_Decisiones_v0_2.docx` — versiones actualizadas de acuerdos y pendientes (copias incorporadas en este paquete).
 - `alcance-mvp.md` — actualización de trabajo v0.3 del 23/10/2026, con acuerdos posteriores al Word y bitácora de diferencias para revisión.
@@ -28,6 +48,7 @@ Usa datos y fórmulas reales del Excel al diseñar el esquema. No conviertas aut
 - Hay 26 denominaciones de responsables, no necesariamente 26 dependencias únicas; requieren normalización.
 - Verificado en el anexo local de 63 fichas: 6 metas y 55 líneas base vacías o «Por definir». Sustituye el conteo previo de 8 y 59; los valores cero son datos válidos.
 - Algunos algoritmos / semáforos usan tendencias o varios periodos, por lo que hay casos de valor validado publicable **sin color**.
+- Revisión repetida de la nueva fuente: 117 entradas; seis grupos de cálculo (incluye crecimiento real con inflación), cuatro familias de semaforización; 25 fichas con tendencia o meta y 29 con antecedentes. Es clasificación documental, sin implementación operativa. Predial ya incluye inflación, presupuesto dice Ascendente, MiPyMEs es Acumulable con tendencia/meta, panteones No acumulable y vida útil se define en años. Detalles por conciliar en pendientes-siip.md.
 
 ## 4. Operación confirmada
 ### Roles
@@ -47,7 +68,10 @@ Usa datos y fórmulas reales del Excel al diseñar el esquema. No conviertas aut
 
 ### Reglas y metas
 - Fórmula original del indicador persistida como dato de ficha técnica, no necesariamente ejecutada como texto arbitrario. Backend solo necesita operaciones comprobadas contra casos reales.
-- DEC-030/031: cambiar una regla no recalcula resultados/colores publicados; una captura en revisión conserva su regla y atrasos/reaperturas usan la del periodo. Falta precisar vigencia de cambios a mitad de periodo y alcance sobre agregados temáticos bajo demanda. Deben poder recuperarse reglas históricas aunque no haya captura previa.
+- DEC-052 restringe DEC-030/031: no se permitirá modificar la metodología de un indicador activo; otra alta será independiente, sin relación de sustitución ni traslado automático de historial. Se conservan configuración e historia del anterior y no se recalculan publicaciones. Sigue pendiente el alcance sobre agregados temáticos bajo demanda (P-13).
+- DEC-047/048: cultura compara el mismo semestre del año anterior. En las fichas de tendencia se conserva la regla escrita: verde por meta en su propia unidad o dos incrementos consecutivos. No completar secuencias mixtas por aproximación ni saltar periodos faltantes; historia insuficiente conserva la vía por meta si aplica.
+- DEC-049/050: Administrador registra y autoriza referencias y antecedentes iniciales documentados. Referencias aplicables al inicio del periodo, en solo lectura para Captura y conservadas con su versión. Valores numéricos validados sin color pueden construir historia. Fuentes/cifras concretas y soporte operativo aún pendientes; sin importador ni publicaciones ficticias.
+- DEC-051: reglas nuevas pueden documentarse en fichas inactivas; activar solo combinaciones compatibles implementadas y probadas. Reutilización mediante configuración cuando el contrato lo permita; lógica diferente exige desarrollo y pruebas. No hay motor de expresiones arbitrarias.
 - Metas porcentuales del Excel pueden aparecer como `1` en su valor interno aunque Excel renderice `100 %`. Interpretar **formato y unidad** del dato; NO aplicar una conversión global ingenua `si <=1 multiplicar por 100` sin comprobar la ficha.
 
 ## 5. Decisión DEC-013: mezcla de periodos por corte mensual

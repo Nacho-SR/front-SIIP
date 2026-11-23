@@ -50,6 +50,41 @@
 
 Actualización técnica del 30/10/2026: DEC-029/035 completan la selección inicial de DEC-027. Hay arranque, validación de entorno, cabeceras, CORS, límites por IP y código de autenticación modular. Sesión con cookie/CSRF y Argon2id; expiración absoluta inicial de 30 minutos y 5 intentos de login/IP/minuto como valores técnicos revisables. Se relee cuenta/rol/dependencia vigentes; cambios de hash invalidan sesiones previas mediante huella HMAC. El almacén de sesiones usa generación y compare-and-set para impedir sobrescrituras obsoletas tras rotación/revocación. Sin DATABASE_URL, auth responde 503 y salud sigue disponible. El SQL no se ejecuta al iniciar ni se ha aplicado; PostgreSQL real sigue pendiente de prueba.
 
+## Conciliación de las 63 fichas — 20/11/2026
+
+Acuerdos del equipo obtenidos en entrevista; no se atribuyen al director sin ratificación expresa. Esta actualización es documental: no implementa reglas operativas ni modifica SQL, datos o fuentes originales.
+
+| ID | Estado | Decisión |
+|---|---|---|
+| DEC-047 | Equipo: confirmada 20/11/2026 | En SIIP.02.F17.002, asistentes a eventos culturales, comparar el mismo semestre del año anterior: enero–junio de 2027 contra enero–junio de 2026. Prevalece esa definición sobre la expresión «semestre previo» de AP. |
+| DEC-048 | Equipo: confirmada 20/11/2026 | Conservar las condiciones de tendencia escritas en cada ficha. Verde puede obtenerse al cumplir la meta en su propia unidad o mediante dos incrementos consecutivos (tres valores). No inventar amarillo residual para secuencias mixtas; casos sin regla inequívoca quedan pendientes. Usar periodos calendario contiguos, sin saltar huecos: informar historia insuficiente y mantener la vía por meta si aplica. |
+| DEC-049 | Equipo: confirmada 20/11/2026; precisa DEC-025 | Administrador registra y autoriza por sí mismo las referencias externas: valor, fuente y vigencia. Captura las ve en solo lectura y se conserva el valor y versión utilizados. Usar la referencia aplicable al inicio del periodo; un cambio durante este aplica desde el siguiente periodo completo, salvo excepción metodológica explícita. Fuente, año y cifras concretas siguen pendientes. No concede validación de resultados operativos al Administrador. |
+| DEC-050 | Equipo: confirmada 20/11/2026; precisa DEC-014/025 | Se permiten antecedentes iniciales documentados y autorizados por Administrador, con valor, periodo, unidad y fuente, en solo lectura para el cálculo. No crear publicaciones históricas ficticias, importador ni reapertura de capturas vencidas. Un valor numérico validado puede ser antecedente aunque carezca de color; no usar borradores sin validar. |
+| DEC-051 | Equipo: confirmada 20/11/2026 | Permitir ficha documental inactiva cuando su regla aún no exista. Registrar el requerimiento y bloquear la activación hasta desarrollar y probar una combinación compatible. Administrador puede configurar tipos y parámetros ya soportados sin cambios de código. No habilita fórmulas arbitrarias ni implica que esta capacidad ya esté implementada. |
+| DEC-052 | Equipo: confirmada y precisada 20/11/2026; restringe DEC-030/031 y resuelve su vigencia de cambios en indicadores activos | No habilitar modificación de la metodología de un indicador activo. Para una metodología distinta se dará de alta otro indicador independiente, sin relación de sustitución ni traslado automático de historial. Conservar configuración e historia del anterior y no recalcular publicaciones. DEC-030/031 mantienen la recuperación de la configuración histórica, sin autorizar cambios futuros de metodología activa. |
+
+Diagnóstico inicial sobre `(2).xlsx`, sustituido para la conciliación vigente por la revisión siguiente: 63 fichas, 116 entradas identificadas, cinco grupos algebraicos de cálculo y cuatro familias de semaforización. Veinticuatro fichas usan tendencia o meta y 28 necesitan antecedentes para cálculo o color. La agrupación no acredita compatibilidad metodológica. El compendio Word coincidía en los 63 algoritmos de esa versión tras normalizar espacios; contiene diferencias textuales y truncamientos en otros campos.
+
+Antecedente de la entrevista: el usuario solicitó dejar pendientes predial SIIP.08.F52.002 y presupuesto SIIP.08.F53.002, por aparente corrección en otra versión. Después indicó la nueva fuente, ya cotejada en la actualización siguiente. Los hallazgos iniciales no se conservan como defectos actuales cuando la corrección documental está verificada.
+
+Recomendación técnica pendiente de implementación: separar cálculo, semaforización y resolución de orígenes; usar funciones acotadas y versionadas, con contratos, unidades, operadores de límites y casos de aceptación. Conservar las versiones técnicas necesarias para resultados anteriores no supone permitir cambiar la metodología activa. Las fuentes históricas/referencias serán resueltas por backend; la interfaz no podrá sustituirlas. No cambiar el ejemplo 130 ni sus umbrales 75/90 por similitud con las fichas originales.
+
+### Nueva fuente indicada por el usuario — revisión repetida el 20/11/2026
+
+El usuario identifica **Anexo 3_4 SIIP Sist.xlsx** como archivo actualizado y solicita repetir el proceso. Se revisan de nuevo sus 63 claves. La copia en Documentacion y la del Entregable 3 tienen SHA-256 idéntico: `24b7a60abba6210c3cd0a24d5b23d2216c5addf12b406b08236f383eb6c66b79`. Esta fuente guía la nueva conciliación; el archivo `(2)` se conserva como antecedente y procedencia de la carga de DEC-046, sin sustituir archivos ni actualizar registros de BD desde esta revisión.
+
+Cambios verificados respecto a `(2)`:
+
+- Predial SIIP.08.F52.002 incorpora `TCR=[(RA/RP)/(1+I/100)−1]×100` y la entrada I (inflación anual). Se retira el hallazgo de inflación omitida; faltan fuente, método y correspondencia temporal de I. Se propone un tipo de crecimiento real distinto de variación nominal, sin doble deflación.
+- Presupuesto SIIP.08.F53.002 ahora tiene sentido Ascendente, consistente con su tendencia; siguen pendientes sobreejercicio >100 %, momento contable y presupuesto aprobado/modificado. La nueva fuente no determina por sí sola esos tratamientos.
+- MiPyMEs SIIP.03.F21.002 pasa a Acumulable y a tendencia/meta; dejan de aplicarle las bandas anteriores 225/270. Falta precisar acumulación, reinicio y deduplicación entre cortes.
+- Panteones SIIP.05.F37.001 pasa a No acumulable, coherente con disponibilidad al cierre. Persiste «acumulable» en la descripción del resultado CEI y falta concretar su meta relativa.
+- Vida útil SIIP.05.F36.002 define años, ya no proporción. La nota sobre planear acciones al llegar a 3 años está en Observaciones. Conservar sus bandas explícitas; no convertir el umbral de gestión en verde por meta.
+- Incidencia delictiva SIIP.01.F01.002 corrige meta de +20 % a −20 %.
+- Plataforma del Juzgado Cívico SIIP.01.F07.003 deja vacío Medio de Verificación. La evidencia propuesta en `(2)` no se convierte en acuerdo por estar escrita allí.
+
+El diagnóstico vigente identifica **117 entradas, seis grupos algebraicos de cálculo, cuatro familias de semáforo, 25 fichas con tendencia o meta y 29 que requieren antecedentes**; se mantienen 24 acumulables. Hay 176 diferencias de celda en las 63 fichas tras normalizar espacios, muchas editoriales: no son 176 cambios de regla. El compendio Word coincide en 62/63 algoritmos y conserva la fórmula anterior de predial. Los acuerdos DEC-047 a DEC-052 se mantienen; la excepción temporal de inflación y la acumulación de MiPyMEs están en entrevista. La matriz revisada conserva fuentes, diferencias, hallazgos y estado de cada decisión.
+
 ## Alta persistente de fichas — 09/11/2026
 
 Actualización DEC-046 (20/11/2026): carga técnica del anexo solicitada y autorizada.
@@ -144,6 +179,30 @@ El stack de DEC-027 sí está indicado por el equipo; los detalles operativos si
 - No confundir «revisión y validación separadas como acciones» con un cuarto rol de validador.
 - Ante resultado reabierto, preservar la versión publicada previa hasta reemplazo validado.
 - Documentar siempre fecha/periodo fuente del corte mensual y el universo evaluable.
+
+## Bandeja propia de Captura — avance técnico del 23/11/2026
+
+Nota de implementación del 23/11/2026: a solicitud del usuario se conecta la
+bandeja propia de Captura en modo de solo lectura, sin resolver preguntas del
+cuestionario metodológico. Se consultan asignaciones existentes con la dependencia
+de la sesión; solo se exponen sus variables y el inicio de la activación vigente.
+Las asignaciones inactivas se distinguen como preparación. No se habilitan envíos,
+calendario, cálculo ni publicación, ni se actualiza el Excel o la BD. Esto registra
+un avance técnico, no una nueva decisión metodológica del cliente.
+
+Punto 2 implementado en la misma fecha: se amplía el servicio de periodos para
+inicio/fin naturales inclusivos y se expone en la bandeja la fecha local del
+servidor, la zona America/Mexico_City y el intervalo actual por frecuencia. La
+activación sigue desde el siguiente periodo completo. Es calendario de referencia;
+no se resuelven por código las precisiones de exigibilidad, cierre ni semáforo.
+
+Punto 3 implementado el 23/11/2026: aritmética separada del semáforo para cociente,
+variación, complemento y crecimiento real de la fuente vigente. Las funciones
+reciben valores explícitos y entregan valor o causa matemática de imposibilidad;
+no deciden fuente/vigencia de inflación, tratamiento operativo de bases cero ni
+umbrales. El simulador existente reutiliza el cociente con su contrato y colores
+conservados. No se aprueban precisiones de negocio ni nuevas configuraciones de
+indicadores; no se modifican datos, metodologías persistidas ni publicaciones.
 
 ## Propuestas de modelo para revisión del 23/10/2026
 

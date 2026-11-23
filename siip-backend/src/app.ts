@@ -96,6 +96,8 @@ import {
 import type {
   ActivacionRepository
 } from './modules/indicadores/repositories/activacion.repository.js';
+import { bandejaRoutes } from './modules/operacion/bandeja.routes.js';
+import type { BandejaRepository } from './modules/operacion/repositories/bandeja.repository.js';
 
 // ============================================
 // DEPENDENCIAS DE LA APLICACIÓN
@@ -108,6 +110,7 @@ type AppDependencies = AuthDependencies & {
   variables?: VariablesRepository;
   metodologias?: MetodologiaRepository;
   activaciones?: ActivacionRepository;
+  bandeja?: BandejaRepository;
 };
 
 // ============================================
@@ -297,6 +300,11 @@ export async function buildApp(
       await api.register(activacionRoutes, {
         prefix: '/administracion',
         repository: auth?.activaciones
+      });
+
+      await api.register(bandejaRoutes, {
+        prefix: '/captura',
+        repository: auth?.bandeja
       });
 
     },

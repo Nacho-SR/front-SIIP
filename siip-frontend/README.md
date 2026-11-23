@@ -58,7 +58,25 @@ Para persistir, el backend requiere los SQL 001/002/003 aplicados con autorizaci
 
 ## Consulta — DEC-038, 06/11/2026
 
-Rol exclusivo `consulta`, sin dependencia. Administrador lo elige en Alta de usuario: no se muestra el selector de dependencia ni se bloquea esta alta si el catálogo está vacío o falló. Se permiten varias cuentas. Inicia/cierra sesión con el mismo flujo y accede a Consulta/Estadísticas. Los guards impiden Captura, Seguimiento y Administrador, incluso por URL directa. El backend debe aplicar además permisos por recurso; las vistas de negocio siguen con datos de ejemplo.
+Rol exclusivo `consulta`, sin dependencia. Administrador lo elige en Alta de usuario: no se muestra el selector de dependencia ni se bloquea esta alta si el catálogo está vacío o falló. Se permiten varias cuentas. Inicia/cierra sesión con el mismo flujo y accede a Consulta/Estadísticas. Los guards impiden Captura, Seguimiento y Administrador, incluso por URL directa. El backend debe aplicar además permisos por recurso; Consulta/Estadísticas siguen con datos de ejemplo.
+
+## Bandeja propia de Captura (23/11/2026)
+
+Captura → Mis indicadores consulta `GET /captura/indicadores`. La API usa la
+dependencia de la sesión y devuelve solo sus indicadores y variables asignadas,
+incluyendo frecuencia e inicio de activación. Las fichas inactivas se muestran
+en preparación. Hay búsqueda, filtro temático, actualización y reintento ante
+errores; no se usan fichas JSON ni expedientes locales como respaldo.
+Esta etapa es de solo lectura: no hay envíos, evidencias ni calendario operativo.
+Reiniciar el backend permite registrar la nueva ruta; no requiere una migración
+adicional a los SQL 001–008 ya existentes. Ver contrato en
+[Operación](../siip-backend/src/modules/operacion/README.md).
+
+Punto 2: la misma bandeja muestra la fecha del servidor en America/Mexico_City y
+el inicio/fin del periodo natural de cada frecuencia, recibidos por API. Las fechas
+se presentan sin convertirlas a la zona del navegador. Son referencia de calendario;
+no habilitan capturas ni declaran incumplimiento y pueden anteceder al inicio de
+aplicación del indicador. Se actualizan al cargar, recuperar foco o pulsar Actualizar.
 
 El cierre y gris de DEC-039 están especificados en los contratos. No se afirma que los prototipos apliquen cierre, persistan justificaciones o publiquen indicadores.
 

@@ -5,7 +5,7 @@ import { createSSRApp } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { createServer } from 'vite';
 
-let vite, calendario, seguimiento, admin, catalogo, CaptureView, ReviewDetailView, NuevoIndicadorView, ConsultaView, router, useAuthStore, api;
+let vite, calendario, seguimiento, admin, catalogo, ReviewDetailView, NuevoIndicadorView, ConsultaView, router, useAuthStore, api;
 before(async () => {
   vite = await createServer({
     server: { middlewareMode: true, watch: null, hmr: false, ws: false }, appType: 'custom',
@@ -18,7 +18,7 @@ before(async () => {
   admin = await vite.ssrLoadModule('/src/modules/admin/data/admin.store.ts');
   ({ default: api } = await vite.ssrLoadModule('/src/core/api.ts'));
   ({ default: catalogo } = await vite.ssrLoadModule('/src/modules/consulta/data/indicadores-siip.json'));
-  ({ default: CaptureView } = await vite.ssrLoadModule('/src/modules/capture/CaptureView.vue'));
+
   ({ default: ReviewDetailView } = await vite.ssrLoadModule('/src/modules/review/ReviewDetailView.vue'));
   ({ default: NuevoIndicadorView } = await vite.ssrLoadModule('/src/modules/admin/NuevoIndicadorView.vue'));
   ({ default: ConsultaView } = await vite.ssrLoadModule('/src/modules/consulta/ConsultaView.vue'));
@@ -83,45 +83,6 @@ test('el calendario incluye el último día local y cierra al iniciar el siguien
   for (const [frecuencia, periodo] of [['Bimestral', '2026-B1'], ['Mensual', '2026-13'], ['Anual', '0000'], ['Semestral', '2026-S3'], [null, '2026'], ['Anual', undefined]]) {
     assert.equal(calendario.estadoPeriodo(frecuencia, periodo), 'invalido');
   }
-});
-
-test('Captura no lee expedientes compartidos ni escribe al intentar enviar o corregir', async () => {
-  let lecturas = 0;
-  let escrituras = 0;
-  await conAlmacenamiento('sessionStorage', {
-    getItem() { lecturas++; return JSON.stringify([expediente()]); },
-    setItem() { escrituras++; },
-  }, async () => {
-    const { state, html } = await render(CaptureView, state => {
-      state.indicadorSeleccionado = catalogo[0].clave;
-      state.anio = 2026;
-      state.reloj = new Date('2026-11-09T12:00:00Z');
-    });
-    state.actualizarRegistros();
-    state.guardarCaptura();
-    state.corregirObservado(expediente());
-    assert.equal(state.registros.length, 0);
-    assert.match(state.errorCaptura, /Vista previa/);
-    assert.equal(lecturas, 0);
-    assert.equal(escrituras, 0);
-    assert.doesNotMatch(html, /EVIDENCIA_PRIVADA|OBSERVACION_PRIVADA/);
-    assert.match(html, /<fieldset disabled/);
-    assert.match(html, /<button[^>]*type="submit"[^>]*disabled/);
-    assert.doesNotMatch(html, /Máximo 10 MB/);
-  });
-});
-
-test('la vista de Captura diferencia periodos cerrados y futuros sin conceder asignación', async () => {
-  const mensual = catalogo.find(indicador => indicador.frecuencia === 'Mensual');
-  const { state, html } = await render(CaptureView, state => {
-    state.indicadorSeleccionado = mensual.clave;
-    state.anio = 2026;
-    state.reloj = new Date('2026-11-09T12:00:00Z');
-  });
-  assert.equal(state.periodosDisponibles.find(periodo => periodo.valor === '2026-10').estado, 'cerrado');
-  assert.equal(state.periodosDisponibles.find(periodo => periodo.valor === '2026-11').estado, 'abierto');
-  assert.equal(state.periodosDisponibles.find(periodo => periodo.valor === '2026-12').estado, 'futuro');
-  assert.match(html, /No representa los indicadores ni las variables asignados a tu dependencia/);
 });
 
 test('las funciones de escritura rechazan cambios sin alterar valores, variables, PDF, historia o publicación', async () => {

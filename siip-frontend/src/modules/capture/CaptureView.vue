@@ -1,1689 +1,209 @@
-
 <script setup lang="ts">
-import {
-  computed,
-  onMounted,
-  onUnmounted,
-  ref,
-  watch
-} from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import axios from 'axios';
+import api from '../../core/api';
+import { useAuthStore } from '../../store/auth.store';
 
-import catalogo from '../consulta/data/indicadores-siip.json';
-import configuraciones from './data/campos-captura-siip.json';
-
-import { MOTIVO_OPERACION_PENDIENTE, estadoPeriodo, mesMexico } from '../../core/operacion-pendiente';
-
-import type {
-  IndicadorCaptura,
-  RegistroCaptura
-} from './data/captura.types';
-
-interface Campo {
-  clave: string;
-  descripcion: string;
+interface VariableAsignada {
+  id: string; codigo: string; descripcion: string; unidadMedida: string; tipoDato: 'entero' | 'decimal';
+}
+interface IndicadorAsignado {
+  id: string; clave: string; nombre: string; agrupacion: string; familia: string;
+  frecuencia: 'Mensual' | 'Trimestral' | 'Semestral' | 'Anual'; activo: boolean;
+  primerPeriodo: string | null; variables: VariableAsignada[];
+  periodoActual: { inicio: string; fin: string };
+}
+interface BandejaCaptura {
+  dependencia: { id: string; clave: string; nombre: string };
+  fechaServidor: string; zonaHoraria: 'America/Mexico_City';
+  indicadores: IndicadorAsignado[];
 }
 
-interface Configuracion {
-  tipo: string;
-  campos: Campo[];
-  actual?: string;
-  anterior?: string;
-  advertencia?: string;
-}
-
-type Vista = 'captura' | 'revision';
-
-const reloj = ref(new Date());
-
-const errorCaptura = ref('');
-
-const indicadores: IndicadorCaptura[] = catalogo;
-
-const reglas = configuraciones as Record<
-  string,
-  Configuracion
->;
-
-// Navegación
-const vista = ref<Vista>('captura');
-
-// Selección de indicador
-const agrupacionSeleccionada = ref('');
-const familiaSeleccionada = ref('');
-const indicadorSeleccionado = ref('');
-
-// Periodo
-const anio = ref(Number(mesMexico().slice(0, 4)));
-const periodoSeleccionado = ref('');
-
-// Captura
-const variables = ref<Record<string, string>>({});
-const descripcion = ref('');
-const archivoEvidencia = ref<File | null>(null);
-const archivoInput = ref<HTMLInputElement | null>(null);
-
-// Corrección
-const correccionId = ref<string | null>(null);
-const observacionPendiente = ref('');
-
-// Mensajes
-const mensaje = ref('');
-const tipoMensaje = ref<'exito' | 'error'>('exito');
-
-// ==================================================
-// REGISTROS LOCALES
-// ==================================================
-
-// La bandeja propia necesita asignaciones e identidad verificadas por el servidor.
-const registros = ref<RegistroCaptura[]>([]);
-
-function actualizarRegistros() {
-  registros.value = [];
-  reloj.value = new Date();
-}
-onMounted(() => {
-  actualizarRegistros();
-  window.addEventListener('focus', actualizarRegistros);
-});
-onUnmounted(() => window.removeEventListener('focus', actualizarRegistros));
-
-
-// ==================================================
-// CATÁLOGO DE INDICADORES
-// ==================================================
-
-const agrupaciones = computed(() =>
-  [...new Set(
-    indicadores.map(i => i.agrupacion)
-  )].sort()
-);
-
-const familias = computed(() =>
-  [...new Set(
-    indicadores
-      .filter(i =>
-        i.agrupacion === agrupacionSeleccionada.value
-      )
-      .map(i => i.familia)
-  )].sort()
-);
-
-const indicadoresDisponibles = computed(() =>
-  indicadores.filter(i =>
-    i.agrupacion === agrupacionSeleccionada.value &&
-    i.familia === familiaSeleccionada.value
-  )
-);
-
-const indicadorActivo = computed(() =>
-  indicadores.find(i =>
-    i.clave === indicadorSeleccionado.value
-  ) ?? null
-);
-
-const configuracion = computed(() =>
-  indicadorActivo.value
-    ? reglas[indicadorActivo.value.clave]
-    : undefined
-);
-
-const campos = computed(() =>
-  configuracion.value?.campos ?? []
-);
-
-// ==================================================
-// PERIODOS
-// ==================================================
-
-const periodosDelEjercicio = computed(() => {
-  const frecuencia = indicadorActivo.value?.frecuencia
-    .trim()
-    .toLowerCase();
-
-  if (frecuencia === 'mensual') {
-    const meses = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre'
-    ];
-
-    return meses.map((mes, index) => ({
-      valor:
-        `${anio.value}-${String(index + 1).padStart(2, '0')}`,
-      etiqueta: `${mes} ${anio.value}`
-    }));
-  }
-
-  if (frecuencia === 'trimestral') {
-    return [1, 2, 3, 4].map(numero => ({
-      valor: `${anio.value}-T${numero}`,
-      etiqueta: `Trimestre ${numero} · ${anio.value}`
-    }));
-  }
-
-  if (frecuencia === 'semestral') {
-    return [1, 2].map(numero => ({
-      valor: `${anio.value}-S${numero}`,
-      etiqueta: `Semestre ${numero} · ${anio.value}`
-    }));
-  }
-
-  if (frecuencia === 'anual') {
-    return [
-      {
-        valor: String(anio.value),
-        etiqueta: `Ejercicio ${anio.value}`
-      }
-    ];
-  }
-
-  return [];
-});
-
-const periodosDisponibles = computed(() => periodosDelEjercicio.value.map(periodo => ({
-  ...periodo,
-  estado: estadoPeriodo(indicadorActivo.value?.frecuencia ?? '', periodo.valor, reloj.value),
-})));
-
-function etiquetaEstado(estado: string) {
-  return { abierto: 'En curso', cerrado: 'Cerrado', futuro: 'Futuro', invalido: 'No válido' }[estado] ?? 'No válido';
-}
-
-// ==================================================
-// SELECTORES DEPENDIENTES
-// ==================================================
-
-watch(agrupacionSeleccionada, () => {
-  familiaSeleccionada.value = '';
-  indicadorSeleccionado.value = '';
-});
-
-watch(familiaSeleccionada, () => {
-  indicadorSeleccionado.value = '';
-});
-
-watch([indicadorSeleccionado, anio], () => {
-  periodoSeleccionado.value = '';
-});
-
-watch(indicadorSeleccionado, () => {
-  variables.value = Object.fromEntries(
-    campos.value.map(campo => [
-      campo.clave,
-      ''
-    ])
+const auth = useAuthStore();
+const bandeja = ref<BandejaCaptura | null>(null);
+const cargando = ref(true);
+const error = ref('');
+const busqueda = ref('');
+const agrupacion = ref('');
+const identidad = computed(() => `${auth.user?.id}:${auth.user?.rol}:${auth.user?.dependencia_id}`);
+const agrupaciones = computed(() => [...new Set(bandeja.value?.indicadores.map(i => i.agrupacion) ?? [])]);
+const indicadores = computed(() => {
+  const texto = busqueda.value.trim().toLocaleLowerCase('es');
+  return (bandeja.value?.indicadores ?? []).filter(i =>
+    (!agrupacion.value || i.agrupacion === agrupacion.value) &&
+    (!texto || [i.clave, i.nombre, i.familia, ...i.variables.flatMap(v => [v.codigo, v.descripcion])]
+      .some(valor => valor.toLocaleLowerCase('es').includes(texto))),
   );
 });
+const totalVariables = computed(() => bandeja.value?.indicadores.reduce((total, i) => total + i.variables.length, 0) ?? 0);
+let solicitud = 0;
+let controlador: AbortController | undefined;
 
-// ==================================================
-// MENSAJES
-// ==================================================
-
-function avisar(
-  texto: string,
-  tipo: 'exito' | 'error' = 'exito'
-) {
-  mensaje.value = texto;
-  tipoMensaje.value = tipo;
-}
-
-// ==================================================
-// EVIDENCIA DOCUMENTAL
-// ==================================================
-
-function seleccionarArchivo(evento: Event) {
-  archivoEvidencia.value = null;
-  (evento.target as HTMLInputElement).value = '';
-  avisar(MOTIVO_OPERACION_PENDIENTE, 'error');
-}
-
-
-
-// ==================================================
-// BANDEJA DE REVISIÓN
-// ==================================================
-
-const registrosVisibles = computed(() =>
-  registros.value
-    .filter(registro =>
-      registro.estado !== 'Borrador'
-    )
-    .sort((a, b) =>
-      b.actualizadoEn.localeCompare(a.actualizadoEn)
-    )
-);
-
-const observados = computed(() =>
-  registrosVisibles.value.filter(
-    registro => registro.estado === 'Observada'
-  ).length
-);
-
-const pendientes = computed(() =>
-  registrosVisibles.value.filter(
-    registro => registro.estado === 'En revisión'
-  ).length
-);
-
-// ==================================================
-// LIMPIAR FORMULARIO
-// ==================================================
-
-function limpiarFormulario() {
-  agrupacionSeleccionada.value = '';
-  familiaSeleccionada.value = '';
-  indicadorSeleccionado.value = '';
-
-  anio.value = Number(mesMexico().slice(0, 4));
-  periodoSeleccionado.value = '';
-
-  variables.value = {};
-  descripcion.value = '';
-
-  archivoEvidencia.value = null;
-
-  correccionId.value = null;
-  observacionPendiente.value = '';
-
-  if (archivoInput.value) {
-    archivoInput.value.value = '';
+async function cargarBandeja() {
+  const actual = ++solicitud;
+  controlador?.abort();
+  controlador = new AbortController();
+  bandeja.value = null;
+  error.value = '';
+  cargando.value = auth.isCapturista;
+  if (!auth.isCapturista) return;
+  const sesion = identidad.value;
+  try {
+    const { data } = await api.get<BandejaCaptura>('/captura/indicadores', { signal: controlador.signal });
+    // Una respuesta anterior no puede repoblar la bandeja tras cambiar de cuenta o dependencia.
+    if (actual === solicitud && sesion === identidad.value) bandeja.value = data;
+  } catch (err) {
+    if (actual === solicitud && sesion === identidad.value && !axios.isCancel(err)) {
+      error.value = axios.isAxiosError(err) && typeof err.response?.data?.detail === 'string'
+        ? err.response.data.detail : 'No se pudieron cargar tus asignaciones. Intenta de nuevo.';
+    }
+  } finally {
+    if (actual === solicitud) cargando.value = false;
   }
 }
-
-// ==================================================
-// CORREGIR EXPEDIENTE OBSERVADO
-// ==================================================
-
-function corregirObservado(_registro: RegistroCaptura) {
-  avisar(MOTIVO_OPERACION_PENDIENTE, 'error');
-}
-
-// ==================================================
-// GUARDAR / REENVIAR
-// ==================================================
-
-
-function guardarCaptura() {
-  errorCaptura.value = MOTIVO_OPERACION_PENDIENTE;
-  avisar(MOTIVO_OPERACION_PENDIENTE, 'error');
-}
-
-// ==================================================
-// FECHAS
-// ==================================================
-
 function formatearFecha(fecha: string) {
-  const fechaReal = new Date(fecha);
-
-  if (Number.isNaN(fechaReal.getTime())) {
-    return '—';
-  }
-
-  return new Intl.DateTimeFormat('es-MX', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(fechaReal);
+  const [anio, mes, dia] = fecha.split('-');
+  return `${dia}/${mes}/${anio}`;
 }
+watch(identidad, () => {
+  busqueda.value = '';
+  agrupacion.value = '';
+  void cargarBandeja();
+}, { flush: 'sync' });
+onMounted(() => {
+  void cargarBandeja();
+  window.addEventListener('focus', cargarBandeja);
+});
+onUnmounted(() => {
+  ++solicitud;
+  controlador?.abort();
+  window.removeEventListener('focus', cargarBandeja);
+});
 </script>
 
 <template>
-  <div class="captura">
-
-    <!-- ENCABEZADO -->
-    <header class="page-header">
+  <div class="capture-page">
+    <header class="page-heading">
       <div>
-        <span class="eyebrow">
-          OPERACIÓN MUNICIPAL
-        </span>
-
-        <h1>Captura de información</h1>
-
-        <p>
-          Vista previa de campos y calendario municipal. Sin registro de envíos.
-        </p>
+        <p class="eyebrow">Captura · Asignaciones</p>
+        <h1>Mis indicadores</h1>
+        <p class="intro">Consulta los indicadores y las variables a cargo de tu dependencia.</p>
       </div>
-
-      <!-- PERIODO EN LA PARTE SUPERIOR -->
-      <div class="periodo-superior">
-        <span class="eyebrow">
-          PERIODO DE CAPTURA
-        </span>
-
-        <div class="periodo-controles">
-          <label>
-            Ejercicio
-
-            <input
-              v-model.number="anio"
-              type="number"
-              min="2000"
-              max="2100"
-              :disabled="!!correccionId"
-            />
-          </label>
-
-          <label>
-            Periodo
-
-            <select
-              v-model="periodoSeleccionado"
-              :disabled="
-                !indicadorActivo || !!correccionId
-              "
-            >
-              <option value="">
-                {{
-                  indicadorActivo
-                    ? 'Selecciona un periodo'
-                    : 'Primero elige un indicador'
-                }}
-              </option>
-
-              <option
-                v-for="periodo in periodosDisponibles"
-                :key="periodo.valor"
-                :value="periodo.valor"
-                :disabled="periodo.estado !== 'abierto'"
-              >
-                {{ periodo.etiqueta }} · {{ etiquetaEstado(periodo.estado) }}
-              </option>
-            </select>
-          </label>
-        </div>
-
-        <small>
-          Calendario de referencia en America/Mexico_City; no confirma alta ni asignación.
-        </small>
-      </div>
+      <button v-if="auth.isCapturista" class="refresh" type="button" :disabled="cargando" @click="cargarBandeja">
+        {{ cargando ? 'Actualizando…' : 'Actualizar asignaciones' }}
+      </button>
     </header>
 
-    <section class="panel" role="status">
-      <strong>{{ MOTIVO_OPERACION_PENDIENTE }}</strong>
-      <p>El catálogo se muestra para revisar el diseño. No representa los indicadores ni las variables asignados a tu dependencia.</p>
-      <p>El cierre incluye el último día del periodo. Después solo se podrá justificar con PDF, sin completar datos ni quitar el gris. Su aplicación corresponde al servidor.</p>
-    </section>
-
-    <!-- NAVEGACIÓN CAPTURA / REVISIÓN -->
-    <nav
-      class="pasos"
-      aria-label="Vistas de Captura"
-    >
-      <button
-        type="button"
-        class="paso"
-        :class="{ activo: vista === 'captura' }"
-        :aria-current="
-          vista === 'captura' ? 'page' : undefined
-        "
-        @click="vista = 'captura'"
-      >
-        <span>01</span>
-        Captura
-      </button>
-
-      <button
-        type="button"
-        class="paso"
-        :class="{ activo: vista === 'revision' }"
-        :aria-current="
-          vista === 'revision' ? 'page' : undefined
-        "
-        @click="
-          vista = 'revision';
-          actualizarRegistros()
-        "
-      >
-        <span>02</span>
-        Revisión
-
-        <small v-if="observados">
-          {{ observados }} observada(s)
-        </small>
-      </button>
-    </nav>
-
-    <!-- MENSAJES -->
-    <div
-      v-if="mensaje"
-      class="mensaje"
-      :class="tipoMensaje"
-      role="status"
-    >
-      {{ mensaje }}
-
-      <button
-        type="button"
-        aria-label="Cerrar aviso"
-        @click="mensaje = ''"
-      >
-        ×
-      </button>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- PESTAÑA CAPTURA -->
-    <!-- ========================================== -->
-
-    <template v-if="vista === 'captura'">
-      <div class="capture-grid">
-
-        <!-- COLUMNA DE SELECCIÓN -->
-        <aside class="capture-sidebar">
-          <section class="panel">
-            <div class="panel-heading">
-              <span class="eyebrow">
-                PASO 01
-              </span>
-
-              <h2>Seleccionar indicador</h2>
-
-              <p>
-                Explora agrupación, familia e indicador del catálogo de referencia.
-              </p>
-            </div>
-
-            <div class="fields">
-
-              <!-- AGRUPACIÓN -->
-              <label>
-                Agrupación temática
-
-                <select
-                  v-model="agrupacionSeleccionada"
-                  :disabled="!!correccionId"
-                >
-                  <option value="">
-                    Selecciona una agrupación
-                  </option>
-
-                  <option
-                    v-for="item in agrupaciones"
-                    :key="item"
-                    :value="item"
-                  >
-                    {{ item }}
-                  </option>
-                </select>
-              </label>
-
-              <!-- FAMILIA -->
-              <label>
-                Familia de indicadores
-
-                <select
-                  v-model="familiaSeleccionada"
-                  :disabled="
-                    !agrupacionSeleccionada ||
-                    !!correccionId
-                  "
-                >
-                  <option value="">
-                    Selecciona una familia
-                  </option>
-
-                  <option
-                    v-for="item in familias"
-                    :key="item"
-                    :value="item"
-                  >
-                    {{ item }}
-                  </option>
-                </select>
-              </label>
-
-              <!-- INDICADOR -->
-              <label>
-                Indicador específico
-
-                <select
-                  v-model="indicadorSeleccionado"
-                  :disabled="
-                    !familiaSeleccionada ||
-                    !!correccionId
-                  "
-                >
-                  <option value="">
-                    Selecciona un indicador
-                  </option>
-
-                  <option
-                    v-for="item in indicadoresDisponibles"
-                    :key="item.clave"
-                    :value="item.clave"
-                  >
-                    {{ item.clave }} · {{ item.nombre }}
-                  </option>
-                </select>
-              </label>
-
-            </div>
-          </section>
-
-          <!-- FICHA METODOLÓGICA -->
-          <section
-            v-if="indicadorActivo"
-            class="panel ficha"
-          >
-            <span class="eyebrow">
-              FICHA METODOLÓGICA
-            </span>
-
-            <h2>{{ indicadorActivo.nombre }}</h2>
-
-            <dl>
-              <dt>Clave</dt>
-              <dd>{{ indicadorActivo.clave }}</dd>
-
-              <dt>Frecuencia</dt>
-              <dd>{{ indicadorActivo.frecuencia }}</dd>
-
-              <dt>Unidad</dt>
-              <dd>{{ indicadorActivo.unidad }}</dd>
-
-              <dt>Sentido</dt>
-              <dd>{{ indicadorActivo.sentido }}</dd>
-
-              <dt>Ámbito territorial</dt>
-              <dd>{{ indicadorActivo.desagregacion }}</dd>
-
-              <dt>Fuente</dt>
-              <dd>{{ indicadorActivo.fuente }}</dd>
-            </dl>
-
-          </section>
-        </aside>
-
-        <!-- COLUMNA DE CAPTURA -->
-        <main class="capture-main">
-          <section class="panel">
-            <div class="panel-heading">
-              <span class="eyebrow">
-                PASO 02
-              </span>
-
-              <h2>
-                {{
-                  correccionId
-                    ? 'Corrección de expediente observado'
-                    : 'Variables y resultado del indicador'
-                }}
-              </h2>
-
-              <p>
-                Ejemplo de campos metodológicos. La conciliación de fórmulas y las asignaciones siguen pendientes; no se ejecuta un cálculo operativo.
-              </p>
-            </div>
-
-            <!-- SIN INDICADOR -->
-            <div
-              v-if="!indicadorActivo"
-              class="empty"
-            >
-              <div class="empty-icon">
-                ∑
-              </div>
-
-              <strong>
-                Selecciona un indicador para comenzar
-              </strong>
-
-              <p>
-                Los campos cambiarán de acuerdo
-                con la fórmula del Excel.
-              </p>
-            </div>
-
-            <!-- FORMULARIO -->
-            <form
-              v-else
-              class="formulario"
-              novalidate
-              @submit.prevent="guardarCaptura"
-            >
-              <fieldset disabled class="campos-previa">
-
-              <!-- OBSERVACIÓN PENDIENTE -->
-              <div
-                v-if="correccionId"
-                class="observacion"
-              >
-                <strong>
-                  Observación de Seguimiento
-                </strong>
-
-                <p>
-                  {{ observacionPendiente }}
-                </p>
-
-                <small>
-                  El indicador y el periodo original
-                  quedan bloqueados.
-                </small>
-              </div>
-
-              <!-- ADVERTENCIA METODOLÓGICA -->
-              <div
-                v-if="configuracion?.advertencia"
-                class="alerta-metodo"
-              >
-                <strong>
-                  Revisión metodológica:
-                </strong>
-
-                {{ configuracion.advertencia }}
-              </div>
-
-              <!-- VARIABLES DEL ALGORITMO -->
-              <div class="variables-grid">
-                <label
-                  v-for="campo in campos"
-                  :key="campo.clave"
-                >
-                  <strong>{{ campo.clave }}</strong>
-
-                  <span>
-                    {{ campo.descripcion }}
-                  </span>
-
-                  <input
-                    v-model="variables[campo.clave]"
-                    type="number"
-                    step="any"
-                    inputmode="decimal"
-                    required
-                    placeholder="Ingresa el dato"
-                  />
-                </label>
-              </div>
-
-
-              <!-- AVISO PARA EL CAPTURISTA -->
-              <div class="aviso-captura">
-                <strong>
-                  Registro de variables
-                </strong>
-
-                <p>
-                  Los campos se muestran como referencia. Los envíos por dependencia,
-                  la evidencia y las correcciones se habilitarán con autorización del servidor.
-                </p>
-              </div>
-
-              <!-- OBSERVACIONES -->
-              <label class="full-field">
-                Observaciones de captura
-
-                <textarea
-                  v-model="descripcion"
-                  rows="4"
-                  placeholder="Explica el origen de las variables y el contexto del resultado..."
-                ></textarea>
-              </label>
-
-              <!-- EVIDENCIA -->
-              <label class="full-field">
-                Evidencia documental (PDF)
-
-                <input
-                  ref="archivoInput"
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  @change="seleccionarArchivo"
-                />
-              </label>
-
-              <div class="nota-evidencia">
-                {{
-                  archivoEvidencia?.name ??
-                  'No has seleccionado un PDF'
-                }}
-
-                · Carga documental no habilitada. Límites de PDF pendientes de definición.
-              </div>
-
-              
-              <div
-                v-if="errorCaptura"
-                class="error-formulario"
-                role="alert"
-              >
-                <strong>No se pudo enviar el reporte</strong>
-                <p>{{ errorCaptura }}</p>
-              </div>
-
-              <!-- ACCIONES -->
-              <div class="acciones">
-                <button
-                  v-if="correccionId"
-                  type="button"
-                  class="btn-secundario"
-                  @click="limpiarFormulario"
-                >
-                  Cancelar corrección
-                </button>
-
-                <button
-                  type="submit"
-                  class="btn-principal"
-                  disabled
-                  :title="MOTIVO_OPERACION_PENDIENTE"
-                >
-                  {{
-                    correccionId
-                      ? 'Reenviar corrección →'
-                      : 'Enviar a revisión →'
-                  }}
-                </button>
-              </div>
-              </fieldset>
-            </form>
-          </section>
-        </main>
-
+    <p class="readonly-note">Esta bandeja es de consulta. Todavía no se pueden enviar datos ni evidencias.</p>
+    <p v-if="!auth.isCapturista" role="alert" class="message">Esta sección está disponible para cuentas de Captura.</p>
+    <section v-else :aria-busy="cargando" aria-label="Asignaciones de mi dependencia">
+      <p v-if="cargando" role="status" class="message">Cargando tus asignaciones…</p>
+      <div v-else-if="error" role="alert" class="message error">
+        <p>{{ error }}</p>
+        <button type="button" class="refresh" @click="cargarBandeja">Reintentar</button>
       </div>
-    </template>
-
-    <!-- ========================================== -->
-    <!-- PESTAÑA REVISIÓN -->
-    <!-- ========================================== -->
-
-    <section
-      v-else
-      class="panel revision-panel"
-    >
-      <div class="revision-encabezado">
-        <div>
-          <span class="eyebrow">
-            CONSULTA DEL CAPTURISTA
-          </span>
-
-          <h2>
-            Revisión de mis envíos (demo)
-          </h2>
-
-          <p>
-            La bandeja propia requiere asignaciones verificadas por dependencia.
-            No se muestran los expedientes del almacenamiento compartido de la demostración.
-            Revisar y validar corresponden exclusivamente al rol Revisión.
-          </p>
+      <template v-else-if="bandeja">
+        <div class="dependency-summary">
+          <div>
+            <p class="eyebrow">Dependencia responsable · {{ bandeja.dependencia.clave }}</p>
+            <h2>{{ bandeja.dependencia.nombre }}</h2>
+          </div>
+          <p class="totals">{{ bandeja.indicadores.length }} indicadores <span aria-hidden="true">·</span> {{ totalVariables }} variables asignadas</p>
         </div>
-
-        <button
-          type="button"
-          class="btn-secundario"
-          @click="actualizarRegistros"
-        >
-          Actualizar
-        </button>
-      </div>
-
-      <!-- RESUMEN -->
-      <div class="resumen-revision">
-        <span>
-          <strong>
-            {{ registrosVisibles.length }}
-          </strong>
-          enviados
-        </span>
-
-        <span>
-          <strong>{{ pendientes }}</strong>
-          en revisión
-        </span>
-
-        <span>
-          <strong>{{ observados }}</strong>
-          observados
-        </span>
-      </div>
-
-      <!-- TABLA -->
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Indicador</th>
-              <th>Periodo</th>
-              <th>Registro</th>
-              <th>Estado</th>
-              <th>Actualización</th>
-              <th>Acción</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr
-              v-for="registro in registrosVisibles"
-              :key="registro.id"
-            >
-              <td>
-                <strong>
-                  {{ registro.indicadorClave }}
-                </strong>
-
-                <small>
-                  {{ registro.indicadorNombre }}
-                </small>
-              </td>
-
-              <td>
-                {{ registro.periodo }}
-              </td>
-
-              <td>
-                <span class="registro-recibido">
-                  Datos registrados
-                </span>
-              </td>
-
-              <td>
-                <span
-                  class="status-badge"
-                  :class="{
-                    review:
-                      registro.estado === 'En revisión',
-                    reviewed:
-                      registro.estado === 'Revisada',
-                    observed:
-                      registro.estado === 'Observada',
-                    validated:
-                      registro.estado === 'Validada'
-                  }"
-                >
-                  {{ registro.estado }}
-                </span>
-              </td>
-
-              <td>
-                {{
-                  formatearFecha(
-                    registro.actualizadoEn
-                  )
-                }}
-              </td>
-
-              <td>
-                <button
-                  v-if="registro.estado === 'Observada'"
-                  type="button"
-                  class="link-corregir"
-                  disabled
-                  :title="MOTIVO_OPERACION_PENDIENTE"
-                  @click="corregirObservado(registro)"
-                >
-                  Corregir
-                </button>
-
-                <span v-else>—</span>
-              </td>
-            </tr>
-
-            <tr v-if="registrosVisibles.length === 0">
-              <td
-                colspan="6"
-                class="vacio-tabla"
-              >
-                La consulta autorizada de tus envíos todavía no está habilitada.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <p class="nota-pie">
-        En la versión actual no se almacenan usuarios
-        responsables ni archivos reales.
-        La gestión de periodos completos (exportar
-        o eliminar) queda reservada para Administración
-        en una fase posterior.
-      </p>
+        <p class="calendar-reference">Fecha del servidor: {{ formatearFecha(bandeja.fechaServidor) }} · {{ bandeja.zonaHoraria }}.
+          Los periodos son una referencia de fechas; no indican apertura de captura ni incumplimiento.</p>
+        <p v-if="!bandeja.indicadores.length" role="status" class="message">
+          Aún no hay variables asignadas a tu dependencia. Solicita a Administración que revise la configuración.
+        </p>
+        <template v-else>
+          <div class="filters">
+            <label>Buscar indicador o variable
+              <input v-model="busqueda" type="search" placeholder="Clave, nombre o descripción" />
+            </label>
+            <label>Agrupación temática
+              <select v-model="agrupacion">
+                <option value="">Todas las agrupaciones</option>
+                <option v-for="opcion in agrupaciones" :key="opcion" :value="opcion">{{ opcion }}</option>
+              </select>
+            </label>
+          </div>
+          <p class="result-count" role="status">{{ indicadores.length }} de {{ bandeja.indicadores.length }} indicadores</p>
+          <p v-if="!indicadores.length" class="message">No hay coincidencias. Prueba otra búsqueda o agrupación.</p>
+          <div class="indicator-list">
+            <article v-for="indicador in indicadores" :key="indicador.id" class="indicator-card" :aria-labelledby="`indicador-${indicador.id}`">
+              <div class="card-heading">
+                <p class="indicator-key">{{ indicador.clave }}</p>
+                <span class="activation-status">{{ indicador.activo ? 'Activado' : 'Sin activar' }}</span>
+              </div>
+              <h2 :id="`indicador-${indicador.id}`">{{ indicador.nombre }}</h2>
+              <p class="classification">{{ indicador.agrupacion }} / {{ indicador.familia }}</p>
+              <dl class="indicator-details">
+                <div><dt>Frecuencia</dt><dd>{{ indicador.frecuencia }}</dd></div>
+                <div><dt>Inicio de aplicación</dt><dd>{{ indicador.activo && indicador.primerPeriodo ? formatearFecha(indicador.primerPeriodo) : 'Sin inicio registrado' }}</dd></div>
+                <div><dt>Periodo natural actual</dt><dd><time :datetime="indicador.periodoActual.inicio">{{ formatearFecha(indicador.periodoActual.inicio) }}</time> al <time :datetime="indicador.periodoActual.fin">{{ formatearFecha(indicador.periodoActual.fin) }}</time></dd></div>
+              </dl>
+              <p v-if="!indicador.activo" class="preparation-note">En preparación. Administración debe activarlo antes de iniciar su operación.</p>
+              <p class="variables-heading">Variables a cargo de {{ bandeja.dependencia.clave }} ({{ indicador.variables.length }})</p>
+              <ul class="variables">
+                <li v-for="variable in indicador.variables" :key="variable.id">
+                  <span class="variable-code">{{ variable.codigo }}</span>
+                  <div class="variable-description"><p>{{ variable.descripcion }}</p><p class="variable-meta">Unidad: {{ variable.unidadMedida }} · Tipo de dato: {{ variable.tipoDato === 'entero' ? 'Número entero' : 'Número decimal' }}</p></div>
+                </li>
+              </ul>
+              <p class="scope-note">Se muestran únicamente las variables asignadas a tu dependencia.</p>
+            </article>
+          </div>
+        </template>
+      </template>
     </section>
-
   </div>
 </template>
 
 <style scoped>
-.campos-previa {
-  display: grid;
-  gap: 20px;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
+.capture-page { max-width: 1540px; margin: 0 auto; color: #272b32; }
+.page-heading, .dependency-summary, .card-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.eyebrow { margin: 0 0 8px; color: #8a692f; font-size: 12px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+h1 { margin: 0; color: #431c2a; font-family: Georgia, serif; font-size: clamp(30px, 4vw, 42px); font-weight: 500; }
+h2 { margin: 0; font-size: 19px; line-height: 1.45; overflow-wrap: anywhere; }
+.intro { margin: 10px 0 0; color: #666b73; }
+.refresh { min-height: 44px; padding: 10px 16px; border: 1px solid #70273b; border-radius: 9px; background: #fff; color: #70273b; font: inherit; font-size: 14px; cursor: pointer; }
+.refresh:hover:not(:disabled) { background: #faf4f5; }
+.refresh:disabled { opacity: .6; cursor: wait; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #c69a4b; outline-offset: 3px; }
+.readonly-note { margin: 24px 0; padding: 14px 18px; border-left: 3px solid #c69a4b; background: #faf7f0; color: #60533c; line-height: 1.6; }
+.dependency-summary { padding: 0 0 22px; border-bottom: 1px solid #e8e4dd; }
+.totals { flex-shrink: 0; color: #666b73; font-size: 14px; }
+.calendar-reference { color: #666b73; font-size: 13px; line-height: 1.6; }
+.filters { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 24px; }
+.filters label { display: grid; gap: 8px; min-width: 0; font-size: 13px; font-weight: 600; }
+.filters input, .filters select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #dddcd7; border-radius: 9px; background: #fff; color: #272b32; font: inherit; font-size: 14px; }
+.result-count { margin: 18px 0 12px; color: #666b73; font-size: 13px; }
+.indicator-list { display: grid; gap: 20px; }
+.indicator-card { min-width: 0; padding: 24px; border: 1px solid #e8e4dd; border-radius: 14px; background: #fff; box-shadow: 0 3px 14px #431c2a05; }
+.card-heading { margin-bottom: 12px; }
+.indicator-key { margin: 0; color: #70273b; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.activation-status { flex-shrink: 0; padding: 5px 10px; border: 1px solid #e3ded5; border-radius: 6px; color: #605748; font-size: 12px; }
+.classification { color: #666b73; font-size: 13px; line-height: 1.6; }
+.indicator-details { display: flex; flex-wrap: wrap; gap: 16px 48px; margin: 20px 0; }
+.indicator-details dt { margin-bottom: 4px; color: #666b73; font-size: 12px; }
+.indicator-details dd { margin: 0; font-size: 14px; font-weight: 600; }
+.preparation-note, .scope-note { color: #666b73; font-size: 13px; line-height: 1.6; }
+.variables-heading { margin: 22px 0 12px; font-size: 14px; font-weight: 700; }
+.variables { margin: 0; padding: 0; list-style: none; border-top: 1px solid #eeeae4; }
+.variables li { display: flex; align-items: flex-start; gap: 14px; padding: 16px 0; border-bottom: 1px solid #eeeae4; }
+.variable-code { flex-shrink: 0; max-width: 35%; padding: 5px 9px; border-radius: 5px; background: #f6f1f2; color: #70273b; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.variable-description { min-width: 0; overflow-wrap: anywhere; }
+.variable-description p { margin: 0; line-height: 1.5; }
+.variable-description .variable-meta { margin-top: 6px; color: #666b73; font-size: 13px; }
+.scope-note { margin: 12px 0 0; }
+.message { margin: 24px 0; padding: 24px; border: 1px solid #e8e4dd; border-radius: 12px; background: #fff; line-height: 1.6; }
+.error { border-color: #dcbec6; color: #70273b; }
+.error p { margin-top: 0; }
+@media (max-width: 700px) {
+  .page-heading, .dependency-summary { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .totals { margin: 0; }
+  .filters { grid-template-columns: 1fr; }
+  .indicator-card { padding: 18px; }
+  .card-heading { align-items: flex-start; flex-wrap: wrap; gap: 10px; }
 }
-
-.captura {
-  --wine: #70273b;
-  --deep: #431c2a;
-  --gold: #c69a4b;
-  --green: #356e58;
-  --muted: #777d85;
-  --line: #e8e4dd;
-
-  max-width: 1540px;
-  margin: 0 auto;
-  color: #272b32;
-}
-
-/* ENCABEZADO */
-
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 22px;
-  margin-bottom: 20px;
-}
-
-.eyebrow {
-  display: block;
-  color: #a17738;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .12em;
-}
-
-.page-header h1 {
-  margin: 8px 0;
-  color: var(--deep);
-  font: 500 clamp(30px, 3.5vw, 42px) Georgia, serif;
-}
-
-.page-header p,
-.panel-heading p,
-.revision-encabezado p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.7;
-}
-
-/* PERIODO SUPERIOR */
-
-.periodo-superior {
-  margin-left: auto;
-  min-width: min(410px, 100%);
-  padding: 14px 18px;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  box-shadow: 0 10px 25px #382c2609;
-}
-
-.periodo-controles {
-  display: grid;
-  grid-template-columns: 110px minmax(160px, 1fr);
-  gap: 11px;
-  margin: 10px 0 6px;
-}
-
-.periodo-superior small {
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.periodo-superior label,
-.fields label,
-.formulario label {
-  display: grid;
-  gap: 7px;
-  min-width: 0;
-  color: #48444a;
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.periodo-superior input,
-.periodo-superior select,
-.fields select,
-.formulario input,
-.formulario textarea {
-  width: 100%;
-  min-width: 0;
-  padding: 11px 12px;
-  border: 1px solid #dddcd7;
-  border-radius: 9px;
-  background: white;
-  color: #272b32;
-  font-size: 13px;
-  outline: none;
-}
-
-.periodo-superior input:focus,
-.periodo-superior select:focus,
-.fields select:focus,
-.formulario input:focus,
-.formulario textarea:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px #c69a4b22;
-}
-
-select:disabled,
-input:disabled {
-  background: #f4f3f1 !important;
-  color: #888 !important;
-  cursor: not-allowed;
-}
-
-/* PESTAÑAS CAPTURA Y REVISIÓN */
-
-.pasos {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 22px;
-}
-
-.paso {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: white;
-  color: #7b7378;
-  font-weight: 800;
-  cursor: pointer;
-  transition:
-    background .2s,
-    box-shadow .2s,
-    transform .2s;
-}
-
-.paso span {
-  font-size: 11px;
-  opacity: .75;
-}
-
-.paso small {
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.paso:hover {
-  border-color: #d9aebc;
-  transform: translateY(-1px);
-}
-
-.paso.activo {
-  color: var(--wine);
-  background:
-    linear-gradient(115deg, #fbecf1, #fff9f3);
-  border-color: #dcb0be;
-  box-shadow:
-    0 0 0 2px #70273b13,
-    0 9px 25px #70273b20;
-}
-
-/* DISTRIBUCIÓN */
-
-.capture-grid {
-  display: grid;
-  grid-template-columns:
-    minmax(290px, .85fr)
-    minmax(0, 1.5fr);
-  align-items: start;
-  gap: 20px;
-}
-
-.capture-sidebar,
-.capture-main {
-  display: grid;
-  gap: 20px;
-  min-width: 0;
-}
-
-/* PANELES */
-
-.panel {
-  padding: 25px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  box-shadow: 0 12px 35px #382c260a;
-}
-
-.panel-heading {
-  margin-bottom: 22px;
-}
-
-.panel-heading h2,
-.revision-encabezado h2 {
-  margin: 8px 0;
-  color: var(--deep);
-  font: 500 25px Georgia, serif;
-}
-
-/* CAMPOS */
-
-.fields,
-.formulario {
-  display: grid;
-  gap: 18px;
-}
-
-/* FICHA METODOLÓGICA */
-
-.ficha {
-  background: #fdfbf8;
-}
-
-.ficha h2 {
-  color: var(--deep);
-  font: 500 23px Georgia, serif;
-  overflow-wrap: anywhere;
-}
-
-.ficha dl {
-  display: grid;
-  gap: 9px;
-}
-
-.ficha dt {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.ficha dd {
-  margin: 0 0 4px;
-  overflow-wrap: anywhere;
-  font-size: 12px;
-  line-height: 1.65;
-}
-
-/* FÓRMULAS */
-
-.formula {
-  padding: 16px;
-  border-radius: 10px;
-  background: #f5ecee;
-  overflow-wrap: anywhere;
-}
-
-.formula strong {
-  color: var(--wine);
-  font-size: 10px;
-  letter-spacing: .08em;
-}
-
-.formula p {
-  margin: 9px 0 0;
-  font-size: 13px;
-  line-height: 1.75;
-  white-space: pre-line;
-}
-
-.formula-central {
-  border-left: 3px solid var(--wine);
-}
-
-/* VARIABLES DINÁMICAS */
-
-.variables-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.variables-grid label {
-  padding: 14px;
-  background: #faf9f7;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-
-.variables-grid label strong {
-  color: var(--wine);
-  font-size: 13px;
-}
-
-.variables-grid label span {
-  min-height: 34px;
-  color: #686b73;
-  font-size: 11px;
-  line-height: 1.5;
-  font-weight: 500;
-}
-
-/* RESULTADO */
-
-.resultado {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 15px;
-  padding: 18px;
-  background: #faf1f4;
-  border: 1px solid #ead7de;
-  border-radius: 12px;
-}
-
-.resultado div > span {
-  color: #785363;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .08em;
-}
-
-.resultado div > strong {
-  display: block;
-  margin: 6px 0;
-  color: var(--wine);
-  font-size: 29px;
-}
-
-.resultado small {
-  display: block;
-  color: #82656a;
-  font-size: 11px;
-}
-
-.resultado-etiqueta {
-  padding: 7px 10px;
-  border-radius: 30px;
-  background: #f0e3e8;
-  color: var(--wine);
-  font-size: 11px;
-  font-weight: 750;
-}
-
-/* EVIDENCIA Y OBSERVACIONES */
-
-.full-field {
-  width: 100%;
-}
-
-.formulario textarea {
-  resize: vertical;
-  line-height: 1.7;
-}
-
-.nota-evidencia {
-  padding: 12px 14px;
-  border-radius: 9px;
-  background: #faf8f4;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.6;
-}
-
-.observacion,
-.alerta-metodo {
-  padding: 14px 17px;
-  border-radius: 0 9px 9px 0;
-  font-size: 12px;
-  line-height: 1.75;
-}
-
-.observacion {
-  border-left: 3px solid var(--gold);
-  background: #fff7e9;
-}
-
-.alerta-metodo {
-  border-left: 3px solid #b47b44;
-  background: #fdf6ea;
-  color: #75512e;
-}
-
-.observacion strong {
-  color: var(--wine);
-}
-
-.observacion p {
-  margin: 5px 0;
-  white-space: pre-line;
-}
-
-.observacion small {
-  color: var(--muted);
-}
-
-/* BOTONES */
-
-.acciones {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-}
-
-.btn-principal,
-.btn-secundario {
-  padding: 12px 18px;
-  border-radius: 9px;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  transition:
-    transform .2s,
-    background .2s;
-}
-
-.btn-principal {
-  color: white;
-  background: var(--wine);
-  border: 1px solid var(--wine);
-}
-
-.btn-principal:hover {
-  background: var(--deep);
-  transform: translateY(-1px);
-}
-
-.btn-secundario {
-  color: var(--wine);
-  background: #f3eee6;
-  border: 1px solid #eae0d9;
-}
-
-.btn-secundario:hover {
-  background: #ebe1d6;
-}
-
-/* ESTADO VACÍO */
-
-.empty {
-  padding: 65px 20px;
-  text-align: center;
-}
-
-.empty-icon {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 15px;
-  border-radius: 14px;
-  background: #f4ecee;
-  color: var(--wine);
-  font-size: 27px;
-}
-
-.empty strong {
-  color: var(--deep);
-}
-
-.empty p {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-/* MENSAJES */
-
-.mensaje {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 16px;
-  margin-bottom: 18px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.mensaje.exito {
-  background: #e6f2eb;
-  color: #28654d;
-}
-
-.mensaje.error {
-  background: #fae5e7;
-  color: #a63f4b;
-}
-
-.mensaje button {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font-size: 21px;
-  cursor: pointer;
-}
-
-/* REVISIÓN */
-
-.revision-panel {
-  min-height: 300px;
-}
-
-.revision-encabezado {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.resumen-revision {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 18px 0;
-}
-
-.resumen-revision span {
-  padding: 11px 15px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  color: #5b5960;
-  font-size: 12px;
-}
-
-.resumen-revision strong {
-  margin-right: 5px;
-  color: var(--wine);
-  font-size: 20px;
-}
-
-/* TABLA */
-
-.table-wrapper {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  min-width: 790px;
-  border-collapse: collapse;
-  text-align: left;
-}
-
-th,
-td {
-  padding: 13px 12px;
-  border-bottom: 1px solid var(--line);
-}
-
-th {
-  background: #faf9f6;
-  color: var(--muted);
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: .05em;
-}
-
-td {
-  font-size: 12px;
-}
-
-td strong,
-td small {
-  display: block;
-}
-
-td strong {
-  color: var(--wine);
-}
-
-td small {
-  margin-top: 5px;
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.status-badge.review {
-  color: #906821;
-  background: #fbf1d9;
-}
-
-.status-badge.reviewed,
-.status-badge.validated {
-  color: #28654d;
-  background: #e6f2eb;
-}
-
-.status-badge.observed {
-  color: #a63f4b;
-  background: #fae5e7;
-}
-
-.link-corregir {
-  border: 0;
-  background: transparent;
-  color: var(--wine);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.link-corregir:hover {
-  text-decoration: underline;
-}
-
-.vacio-tabla {
-  padding: 35px;
-  color: var(--muted);
-  text-align: center;
-}
-
-.nota-pie {
-  margin-top: 20px;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.7;
-}
-
-/* RESPONSIVE */
-
-@media (max-width: 1050px) {
-  .capture-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 650px) {
-  .panel {
-    padding: 17px;
-  }
-
-  .periodo-superior {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .periodo-controles {
-    grid-template-columns: 100px minmax(0, 1fr);
-  }
-
-  .variables-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .pasos {
-    gap: 8px;
-  }
-
-  .paso {
-    padding: 12px 8px;
-  }
-
-  .acciones {
-    flex-wrap: wrap;
-  }
-
-  .acciones button {
-    flex: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .btn-principal,
-  .paso {
-    transition: none;
-  }
-}
-
-
-/* Aviso informativo para el rol Captura */
-
-.aviso-captura {
-  padding: 16px 18px;
-  border-left: 3px solid #c69a4b;
-  border-radius: 0 10px 10px 0;
-  background: #faf7f0;
-}
-
-.aviso-captura strong {
-  display: block;
-  margin-bottom: 7px;
-  color: #70273b;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.aviso-captura p {
-  margin: 0;
-  color: #65616a;
-  font-size: 12px;
-  line-height: 1.8;
-}
-
-
-.error-formulario {
-  padding: 15px 18px;
-  border: 1px solid #eab4bb;
-  border-left: 4px solid #bd4556;
-  border-radius: 10px;
-  background: #fff0f2;
-}
-
-.error-formulario strong {
-  color: #972c41;
-  font-size: 13px;
-}
-
-.error-formulario p {
-  margin: 6px 0 0;
-  color: #8e3444;
-  font-size: 12px;
-  line-height: 1.7;
-}
-
 </style>
