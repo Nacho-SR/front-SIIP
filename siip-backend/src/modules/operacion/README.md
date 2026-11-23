@@ -60,3 +60,10 @@ en memoria, dobles del repositorio y renderizado SSR del frontend. Se conserva
 la comprobación de activación y permisos existentes. No se consultó PostgreSQL real. La revisión visual
 en escritorio/móvil quedó pendiente porque el navegador integrado no alcanzó
 localhost y Computer Use detuvo el acceso a Chrome al no poder verificar su URL.
+
+Punto 4 (23/11/2026): `npm run test:integration` desde `siip-frontend` conecta el
+cliente y la vista reales con Fastify/guards/repositorio reales mediante transporte
+inyectado. Comprueba aislamiento de variables en un indicador compartido, cuatro
+perfiles, intentos de imponer dependencia/rol, logout y cuenta/dependencia inactiva.
+Sesiones y cuentas sintéticas; PostgreSQL sigue como doble. No amplía permisos ni
+habilita API operativas. Ver alcance completo en `Documentacion/matriz-permisos.md`.

@@ -27,6 +27,13 @@ explícitas y resultado numérico o causa matemática; sin semáforo, BD ni reso
 de referencias. El simulador de parte/total reutiliza el cociente y conserva sus
 colores/contrato. No amplía las metodologías seleccionables ni la activación.
 
+Punto 4, 23/11/2026: añadida suite de integración cliente/frontend–Fastify para
+los cuatro perfiles y el aislamiento de variables de dos dependencias de un
+indicador compartido. Incluye URL directa, consultas/escrituras administrativas
+denegadas, alteración de rol/dependencia y revocación. Usa sesiones sintéticas y
+doble de PostgreSQL; no acredita BD real ni navegador. No requirió modificar los
+permisos de producción. Alcance y reproducción en `matriz-permisos.md`.
+
 ## 2. Fuentes originales del proyecto
 Buscar dentro del repositorio (los archivos pueden estar en distintas subcarpetas):
 - `05 Arquitectura del sistema.docx` — consultor, documento funcional de ~80 páginas; no equivale a especificación técnica terminada. Contiene comentarios de revisión del equipo.

@@ -53,3 +53,42 @@ Pendientes: asignaciones concretas del cliente, restricciones personales adicion
 El cierre al terminar el periodo bloquea nuevos datos. Faltantes/incompletos quedan grises, sin convertirse en cero o desempeño rojo. Los envíos completos conservan revisión/validación posterior. Solo Administrador abre la recepción de justificación con motivo. Solo Captura adjunta el PDF de su dependencia, sin completar datos ni quitar el gris. Consulta observa el estado global, sin permiso automático de descargar PDF internos. No se conceden aprobación de justificación ni correcciones posteriores al cierre antes de definirlas. Véase [flujos de negocio](flujos-negocio.md).
 
 La lectura global de Consulta no incluye expedientes, hilos, valores sin validar, auditoría, catálogos administrativos ni asignaciones internas. Ficha técnica y resultados publicados deben usar una proyección propia, sin variables_captura operativas. Los límites aplican también a solicitudes por ID directo.
+
+## Comprobación de permisos e integración — punto 4, 23/11/2026
+
+Suite reproducible: `siip-frontend/integration/permisos-flujo.mjs`.
+Ejecutar `npm run test:integration` desde `siip-frontend`, con Node 22 y las
+dependencias de frontend y backend instaladas. No lee `.env`, no conecta a una
+base de datos, no aplica SQL ni crea cuentas reales.
+
+Usa el cliente Axios, Pinia, los guards de Vue Router y Captura reales, conectados
+mediante un adaptador de prueba a `buildApp`/Fastify, autenticación Argon2,
+cookie/CSRF, guards, serialización y repositorio de bandeja reales. La sesión y
+las cuentas son sintéticas/en memoria. PostgreSQL es un doble que comprueba el
+filtro SQL por dependencia y devuelve filas de varias dependencias. El transporte
+se inyecta en proceso; no sustituye una prueba de navegador, red, CORS o SQL real.
+
+| Recorrido comprobado | Resultado esperado |
+|---|---|
+| Captura DGSM y Captura Obras con un indicador compartido | DGSM recibe N; Obras recibe D y otro indicador exclusivo. La respuesta y la vista no mezclan variables, indicadores exclusivos ni totales. |
+| Captura sin asignaciones | Lista vacía y aviso propio, sin recurrir a ejemplos locales. |
+| Calendario de la bandeja | Fecha local del servidor y límites del mes, sin habilitar envíos. |
+| Revisión/Administrador/Consulta intentan API de Captura | 403 antes de consultar el repositorio. Administrador no hereda Captura. |
+| URL directa de Captura, Seguimiento y configuración administrativa | Guards conservan sus roles exclusivos, incluidos metodología, activación, agrupaciones y familias. Seguimiento sigue siendo una vista previa. |
+| Consultas de ocho recursos administrativos | Administrador recibe 200; los otros tres perfiles reciben 403 sin ejecutar sus consultas administrativas. |
+| Alta de usuarios/indicadores y configuración de variables/metodología/activación por otros perfiles | 403 incluso con cookie y CSRF válidos, antes de validar o escribir el cuerpo. |
+| Sustituir dependencia por query/cabecera o rol por cabecera/Pinia | El backend conserva la cuenta de la sesión; parámetros ajenos se rechazan y no se concede administración. |
+| Sin cookie, cookie revocada al salir o cuenta/dependencia desactivada | 401, sin nuevas consultas de asignaciones. El cliente limpia identidad y bandeja y redirige al login al recibir 401. |
+
+No se encontraron bypass en los recorridos comprobados. No fue necesario cambiar
+permisos o código de producción. Se añadieron las pruebas de integración y su
+comando, conservando independientes las pruebas habituales del frontend.
+Resultado de esta comprobación: 111 pruebas de backend sin PostgreSQL, 70 pruebas
+habituales de frontend y cuatro pruebas del recorrido integrado, todas aprobadas.
+
+La comprobación no acredita toda la matriz funcional: Consulta/Estadísticas y
+Seguimiento conservan sus datos de demostración. No existen todavía las API
+operativas de envíos, revisión/validación, publicaciones y descargas privadas;
+su autorización por indicador/periodo y asignaciones históricas sigue pendiente.
+La integración contra PostgreSQL y la revisión visual escritorio/móvil tampoco
+se ejecutaron en este paso. No se reutilizan autorizaciones antiguas de la BD.

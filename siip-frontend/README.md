@@ -42,11 +42,22 @@ La sesión viaja en cookie HttpOnly y las escrituras envían `X-CSRF-Token`. `GE
 En despliegue, define `VITE_API_URL` al compilar. Frontend y API deben usar HTTPS y compartir sitio para la cookie `SameSite=Lax`; el despliegue estático de GitHub Pages por sí solo no aloja el backend.
 
 ```powershell
-npm test
+npm test -- --test-concurrency=1
 npm run build
 ```
 
 Las pruebas verifican store, cliente HTTP y guards reales con respuestas HTTP simuladas e historial en memoria. No conectan a PostgreSQL ni verifican cookies/CORS en un navegador.
+
+Punto 4 (23/11/2026): `npm run test:integration` ejecuta, por separado, el recorrido
+del cliente frontend contra Fastify real con transporte inyectado, sesiones en
+memoria y doble de PostgreSQL. Requiere Node 22 y dependencias instaladas en
+`siip-frontend` y `siip-backend`. No lee `.env`, no requiere preparar una BD y no
+ejecuta las pruebas PostgreSQL del backend. Comprueba dos dependencias de un
+indicador compartido, cuatro roles, intentos de alterar permisos, logout y
+revocación por cuenta/dependencia inactiva. No sustituye una prueba de navegador.
+Las pruebas habituales se ejecutan en serie para evitar que instancias de Vite
+compitan por su caché en Windows. Alcance en
+[matriz de permisos](../Documentacion/matriz-permisos.md#comprobación-de-permisos-e-integración--punto-4-23112026).
 
 En **Administrador → Usuarios y dependencias**, crea primero la dependencia o elige
 una existente en el catálogo activo. Después registra nombre, correo, rol,
