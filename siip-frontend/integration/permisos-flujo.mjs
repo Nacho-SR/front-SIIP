@@ -14,6 +14,8 @@ const loader = register({ namespace: 'siip-permisos-flujo' });
 const { buildApp } = await loader.import('../../siip-backend/src/app.ts', import.meta.url);
 const { envSchema } = await loader.import('../../siip-backend/src/env.ts', import.meta.url);
 const { createBandejaRepository } = await loader.import('../../siip-backend/src/modules/operacion/repositories/bandeja.repository.ts', import.meta.url);
+const { createConsultaRepository } = await loader.import('../../siip-backend/src/modules/consulta/repositories/consulta.repository.ts', import.meta.url);
+const { fichaConsultaSchema } = await loader.import('../../siip-backend/src/modules/consulta/schemas/consulta.schema.ts', import.meta.url);
 const session = backendRequire('@fastify/session');
 const { hash } = backendRequire('argon2');
 const password = 'Synthetic-flow-password-2026!';
@@ -35,7 +37,13 @@ const rows = [
 ];
 const adminReads = ['usuarios', 'dependencias', 'indicadores', 'agrupaciones', 'familias',
   'indicadores/1/variables', 'indicadores/1/metodologia', 'indicadores/1/activacion'];
-let vite, api, router, auth, useAuthStore, CaptureView, app, accounts, cookie, sqlCalls, adminCalls;
+let vite, api, router, auth, useAuthStore, CaptureView, ConsultaView, app, accounts, cookie, sqlCalls, adminCalls;
+const fichas = [...new Map(rows.map(row => [row.indicadorId, {
+  ...Object.fromEntries(Object.keys(fichaConsultaSchema.shape).map(key => [key, ''])),
+  id: row.indicadorId, activo: row.activo, clave: row.clave, nombre: row.nombre,
+  agrupacion: row.agrupacion, familia: row.familia, frecuencia: row.frecuencia,
+  algoritmo: 'FORMULA_DOCUMENTAL', meta: '0', lineaBase: '0',
+}])).values()];
 
 before(async () => {
   vite = await createServer({ cacheDir: 'node_modules/.vite-permisos-flujo-test',
@@ -48,6 +56,7 @@ before(async () => {
   ({ default: router } = await vite.ssrLoadModule('/src/router/index.ts'));
   ({ useAuthStore } = await vite.ssrLoadModule('/src/store/auth.store.ts'));
   ({ default: CaptureView } = await vite.ssrLoadModule('/src/modules/capture/CaptureView.vue'));
+  ({ default: ConsultaView } = await vite.ssrLoadModule('/src/modules/consulta/ConsultaView.vue'));
   for (const route of router.getRoutes()) if (route.components) route.components.default = { render: () => null };
 });
 after(async () => { await vite?.close(); await loader.unregister(); });
@@ -63,6 +72,12 @@ beforeEach(async t => {
   const pool = { async query(sql, params) {
     sqlCalls.push({ sql, params });
     assert.equal(params.length, 1);
+    if (sql.includes('COALESCE(')) {
+      assert.match(sql, /\$1::bigint IS NULL OR EXISTS/);
+      assert.match(sql, /v.indicador_id = i.id AND v.dependencia_id = \$1/);
+      assert.doesNotMatch(sql, /i\.\*|variables_texto|INSERT|UPDATE|DELETE/);
+      return { rows: fichas.filter(f => params[0] === null || rows.some(row => row.indicadorId === f.id && row.dependenciaId === params[0])) };
+    }
     if (sql.includes('FROM dependencias WHERE')) {
       assert.match(sql, /WHERE id = \$1 AND activo/);
       return { rows: dependencies.filter(d => d.id === params[0]).map(({ activo, ...d }) => d) };
@@ -78,6 +93,7 @@ beforeEach(async t => {
       async findById(id) { return accounts.find(a => a.id === id) ?? null; } },
     sessionStore: new session.MemoryStore(),
     bandeja: createBandejaRepository(pool, () => new Date('2026-11-23T12:00:00Z')),
+    consulta: createConsultaRepository(pool),
     users: { listUsers: read('usuarios', []), listDependencies: read('dependencias', dependencies) },
     indicators: { list: read('indicadores', []) },
     classifications: { listAgrupaciones: read('agrupaciones', []), listFamilias: read('familias', []) },
@@ -109,13 +125,40 @@ async function login(id) {
   await auth.login(`cuenta${id}@example.test`, password);
   assert.equal(auth.user.id, id);
 }
-async function render(preparar) {
+async function render(preparar, view = CaptureView) {
   let state;
-  const component = createSSRApp(CaptureView).use(router);
+  const component = createSSRApp(view).use(router);
   component.mixin({ created() { if (!this.$parent) { state = this.$.setupState; preparar?.(state); } } });
   return { html: await renderToString(component), state };
 }
 const denied = error => error.response?.status === 403 && error.response.data.codigo === 'NO_PERMITIDO';
+
+for (const [id, expected] of [['1', 1], ['2', 2], ['3', 2], ['4', 2], ['5', 2], ['6', 0]]) {
+  test(`Consulta → API → repositorio: alcance de cuenta ${id} con ${expected} fichas`, async () => {
+    await login(id); await router.replace('/');
+    assert.equal(router.currentRoute.value.name, 'Consulta');
+    const view = await render(undefined, ConsultaView);
+    await view.state.cargarCatalogo();
+    assert.equal(view.state.indicadoresCatalogo.length, expected);
+    const data = view.state.indicadoresCatalogo;
+    assert.doesNotMatch(JSON.stringify(data), /VARIABLE_PROPIA|PRIVADA_OBRAS|MEDICION_PRIVADA|password_hash|metodologia/);
+    if (id === '1') assert.doesNotMatch(JSON.stringify(data), /EXCLUSIVO_OBRAS/);
+    const rendered = await render(s => {
+      s.cargando = false; s.indicadoresCatalogo = data; s.gruposAbiertos = data.length ? [data[0].agrupacion] : [];
+    }, ConsultaView);
+    assert.equal(rendered.state.alertasGenerales.gris, 0);
+    assert.equal(rendered.state.indicadores.every(i => i.valorValidado === null && i.semaforo === null), true);
+    assert.match(rendered.html, /no hay resultados publicados disponibles/);
+    assert.doesNotMatch(rendered.html, /Datos de demostración|índice informativo/);
+    if (expected) {
+      rendered.state.abrirFicha(rendered.state.indicadores[0]);
+      assert.equal(rendered.state.fichaSeleccionada.algoritmo, 'FORMULA_DOCUMENTAL');
+    }
+    await assert.rejects(api.get('/consulta/indicadores', { params: { dependenciaId: '99', rol: 'administrador' } }), e => e.response.status === 422);
+    await auth.logout();
+    assert.equal((await app.inject('/api/v1/consulta/indicadores')).statusCode, 401);
+  });
+}
 
 test('login → API → repositorio → bandeja: dos dependencias comparten indicador sin compartir variables', async () => {
   await login('1'); await router.replace('/captura');

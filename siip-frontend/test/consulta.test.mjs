@@ -1,19 +1,39 @@
 import assert from 'node:assert/strict';
-import { after, before, test } from 'node:test';
+import { after, before, beforeEach, test } from 'node:test';
+import { setImmediate } from 'node:timers/promises';
+import { createPinia, setActivePinia } from 'pinia';
 import { createServer } from 'vite';
 import { createSSRApp } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 
-let vite, modelo, ConsultaView, FichaTecnicaModal, seguimiento, catalogo;
+let vite, modelo, ConsultaView, FichaTecnicaModal, seguimiento, catalogo, api, router, useAuthStore;
 before(async () => {
-  vite = await createServer({ server: { middlewareMode: true, watch: null, hmr: false, ws: false }, appType: 'custom' });
+  vite = await createServer({ server: { middlewareMode: true, watch: null, hmr: false, ws: false }, appType: 'custom',
+    plugins: [{ name: 'memory-history', transform(code, id) {
+      if (id.endsWith('/src/router/index.ts')) return code.replaceAll('createWebHistory', 'createMemoryHistory');
+    } }],
+  });
   modelo = await vite.ssrLoadModule('/src/modules/consulta/data/consulta.ts');
   seguimiento = await vite.ssrLoadModule('/src/modules/review/data/seguimiento.store.ts');
   ({ default: ConsultaView } = await vite.ssrLoadModule('/src/modules/consulta/ConsultaView.vue'));
   ({ default: FichaTecnicaModal } = await vite.ssrLoadModule('/src/modules/consulta/components/FichaTecnicaModal.vue'));
   ({ default: catalogo } = await vite.ssrLoadModule('/src/modules/consulta/data/indicadores-siip.json'));
+  ({ default: api } = await vite.ssrLoadModule('/src/core/api.ts'));
+  ({ default: router } = await vite.ssrLoadModule('/src/router/index.ts'));
+  ({ useAuthStore } = await vite.ssrLoadModule('/src/store/auth.store.ts'));
+  for (const route of router.getRoutes()) if (route.components) route.components.default = { render: () => null };
 });
 after(async () => { await vite?.close(); });
+beforeEach(() => {
+  setActivePinia(createPinia());
+  Object.assign(useAuthStore(), { initialized: true, user: {
+    id: '1', nombre: 'Consulta', correo: 'consulta@example.test', rol: 'consulta', dependencia_id: null,
+  } });
+  api.defaults.adapter = async () => assert.fail('Configurar respuesta HTTP');
+});
+const fichasPrueba = () => catalogo.map((ficha, i) => ({ ...ficha, id: String(i + 1), activo: false,
+  condicionAcumulacion: 'No acumulable', lineaBase: '0', periodoLineaBase: '2026',
+  meta: '0', periodoCumplimiento: '2027', semaforizacion: 'REGLA_DOCUMENTAL' }));
 
 function registro(cambios = {}) {
   return {
@@ -27,12 +47,14 @@ function registro(cambios = {}) {
 
 async function vista(preparar) {
   let state;
-  const app = createSSRApp(ConsultaView);
+  const app = createSSRApp(ConsultaView).use(router);
   app.mixin({ created() {
     if (this.$parent) return;
     state = this.$.setupState;
     state.corteMaximo = '2026-10';
     state.periodoElegido = '2026-09';
+    state.cargando = false;
+    state.indicadoresCatalogo = fichasPrueba();
     preparar?.(state);
   } });
   const html = await renderToString(app);
@@ -169,49 +191,100 @@ test('el índice usa pesos y umbrales acordados y excluye gris y falta de color'
   }
 });
 
-test('la vista mantiene el periodo esperado ausente, no declara gris y acepta cortes sin resultados', async () => {
-  const mensual = catalogo.find(indicador => indicador.frecuencia === 'Mensual');
-  const { state, html } = await vista(state => {
-    state.resultados = [modelo.proyectarResultadoConsulta(registro({ indicadorClave: mensual.clave, periodo: '2026-08' }))];
-    state.gruposAbiertos = [mensual.agrupacion];
-  });
-  const fila = state.indicadores.find(indicador => indicador.clave === mensual.clave);
-  assert.equal(fila.periodoEsperado, '2026-09');
-  assert.equal(fila.valorValidado, null);
-  assert.equal(fila.periodoValidado, null);
-  assert.equal(fila.semaforo, null);
-  assert.equal(state.alertasGenerales.gris, 0);
-  assert.match(html, /Mes y año de corte/);
-  assert.match(html, /Sin publicación del periodo esperado/);
-  assert.match(html, /Datos de demostración/);
-  state.periodoElegido = '2026-12';
-  assert.equal(state.periodoActivo, '');
-  assert.equal(state.indicadores.every(indicador => indicador.valorValidado === null), true);
+test('Consulta lee solo su API, conserva fichas inactivas y nunca resultados del almacenamiento local', async () => {
+  const { state } = await vista();
+  const data = { indicadores: [{ ...fichasPrueba()[0], id: '9007199254740993', nombre: 'REGISTRO_REAL_API' }] };
+  const requests = [];
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+  Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: {
+    getItem() { assert.fail('No leer resultados del prototipo'); }, setItem() { assert.fail('Solo lectura'); },
+  } });
+  try {
+    api.defaults.adapter = async config => { requests.push(config); return { status: 200, data, headers: {}, config }; };
+    await state.cargarCatalogo();
+    assert.deepEqual(state.indicadoresCatalogo, data.indicadores);
+    const { html, state: loaded } = await vista(s => {
+      s.indicadoresCatalogo = state.indicadoresCatalogo; s.gruposAbiertos = [data.indicadores[0].agrupacion];
+    });
+    assert.match(html, /REGISTRO_REAL_API/);
+    assert.match(html, /Sin activar/);
+    assert.match(html, /Sin resultados publicados disponibles/);
+    assert.doesNotMatch(html, /Datos de demostración|índice informativo|Color temático pendiente/);
+    assert.equal(loaded.indicadores[0].valorValidado, null);
+    assert.equal(loaded.indicadores[0].semaforo, null);
+    assert.equal(loaded.alertasGenerales.gris, 0);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, '/consulta/indicadores');
+    assert.equal(requests[0].method, 'get');
+    assert.equal(requests[0].params, undefined);
+    const modal = await vista(s => { s.indicadoresCatalogo = state.indicadoresCatalogo; s.abrirFicha(s.indicadores[0]); });
+    assert.equal(modal.state.fichaSeleccionada.nombre, 'REGISTRO_REAL_API');
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'sessionStorage', original);
+    else delete globalThis.sessionStorage;
+  }
 });
 
-test('los filtros cambian filas, pero conservan índice y conteo del grupo completo', async () => {
-  const primeros = catalogo.filter(indicador => indicador.agrupacion === catalogo[0].agrupacion).slice(0, 2);
-  const { state, html } = await vista(state => {
-    state.resultados = primeros.map((indicador, indice) => {
-      const origen = registro({ indicadorClave: indicador.clave, periodo: modelo.periodoEsperado(indicador.frecuencia, '2026-09') });
-      origen.publicacion.semaforo = indice ? 'rojo' : 'verde';
-      return modelo.proyectarResultadoConsulta(origen);
-    });
-  });
-  const antes = state.agrupaciones.find(grupo => grupo.nombreOriginal === primeros[0].agrupacion);
-  assert.equal(antes.indice, 0.5);
-  state.filtros.busqueda = primeros[0].clave;
-  const despues = state.agrupaciones[0];
-  assert.equal(despues.indicadores.length, 1);
-  assert.equal(despues.indice, antes.indice);
-  assert.deepEqual(despues.conteo, antes.conteo);
-  assert.match(html, /índice informativo 0.50/);
-  assert.match(html, /Color temático pendiente/);
+test('búsqueda sin acentos y filtros conservan los grupos y el total del catálogo recibido', async () => {
+  const data = fichasPrueba().slice(0, 3);
+  data[0].nombre = 'Atención pública';
+  const { state } = await vista(s => { s.indicadoresCatalogo = data; });
+  state.filtros.busqueda = 'ATENCION';
+  assert.equal(state.indicadoresFiltrados.length, 1);
+  assert.equal(state.agrupaciones[0].total, 3);
+  assert.equal(state.totalIndicadores, 3);
+  state.limpiarFiltros();
+  state.filtros.tipologia = 'inexistente';
+  assert.equal(state.totalVisibles, 0);
+  state.limpiarFiltros();
+  state.filtros.ambito = data[0].ambito;
+  state.filtros.desagregacion = data[0].desagregacion;
+  assert.equal(state.indicadoresFiltrados.every(i => i.ambito === data[0].ambito && i.desagregacion === data[0].desagregacion), true);
+  assert.deepEqual(state.opciones('tipologia'), [...new Set(data.map(i => i.tipologia))].sort((a, b) => a.localeCompare(b, 'es')));
+});
+
+test('distingue carga, vacío, ausencia de asignación y filtros sin coincidencias', async () => {
+  assert.match((await vista(s => { s.cargando = true; s.indicadoresCatalogo = []; })).html, /Cargando el catálogo/);
+  assert.match((await vista(s => { s.indicadoresCatalogo = []; })).html, /Todavía no hay indicadores registrados/);
+  assert.match((await vista(s => { s.filtros.busqueda = 'inexistente'; })).html, /No se encontraron indicadores/);
+  useAuthStore().user = { id: '2', rol: 'captura', dependencia_id: '7' };
+  assert.match((await vista(s => { s.indicadoresCatalogo = []; })).html, /No hay indicadores asignados a tu dependencia/);
+});
+
+test('el error limpia catálogo/ficha previa, escapa detalles y permite reintentar sin sustitución por JSON', async () => {
+  const { state } = await vista(s => s.abrirFicha(s.indicadores[0]));
+  api.defaults.adapter = async () => { throw { isAxiosError: true, response: { status: 503, data: { detail: 'Servicio <privado>' } } }; };
+  await state.cargarCatalogo();
+  assert.deepEqual(state.indicadoresCatalogo, []);
+  assert.equal(state.fichaSeleccionada, null);
+  const { html } = await vista(s => { s.indicadoresCatalogo = []; s.error = state.error; });
+  assert.match(html, /Servicio &lt;privado&gt;/);
+  assert.match(html, /Reintentar/);
+  assert.doesNotMatch(html, /No se encontraron indicadores|Todavía no hay indicadores registrados/);
+  api.defaults.adapter = async config => ({ status: 200, data: { indicadores: fichasPrueba().slice(0, 1) }, headers: {}, config });
+  await state.cargarCatalogo();
+  assert.equal(state.error, '');
+  assert.equal(state.indicadoresCatalogo.length, 1);
+});
+
+test('no mezcla respuestas atrasadas o datos de una sesión anterior', async () => {
+  const pending = [];
+  api.defaults.adapter = config => new Promise(resolve => pending.push(data => resolve({ status: 200, data, headers: {}, config })));
+  const { state } = await vista();
+  const first = state.cargarCatalogo(); await setImmediate();
+  const second = state.cargarCatalogo(); await setImmediate();
+  pending[1]({ indicadores: [fichasPrueba()[1]] }); await second;
+  pending[0]({ indicadores: [fichasPrueba()[0]] }); await first;
+  assert.equal(state.indicadoresCatalogo[0].id, '2');
+  const third = state.cargarCatalogo(); await setImmediate();
+  useAuthStore().user = null;
+  pending[2]({ indicadores: fichasPrueba() }); await third;
+  assert.deepEqual(state.indicadoresCatalogo, []);
 });
 
 test('la ficha muestra fórmula textual, valor cero, periodo y versiones sin insumos internos', async () => {
   for (const seccion of ['metodologia', 'fuentes']) {
-    const indicador = { ...catalogo[0], algoritmo: 'FORMULA_PUBLICA = A / B × 100',
+    const indicador = { ...fichasPrueba()[0], algoritmo: 'FORMULA_PUBLICA = A / B × 100',
       variablesCaptura: { SECRETO: 100 }, evidenciaNombre: 'EVIDENCIA_PRIVADA.pdf' };
     const app = createSSRApp(FichaTecnicaModal, {
       indicador, semaforo: null, valorValidado: 0, periodoEsperado: '2026-09', periodoValidado: '2026-09',
@@ -222,9 +295,15 @@ test('la ficha muestra fórmula textual, valor cero, periodo y versiones sin ins
     await renderToString(app, context);
     const html = context.teleports.body;
     assert.doesNotMatch(html, /SECRETO|EVIDENCIA_PRIVADA/);
-    if (seccion === 'metodologia') assert.match(html, /FORMULA_PUBLICA = A \/ B × 100/);
+    if (seccion === 'metodologia') {
+      assert.match(html, /FORMULA_PUBLICA = A \/ B × 100/);
+      assert.match(html, /LÍNEA BASE DE LA FICHA[\s\S]*?<strong[^>]*>0<\/strong>/);
+      assert.match(html, /META DE LA FICHA[\s\S]*?<strong[^>]*>0<\/strong>/);
+      assert.match(html, /REGLA_DOCUMENTAL/);
+      assert.match(html, /No acumulable/);
+    }
     else {
-      assert.match(html, /Periodo esperado: 2026-09/);
+      assert.match(html, /Periodo de referencia: 2026-09/);
       assert.match(html, /Valor: 0 /);
       assert.match(html, /publicacion-1/);
       assert.match(html, /regla-1/);

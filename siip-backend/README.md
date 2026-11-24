@@ -1,5 +1,12 @@
 # Backend SIIP
 
+Consulta documental real (24/11/2026): `GET /api/v1/consulta/indicadores`, con
+sesión y proyección propia de fichas. Consulta/Revisión/Administrador leen el
+catálogo global; Captura solo indicadores asignados a su dependencia activa.
+Incluye fichas inactivas identificadas, sin insumos internos, archivos ni
+resultados del prototipo. Usa tablas existentes, sin migraciones nuevas.
+[Contrato, pruebas y límites de comprobación](../Documentacion/consulta-indicadores.md).
+
 Variables y dependencias (10/11/2026): GET/PUT
 `/api/v1/administracion/indicadores/{id}/variables`, solo Administrador. Requiere SQL
 006 en la base autorizada. Carga técnica local de cuatro ejemplos:

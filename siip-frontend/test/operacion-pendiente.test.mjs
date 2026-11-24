@@ -186,7 +186,7 @@ test('el alta espera al servidor y no escribe localStorage ni activa Consulta', 
   assert.equal(JSON.parse(enviado.data).consecutivo, undefined);
   assert.equal(admin.adminState.indicadores.length, 1);
   const { state } = await render(ConsultaView);
-  assert.equal(state.indicadores.length, 63);
+  assert.equal(state.indicadores.length, 0);
   assert.equal(state.indicadores.some(indicador => indicador.clave === campos.clave), false);
 });
 

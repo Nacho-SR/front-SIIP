@@ -56,6 +56,14 @@ Leyenda: **Sí** = facultad confirmada; **No** = no autorizada por el alcance; *
 
 ## Reglas de autorización por objeto
 
+Implementación de lectura del 24/11/2026: `GET /api/v1/consulta/indicadores`
+entrega fichas documentales activas/inactivas identificadas, globales para
+Consulta/Revisión/Administrador y solo asignadas a la dependencia de Captura.
+No acepta filtros de identidad, no devuelve entradas operativas ni archivos y
+no concede acceso administrativo. El modal usa la ficha ya autorizada recibida.
+No hay rutas de escritura ni resultados operativos en este contrato. [Detalle y
+pruebas](consulta-indicadores.md). E02/O09 siguen en conciliación para documentos.
+
 1. Comprobar sesión/cuenta activa y permiso de acción. Para función no permitida: 403.
 2. Cargar el objeto ya restringido al ámbito del actor. Si no existe o queda fuera: 404 genérico. No revelar que pertenece a otra dependencia.
 3. Para Captura, el vínculo vigente con el indicador habilita consultar su resultado. Para valores/envíos se exige además que captura.dependencia_id coincida con su dependencia actual. Un resultado agregado publicado no concede acceso a todos sus insumos.

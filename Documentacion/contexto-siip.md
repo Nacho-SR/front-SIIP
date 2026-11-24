@@ -33,6 +33,17 @@ han cambiado backend/frontend, contratos, BD, archivos originales ni permisos.
 ## 1. Objetivo
 Sistema Integrado de Indicadores de Planeación de Salamanca, Guanajuato: administrar indicadores municipales y sus fichas, capturar variables/evidencias por periodo, revisar y validar, calcular resultados y semáforos, conservar historia y consultar información publicada.
 
+Punto 1 del 24/11/2026: Consulta obtiene fichas documentales reales por API y
+PostgreSQL, con catálogo global para Consulta/Revisión/Administrador y limitado
+a indicadores asignados a la dependencia vigente de Captura. Incluye fichas
+inactivas identificadas. Sustituye JSON y resultados locales solo en Consulta;
+la ficha amplía base/meta/horizonte y semaforización como textos documentales.
+Sin publicaciones operativas, muestra valor/color/versiones vacíos, sin gris
+inferido ni índice temático; corte/semáforo están deshabilitados. No sincroniza
+anexos ni modifica BD o permisos de documentos. Compilación y pruebas con dobles
+e integración aprobadas; pendiente BD real y revisión visual por bloqueo de
+acceso local/Computer Use. [Contrato y límites](consulta-indicadores.md).
+
 Avance técnico del 23/11/2026: Captura consulta sus asignaciones persistidas por
 `GET /api/v1/captura/indicadores`, con dependencia de la sesión, únicamente sus
 variables, frecuencia e inicio de activación vigente. Muestra fichas asignadas

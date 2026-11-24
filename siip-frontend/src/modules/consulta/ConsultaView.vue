@@ -1,36 +1,16 @@
 
 <script setup lang="ts">
-import { computed, onActivated, onMounted, onUnmounted, ref } from 'vue';
-import catalogo from './data/indicadores-siip.json';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import axios from 'axios';
+import api from '../../core/api';
+import { useAuthStore } from '../../store/auth.store';
 import FichaTecnicaModal from './components/FichaTecnicaModal.vue';
-import { obtenerResultadosConsulta } from '../review/data/seguimiento.store';
+import type { CatalogoConsulta, FichaConsulta } from './data/consulta.types';
 import {
-  mensajesEstado, periodoEsperado, resultadoDelCorte, resumenTematico, ultimoCorteCerrado,
-  type ColorSemaforo, type ResultadoConsulta,
+  periodoEsperado, ultimoCorteCerrado, type ColorSemaforo,
 } from './data/consulta';
 
-interface Indicador {
-  clave: string;
-  nombre: string;
-  agrupacion: string;
-  familia: string;
-  tipologia: string;
-  ambito: string;
-  desagregacion: string;
-  frecuencia: string;
-  unidad: string;
-  sentido: string;
-
-  // Propiedades de las fichas metodológicas
-  definicion: string;
-  objetivo: string;
-  nivelObjetivo: string;
-  dimension: string;
-  fuente: string;
-  algoritmo: string;
-}
-
-interface IndicadorConsulta extends Indicador {
+interface IndicadorConsulta extends FichaConsulta {
   semaforo: ColorSemaforo | null;
   valorValidado: number | null;
   periodoValidado: string | null;
@@ -40,7 +20,11 @@ interface IndicadorConsulta extends Indicador {
   versionRegla: string | null;
 }
 
-const indicadoresCatalogo = catalogo as Indicador[];
+const auth = useAuthStore();
+const indicadoresCatalogo = ref<FichaConsulta[]>([]);
+const cargando = ref(true);
+const error = ref('');
+const identidad = computed(() => `${auth.user?.id}:${auth.user?.rol}:${auth.user?.dependencia_id}`);
 const filtros = ref({
   busqueda: '', tipologia: 'Todas', ambito: 'Todos', desagregacion: 'Todas', semaforo: 'Todos',
 });
@@ -48,7 +32,6 @@ const corteMaximo = ref(ultimoCorteCerrado());
 const periodoElegido = ref(corteMaximo.value);
 const periodoActivo = computed(() => periodoEsperado('mensual', periodoElegido.value)
   && periodoElegido.value <= corteMaximo.value ? periodoElegido.value : '');
-const resultados = ref<ResultadoConsulta[]>([]);
 const gruposAbiertos = ref<string[]>([]);
 const claveFichaSeleccionada = ref<string | null>(null);
 const fichaSeleccionada = computed(() => indicadores.value.find(indicador =>
@@ -61,41 +44,68 @@ function cerrarFicha() {
   claveFichaSeleccionada.value = null;
 }
 
-function cargarResultados() {
+let solicitud = 0;
+let controlador: AbortController | undefined;
+async function cargarCatalogo() {
+  const actual = ++solicitud;
+  controlador?.abort();
+  controlador = new AbortController();
+  indicadoresCatalogo.value = [];
+  cerrarFicha();
+  error.value = '';
+  cargando.value = Boolean(auth.user);
+  if (!auth.user) return;
+  const sesion = identidad.value;
   corteMaximo.value = ultimoCorteCerrado();
-  resultados.value = obtenerResultadosConsulta();
+  try {
+    const { data } = await api.get<CatalogoConsulta>('/consulta/indicadores', { signal: controlador.signal });
+    if (!Array.isArray(data.indicadores)) throw new Error('Catálogo inválido');
+    if (actual === solicitud && sesion === identidad.value) indicadoresCatalogo.value = data.indicadores;
+  } catch (err) {
+    if (actual === solicitud && sesion === identidad.value && !axios.isCancel(err)) {
+      error.value = axios.isAxiosError(err) && typeof err.response?.data?.detail === 'string'
+        ? err.response.data.detail : 'No se pudo cargar el catálogo. Intenta de nuevo.';
+    }
+  } finally {
+    if (actual === solicitud) cargando.value = false;
+  }
 }
 function actualizarAlVolver() {
-  if (document.visibilityState === 'visible') cargarResultados();
+  if (document.visibilityState === 'visible') void cargarCatalogo();
 }
+watch(identidad, () => {
+  limpiarFiltros();
+  gruposAbiertos.value = [];
+  void cargarCatalogo();
+}, { flush: 'sync' });
 onMounted(() => {
-  cargarResultados();
-  window.addEventListener('focus', cargarResultados);
+  void cargarCatalogo();
+  window.addEventListener('focus', cargarCatalogo);
   document.addEventListener('visibilitychange', actualizarAlVolver);
 });
-onActivated(cargarResultados);
 onUnmounted(() => {
-  window.removeEventListener('focus', cargarResultados);
+  ++solicitud;
+  controlador?.abort();
+  window.removeEventListener('focus', cargarCatalogo);
   document.removeEventListener('visibilitychange', actualizarAlVolver);
 });
 
-const indicadores = computed<IndicadorConsulta[]>(() => indicadoresCatalogo.map(indicador => {
+const indicadores = computed<IndicadorConsulta[]>(() => indicadoresCatalogo.value.map(indicador => {
   const esperado = periodoEsperado(indicador.frecuencia, periodoActivo.value);
-  const resultado = resultadoDelCorte(resultados.value, indicador.clave, indicador.frecuencia, periodoActivo.value);
   return {
     ...indicador,
     periodoEsperado: esperado,
-    valorValidado: resultado?.valor ?? null,
-    periodoValidado: resultado?.estado === 'publicado' || resultado?.estado === 'validacion_local' ? resultado.periodo : null,
-    semaforo: resultado?.semaforo ?? null,
-    mensaje: esperado ? mensajesEstado[resultado?.estado ?? 'sin_publicacion'] : 'Sin periodo: verifica el corte y la frecuencia.',
-    versionPublicacion: resultado?.versionPublicacion ?? null,
-    versionRegla: resultado?.versionRegla ?? null,
+    valorValidado: null,
+    periodoValidado: null,
+    semaforo: null,
+    mensaje: 'Sin resultados publicados disponibles.',
+    versionPublicacion: null,
+    versionRegla: null,
   };
 }));
 
 function opciones(campo: 'tipologia' | 'ambito' | 'desagregacion'): string[] {
-  return [...new Set(indicadoresCatalogo.map(indicador => indicador[campo]?.trim()).filter(Boolean))]
+  return [...new Set(indicadoresCatalogo.value.map(indicador => indicador[campo]?.trim()).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, 'es'));
 }
 function normalizar(texto: string): string {
@@ -130,20 +140,14 @@ const agrupaciones = computed(() => {
       clave: nombreOriginal.match(/^(\d+)[.\s-]*/)?.[1] ?? '',
       nombre: nombreOriginal.replace(/^\d+[.\s-]*/, '').trim(),
       nombreOriginal, indicadores: visibles, total: todos.length,
-      ...resumenTematico(todos.map(indicador => indicador.semaforo)),
+      conteo: { verde: 0, amarillo: 0, rojo: 0, gris: 0, sinColor: todos.length },
       expandido: estaAbierto(nombreOriginal),
     };
   }).filter(grupo => grupo.indicadores.length > 0);
 });
-type GrupoConsulta = (typeof agrupaciones.value)[number];
-
-function mensajeGrupo(grupo: GrupoConsulta): string {
-  const indice = grupo.indice === null ? 'sin índice' : `índice informativo ${grupo.indice.toFixed(2)} (${etiquetaSemaforo(grupo.colorReferencia)})`;
-  return `${indice}; ${grupo.evaluables}/${grupo.total} indicadores del catálogo evaluables. Color temático oficial pendiente de política de cobertura.`;
-}
 const totalIndicadores = computed(() => indicadores.value.length);
 const totalVisibles = computed(() => indicadoresFiltrados.value.length);
-const alertasGenerales = computed(() => resumenTematico(indicadores.value.map(indicador => indicador.semaforo)).conteo);
+const alertasGenerales = computed(() => ({ verde: 0, amarillo: 0, rojo: 0, gris: 0, sinColor: indicadores.value.length }));
 
 function etiquetaSemaforo(color: ColorSemaforo | null): string {
   return color === null ? 'Sin color publicado'
@@ -152,7 +156,7 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
 </script>
 
 <template>
-  <div class="consulta">
+  <div class="consulta" :aria-busy="cargando">
 
     <!-- ======================================== -->
     <!-- ENCABEZADO -->
@@ -169,15 +173,14 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
         </h1>
 
         <p>
-          Catálogo de indicadores del SIIP Salamanca,
-          fichas técnicas y evaluación semafórica
-          de resultados validados.
+          Consulta las fichas técnicas registradas en el SIIP Salamanca.
+          Las fichas sin activar también se identifican en el catálogo.
         </p>
       </div>
 
       <div class="total-general">
         <strong>{{ totalIndicadores }}</strong>
-        <span>Indicadores del SIIP</span>
+        <span>Indicadores disponibles para tu perfil</span>
       </div>
     </header>
 
@@ -298,7 +301,7 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
         <label>
           Semáforo
 
-          <select v-model="filtros.semaforo">
+          <select v-model="filtros.semaforo" disabled>
             <option value="Todos">
               Todos
             </option>
@@ -317,6 +320,7 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
           <input
             v-model="periodoElegido"
             type="month"
+            disabled
             :max="corteMaximo"
             required
           />
@@ -349,23 +353,34 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
           v-if="periodoActivo"
           class="periodo-etiqueta"
         >
-          Corte mensual: {{ periodoActivo }} · America/Mexico_City
+          Referencia de calendario: {{ periodoActivo }} · America/Mexico_City
         </span>
       </div>
 
       <button
         type="button"
         class="actualizar-button"
-        @click="cargarResultados"
+        :disabled="cargando"
+        @click="cargarCatalogo"
       >
-        Actualizar resultados
+        {{ cargando ? 'Actualizando…' : 'Actualizar catálogo' }}
       </button>
     </div>
 
     <p class="nota-metodologica" role="status">
-      Datos de demostración; no usar como reporte oficial.
-      Cada indicador usa su periodo completo correspondiente al corte, sin sustituir faltantes por resultados anteriores.
-      Sin fecha de alta y exigibilidad confirmadas no se presume incumplimiento.
+      Aún no hay resultados publicados disponibles para consulta. El valor y el semáforo
+      permanecerán vacíos; esto no indica incumplimiento.
+      Los filtros por corte y semáforo se habilitarán cuando haya publicaciones disponibles.
+      La referencia de calendario no determina si un indicador está obligado a entregar datos.
+    </p>
+    <p v-if="cargando" class="nota-metodologica" role="status">Cargando el catálogo…</p>
+    <div v-else-if="error" class="nota-metodologica" role="alert">
+      <p>{{ error }}</p>
+      <button type="button" class="actualizar-button" @click="cargarCatalogo">Reintentar</button>
+    </div>
+    <p v-else-if="!auth.user" class="nota-metodologica" role="alert">Inicia sesión para consultar el catálogo.</p>
+    <p v-else-if="totalIndicadores === 0" class="nota-metodologica" role="status">
+      {{ auth.isCapturista ? 'No hay indicadores asignados a tu dependencia.' : 'Todavía no hay indicadores registrados.' }}
     </p>
     <p v-if="!periodoActivo" role="alert" class="nota-metodologica">
       Selecciona un mes cerrado, hasta {{ corteMaximo }}.
@@ -375,7 +390,7 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
     <!-- AGRUPACIONES TEMÁTICAS -->
     <!-- ======================================== -->
 
-    <section class="grupos">
+    <section v-if="!cargando && !error && auth.user && totalIndicadores > 0" class="grupos">
 
       <article
         v-for="grupo in agrupaciones"
@@ -423,7 +438,7 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
               class="grupo-semaforo sin-color"
             >
               <span class="dot"></span>
-              Color temático pendiente
+              Sin resultados publicados
             </span>
 
             <span class="grupo-conteo">
@@ -442,29 +457,13 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
           class="grupo-alerta sin-color"
         >
           <span class="alerta-icono">
-            {{
-              grupo.conteo.rojo > 0 ||
-              grupo.conteo.amarillo > 0
-                ? '!'
-                : 'i'
-            }}
+            i
           </span>
 
           <span>
-            {{ mensajeGrupo(grupo) }}
+            Las fichas están disponibles para consulta. No hay valores ni colores publicados disponibles.
           </span>
 
-          <small
-            v-if="
-              grupo.conteo.gris > 0 &&
-              (
-                grupo.conteo.rojo > 0 ||
-                grupo.conteo.amarillo > 0
-              )
-            "
-          >
-            · {{ grupo.conteo.gris }} incumplidos (fuera del índice)
-          </small>
         </div>
 
         <!-- TABLA DE INDICADORES -->
@@ -480,7 +479,7 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
                 <th>Tipología</th>
                 <th>Ámbito</th>
                 <th>Territorio</th>
-                <th>Periodo esperado</th>
+                <th>Periodo de referencia</th>
                 <th>Valor</th>
                 <th>Semáforo</th>
                 <th>Ficha técnica</th>
@@ -509,7 +508,7 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
                   </button>
 
                   <small class="indicador-ayuda">
-                    Consultar información metodológica
+                    {{ ind.activo ? 'Activado' : 'Sin activar' }} · Consultar ficha técnica
                   </small>
                 </td>
 
@@ -615,15 +614,9 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
         descriptiva de los indicadores contenida
         en el catálogo SIIP.
 
-        Valor, color y versiones se leen de la publicación conservada; cambiar reglas no recalcula el historial.
-        Los registros locales antiguos sin publicación versionada se muestran sin color publicado.
-        El gris significa incumplimiento confirmado al cierre; no equivale a rojo ni a cero.
-        Un envío completo puede continuar en revisión después del cierre sin volverse gris.
-        La justificación documental no elimina el gris y no se muestra como evidencia pública.
-        El índice informativo es (verdes + 0.5 × amarillos) / evaluables. Umbrales: verde ≥ 0.80,
-        amarillo ≥ 0.50 y rojo &lt; 0.50. Sin evaluables no hay índice.
-        El total del catálogo es una referencia; el universo aplicable, la cobertura mínima y el tratamiento
-        de grupos pequeños siguen pendientes. No se asigna un color temático oficial.
+        Una ficha registrada o activada no equivale a un resultado publicado.
+        La fórmula, línea base, meta y regla de semaforización son información documental;
+        su presencia no acredita que la configuración operativa esté autorizada.
       </p>
     </footer>
 
@@ -652,6 +645,16 @@ function etiquetaSemaforo(color: ColorSemaforo | null): string {
 </template>
 
 <style scoped>
+.filters label:has(select:disabled),
+.filters label:has(input:disabled) {
+  color: #6b7280;
+}
+.filters select:disabled,
+.filters input:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
 .consulta {
   --wine: #70273b;
   --deep: #431c2a;

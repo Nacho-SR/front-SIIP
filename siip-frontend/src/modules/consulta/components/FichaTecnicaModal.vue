@@ -6,26 +6,8 @@ import {
   watch
 } from 'vue';
 import type { ColorSemaforo } from '../data/consulta';
+import type { FichaConsulta } from '../data/consulta.types';
 import { useDialogFocus } from '../../../core/useDialogFocus';
-
-interface Indicador {
-  clave: string;
-  nombre: string;
-  definicion: string;
-  nivelObjetivo: string;
-  tipologia: string;
-  ambito: string;
-  dimension: string;
-  agrupacion: string;
-  familia: string;
-  objetivo: string;
-  unidad: string;
-  desagregacion: string;
-  frecuencia: string;
-  fuente: string;
-  sentido: string;
-  algoritmo: string;
-}
 
 type Semaforo = ColorSemaforo;
 
@@ -35,7 +17,7 @@ type Seccion =
   | 'fuentes';
 
 const props = defineProps<{
-  indicador: Indicador;
+  indicador: FichaConsulta;
   semaforo: Semaforo | null;
   periodoValidado?: string | null;
   periodoEsperado?: string | null;
@@ -239,6 +221,10 @@ watch(
             </div>
 
             <div class="datos-grid">
+              <div class="dato">
+                <span class="dato-label">ESTADO DE LA FICHA</span>
+                <strong>{{ indicador.activo ? 'Activado' : 'Sin activar' }}</strong>
+              </div>
               <div class="dato dato-ancho">
                 <span class="dato-label">
                   AGRUPACIÓN TEMÁTICA
@@ -407,6 +393,33 @@ watch(
               <p class="formula">{{ mostrar(indicador.algoritmo) }}</p>
             </div>
 
+            <div class="datos-grid">
+              <div class="dato">
+                <span class="dato-label">ACUMULACIÓN DOCUMENTAL</span>
+                <strong>{{ mostrar(indicador.condicionAcumulacion) }}</strong>
+              </div>
+              <div class="dato">
+                <span class="dato-label">LÍNEA BASE DE LA FICHA</span>
+                <strong>{{ mostrar(indicador.lineaBase) }}</strong>
+              </div>
+              <div class="dato">
+                <span class="dato-label">PERIODO DE LÍNEA BASE</span>
+                <strong>{{ mostrar(indicador.periodoLineaBase) }}</strong>
+              </div>
+              <div class="dato">
+                <span class="dato-label">META DE LA FICHA</span>
+                <strong>{{ mostrar(indicador.meta) }}</strong>
+              </div>
+              <div class="dato">
+                <span class="dato-label">HORIZONTE DE CUMPLIMIENTO</span>
+                <strong>{{ mostrar(indicador.periodoCumplimiento) }}</strong>
+              </div>
+            </div>
+            <div class="bloque-texto">
+              <div class="bloque-titulo"><span class="marcador"></span><h4>Semaforización documental</h4></div>
+              <p>{{ mostrar(indicador.semaforizacion) }}</p>
+            </div>
+
             <div class="aviso-metodologico">
               <div class="aviso-icono">i</div>
 
@@ -498,7 +511,7 @@ watch(
                   {{ descripcionSemaforo }}
                 </p>
                 <p>{{ mensajeEstado }}</p>
-                <p>Periodo esperado: {{ periodoEsperado ?? 'Sin periodo definido' }}</p>
+                <p>Periodo de referencia: {{ periodoEsperado ?? 'Sin periodo definido' }}</p>
                 <p>Valor: {{ valorValidado == null ? '—' : `${valorValidado.toLocaleString('es-MX')} ${indicador.unidad}` }}</p>
                 <p>Publicación: {{ versionPublicacion ?? 'Sin versión publicada' }} · Regla: {{ versionRegla ?? 'Sin versión publicada' }}</p>
 
@@ -506,15 +519,15 @@ watch(
                   {{
                     periodoValidado
                       ? `Periodo fuente: ${periodoValidado}`
-                      : 'Sin resultado del periodo esperado'
+                      : 'Sin resultado publicado disponible'
                   }}
                 </small>
               </div>
             </div>
 
             <p class="aclaracion">
-              El color se conserva con la versión publicada; no se recalcula con la regla actual.
-              Un resultado publicado sin color no contribuye al índice temático.
+              La referencia de calendario no acredita exigibilidad ni incumplimiento.
+              Los textos de meta, línea base y semaforización no son resultados publicados.
             </p>
           </section>
         </div>

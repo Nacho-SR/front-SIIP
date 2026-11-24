@@ -82,6 +82,7 @@ import {
   createActivacionRepository
 } from './modules/indicadores/repositories/activacion.repository.js';
 import { createBandejaRepository } from './modules/operacion/repositories/bandeja.repository.js';
+import { createConsultaRepository } from './modules/consulta/repositories/consulta.repository.js';
 
 // ============================================
 // VARIABLES DE ENTORNO
@@ -211,7 +212,8 @@ const app = await buildApp(
 
         activaciones:
           createActivacionRepository(pool),
-        bandeja: createBandejaRepository(pool)
+        bandeja: createBandejaRepository(pool),
+        consulta: createConsultaRepository(pool)
       }
     : undefined
 );

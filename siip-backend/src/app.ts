@@ -98,6 +98,8 @@ import type {
 } from './modules/indicadores/repositories/activacion.repository.js';
 import { bandejaRoutes } from './modules/operacion/bandeja.routes.js';
 import type { BandejaRepository } from './modules/operacion/repositories/bandeja.repository.js';
+import { consultaRoutes } from './modules/consulta/consulta.routes.js';
+import type { ConsultaRepository } from './modules/consulta/repositories/consulta.repository.js';
 
 // ============================================
 // DEPENDENCIAS DE LA APLICACIÓN
@@ -111,6 +113,7 @@ type AppDependencies = AuthDependencies & {
   metodologias?: MetodologiaRepository;
   activaciones?: ActivacionRepository;
   bandeja?: BandejaRepository;
+  consulta?: ConsultaRepository;
 };
 
 // ============================================
@@ -305,6 +308,11 @@ export async function buildApp(
       await api.register(bandejaRoutes, {
         prefix: '/captura',
         repository: auth?.bandeja
+      });
+
+      await api.register(consultaRoutes, {
+        prefix: '/consulta',
+        repository: auth?.consulta
       });
 
     },
