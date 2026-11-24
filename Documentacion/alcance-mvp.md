@@ -1,8 +1,26 @@
 # Alcance del MVP del SIIP Salamanca
 
-**Versión:** 0.4. **Fecha:** 06/11/2026. **Estado:** incorpora DEC-038 y el cierre acordado con el director (DEC-039). No ratifica automáticamente los acuerdos anteriores.
+**Versión:** 0.5. **Fecha:** 24/11/2026. **Estado:** acuerdos previos con respuestas recibidas en conciliación; no ratifica ni sustituye automáticamente decisiones del equipo.
 
 Esta versión Markdown actualiza el alcance operativo del Word `SIIP_01_Alcance_MVP_borrador_v0_2.docx` con los acuerdos posteriores del equipo. El Word se conserva como antecedente sin modificaciones. En caso de diferencia, consultar este documento y el registro vigente de decisiones, sin presentar las propuestas técnicas como requisitos aprobados.
+
+## Respuestas recibidas que pueden cambiar el alcance
+
+La [conciliación del cuestionario](conciliacion-respuestas-cuestionario.md) registra
+66 respuestas sustantivas, 37 preguntas sin respuesta y 63 fichas sin autorización.
+La identidad de quien responde y la autorización final siguen incompletas. Las
+secciones siguientes conservan el alcance anterior del equipo, sujeto a estos
+cambios explícitos pendientes de validación:
+
+- R05 permitiría cifras tardías; O05 acepta correcciones acotadas de envíos completos. Separar ambos casos del PDF de justificación. CR-01/06.
+- G01/G02/M06 requieren conciliar metodología bloqueada, Variables editables, metas futuras y actualización de universos. G11/H05/H06 proponen actualización automática/retroactiva frente a conservación de referencias y publicaciones R10/R12. CR-02/03.
+- E01 propone un archivo de 120 mb y ZIP para varios; E02 agrega acceso documental a Consulta y omite Captura; E03 pide conservación hasta siguiente periodo. No se amplían formatos/permisos ni se autoriza borrado con esta actualización. CR-07/08/09.
+- E05–E07 descartan el semáforo temático y conservan el individual. Es propuesta expresa de retiro, sin eliminar jerarquía temática ni definir estadísticas residuales. La sección 4 y sus umbrales quedan como alcance anterior en conciliación, no como próxima implementación autorizada. CR-11/12.
+- G10/E09 no resuelven la distinción gris frente a sin color de R08/T06/G07/G08. CR-10.
+
+R04 ratifica el siguiente periodo natural completo de DEC-045, que precisa el
+escenario anterior de alta intermedia de DEC-033. No se habilitan periodos parciales
+ni retroactivos por M01/O01. Los complementos de Menús no autorizan una ficha.
 
 ## 1. Objetivo y universo
 
@@ -22,7 +40,7 @@ Gestionar fichas e indicadores municipales de Salamanca, capturar variables y PD
 - DEC-037 (04/11/2026): Captura y Revisión tienen una dependencia obligatoria y activa; la pertenencia de Revisión no reduce su consulta global. Las altas de estos usuarios y dependencias se realizan desde Administrador.
 - Una cuenta de Captura por dependencia prevista para la operación inicial; el cliente entregará asignaciones oficiales por variable.
 - Guardar solo capturas completas y válidas, sin borradores.
-- DEC-033: periodos naturales, captura desde registro con asignación y validación/publicación al cierre o después, con cierre de captura al terminar el último día del periodo (DEC-039). Aviso preventivo siete días antes y gris para los faltantes/incompletos al cierre. Los envíos completos continúan en revisión. La reapertura por incumplimiento permite solo PDF de justificación y conserva el gris. Primer corte: fin del periodo natural del alta; cobertura inicial y periodos previos siguen pendientes.
+- DEC-033/045: periodos naturales con inicio desde el siguiente periodo completo, asignaciones y requisitos de activación comprobados; validación/publicación al cierre o después. R04 ratifica este inicio. DEC-039 conserva como acuerdo anterior el bloqueo al fin del periodo, aviso siete días antes, gris por faltantes y reapertura solo documental; R05/O05/O09 requieren conciliar sus cambios en CR-01/06 antes de implementar el flujo.
 - Observaciones y respuestas por indicador/periodo/ciclo, cerradas al validar y conservadas para auditoría; no chat.
 - Publicación automática tras validación. Solo Consulta autenticada y autorizada.
 - Reapertura justificada por Administrador, nuevo ciclo y nueva validación. Última versión validada sigue publicada hasta reemplazo validado del mismo periodo.

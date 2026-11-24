@@ -2,17 +2,41 @@
 
 **No resolverlas unilateralmente en código.** Se puede avanzar con diseño mínimo sin comprometer las alternativas hasta tener respuestas.
 
+## Prioridad después del cuestionario recibido
+
+Actualización 24/11/2026: [conciliación de las 103 preguntas](conciliacion-respuestas-cuestionario.md).
+Hay 66 respuestas sustantivas, pero varias son parciales o contradicen acuerdos;
+37 preguntas y las 63 autorizaciones de ficha siguen pendientes. La sección 10 y
+la identidad/fecha de quien responde siguen sin completar. Los complementos del
+Excel son evidencia documental, no aprobación institucional.
+
+Priorizar CR-01 (captura tardía y correcciones), CR-03 (propagación de referencias),
+CR-08/09 (acceso y retención de documentos), CR-10 (motivos de gris/sin color) y
+CR-11 (retiro expreso propuesto del semáforo temático). CR-02/04/05/06/07/12
+completan metodología, validaciones, fechas, justificación, archivos e histórico.
+La matriz contiene la respuesta recibida, impacto y precisión concreta de cada uno.
+
+G04 y M07 siguen vacías; T04 selecciona A sin proporcionar los colores solicitados,
+T05 no distingue meta actual de cumplida alguna vez y G05 no fija decimales ni
+momento del redondeo. H03 declara población femenina adulta: no equivale a PM de
+todas las mujeres de F08 ni a población adulta de ambos sexos. F02–F36 no tienen
+respuesta institucional; I01–I63 siguen sin autorizar.
+
+Los acuerdos y avances históricos de las secciones siguientes se conservan con
+esta advertencia. Un pendiente con respuesta parcial no se vuelve resuelto ni
+autoriza tablas, endpoints, permisos o datos reales.
+
 | Clave | Prioridad | Pregunta pendiente | Riesgo en BD/software |
 |---|---|---|---|
-| P-01 | Alta; parcialmente resuelta | Pesos y umbrales aprobados en DEC-021. Falta cobertura mínima para asignar color y tratamiento de N pequeño. | No asumir que aprobar el índice autoriza cualquier cobertura. |
-| P-07 | Calendario y primer corte resueltos por DEC-033; cobertura inicial pendiente | Periodos naturales: alta trimestral el 10 de febrero, primer corte el 31 de marzo. Falta precisar si los datos del primer periodo cubren todo el intervalo natural o solo desde el alta, y autorización de periodos anteriores al registro. | No asumir prorrateo ni generar exigencias previas al alta. |
-| P-08 | Resuelta la opción de cambio de metodología activa por DEC-052 | No habilitar cambios de metodología en un indicador activo; otra alta es independiente y no reemplaza ni se vincula al anterior. | Preservar configuración e historia; no trasladar resultados ni recalcular publicaciones automáticamente. |
-| P-09 | Resuelta por el equipo | DEC-022: vista con resultados publicados actualmente para los periodos esperados. | No se requiere reconstrucción de lo conocido en la fecha del corte. |
-| P-10 | Alta | Denominador de cobertura: todos los configurados o los ya vigentes/exigibles; condiciones para mostrar color con N pequeño. | Definición de cobertura, datos de UI. |
-| P-11 | Media | Cómo presentar en UI periodo fuente, fecha de validación y advertencia de cobertura parcial. | Consultas y payload API. |
-| P-12 | Resuelta por el equipo, DEC-033 | Periodos calendario naturales, zona America/Mexico_City, captura desde alta con asignación y validación/publicación al cierre o después. Solo mensual, trimestral, semestral y anual; no se añade bimestral. Cobertura inicial y periodos previos quedan en P-07. | Separar habilitación de captura y habilitación de validación; no cambiar reglas por fecha de envío tardío. |
-| P-13 | Media | Persistir snapshots de índice temático vs. cálculo bajo demanda; aclarar si DEC-030 congela también evaluaciones temáticas ya consultadas/publicadas. | No confundir conservar resultados individuales publicados con congelar un agregado calculado bajo demanda. |
-| P-14 | Media | Catálogos exactos, formatos de reportes, canales/disparadores de notificaciones. | Persistencia de notificaciones y API. Sin tablas ni función de importación. |
+| P-01 | Alta; condicionada a CR-11 | E05–E07 proponen retirar el semáforo temático. Validar ese cambio frente a DEC-020/021 y qué estadísticas permanecen. | No implementar umbrales/cobertura agregados ni eliminar funciones antes de conciliar el alcance. |
+| P-07 | Inicio resuelto por DEC-045 y respuesta R04; precisión de acumulación pendiente | Siguiente periodo natural completo, sin periodo parcial ni retroactivo. M01/O01 no fijan fechas por indicador ni reinicios. El ejemplo antiguo de alta intermedia DEC-033 es histórico. | No elegir el periodo en curso por cercanía ni asumir acumulación desde una fecha de salida aún no fijada. CR-05. |
+| P-08 | Opción resuelta por DEC-052/R11; campos pendientes CR-02 | No editar metodología activa; otra alta independiente sin reemplazo/vínculo. G01/G02/M06 deben separar campos bloqueados, Variables editables, metas futuras y universo. | Preservar configuración e historia; no habilitar edición, reasignación o recálculo por una respuesta ambigua. |
+| P-09 | Acuerdo previo del equipo; en cotejo con E08 | DEC-022 usa publicaciones actuales para los periodos esperados. E08 pide conservar histórico sin recálculo, pero no precisa si se refiere a corte, reporte emitido o versión individual. | Conservar el criterio existente hasta resolver CR-12/P-13; no inferir reconstrucción histórica ni snapshots nuevos. |
+| P-10 | Alta; condicionada a CR-11 | Definir si se conserva cobertura numérica u otras estadísticas después del retiro temático propuesto en E05–E07. | No confundir ausencia de color agregado con ausencia de catálogo, familias o estadísticas individuales. |
+| P-11 | Parcial; E09/O11 | Se piden periodo, fecha, meta, fuente y semaforización; faltan visibilidad por perfil y distinción gris/sin color/revisión. | Proyecciones y leyendas dependen de CR-08/10; sin ampliar acceso a insumos. |
+| P-12 | Calendario confirmado; cierre en conciliación | DEC-045/R04 precisan inicio en siguiente periodo completo para mensual/trimestral/semestral/anual, America/Mexico_City. R05 propone cifras tardías y O05 correcciones acotadas. | Conservar calendario implementado; no cambiar permisos de escritura/cierre hasta CR-01/05. |
+| P-13 | Media; respuesta E08 parcial y cambio CR-12 | Histórico sin recálculo requiere precisar objeto ante retiro temático propuesto: corte consultado, reporte emitido o publicación individual. | No deducir snapshots ni cambiar DEC-022 sin autorización concreta. |
+| P-14 | Parcial; E04/O12 | Reportes incompletos identificados; avisos del indicador en observaciones y generales por correo. Faltan formatos, columnas, perfiles, destinatarios, eventos y condiciones del aviso preventivo. | No conceder exportaciones ni crear tablas/canales por inferencia. Sin importación. |
 
 Otras verificaciones pendientes:
 - Punto 4, 23/11/2026: preparada y comprobada integración cliente/frontend–Fastify con cuatro perfiles, dos dependencias y un indicador compartido. Sin bypass en los recorridos comprobados; ver `matriz-permisos.md`. No conecta a PostgreSQL ni verifica navegador. Permanecen pendientes BD real autorizada, revisión visual y permisos por objeto/periodo de las API operativas aún no implementadas. Las vistas de demostración no acreditan esos flujos.
@@ -60,7 +84,7 @@ Revisar [modelo-datos-mvp-borrador.md](modelo-datos-mvp-borrador.md), entregado 
 
 - **Resuelto:** existe rol Consulta, varias cuentas sin dependencia y lectura global de fichas, resultados publicados y estadísticas. Auth y altas implementadas; SQL 004 aplicado con autorización expresa el 09/11/2026 solo en la base local `SIIP` de `localhost:5432`, con los cuatro valores del ENUM verificados y sin modificar cuentas. Otros entornos requieren comprobación y autorización propias. Exportaciones y acceso a PDF/expedientes internos no se conceden por defecto.
 - **Resuelto con el director:** cierre de captura al fin del periodo natural, gris por faltantes/incompletos, continuidad de revisión para envíos completos y reapertura solo para adjuntar justificación PDF conservando gris. Sustituye la captura tardía sin bloqueo.
-- **P-15:** precisar correcciones de envíos observados después del cierre. Conservar la revisión no autoriza automáticamente completar o cambiar datos fuera de plazo.
-- **P-16:** precisar destinatarios/visibilidad del PDF de justificación, si requiere revisión/aprobación y condiciones para dar por terminada la apertura documental. No afecta la permanencia del gris.
+- **P-15, actualización 24/11/2026:** O05 acepta correcciones acotadas de envíos completos recibidos en plazo, pero faltan autorizador, duración, campos y evidencia. R05 propone además completar cifras tardías de faltantes; resolver por separado en CR-01, sin considerar ratificado DEC-039 ni habilitar escrituras por esta nota.
+- **P-16, actualización 24/11/2026:** O09 indica seguimiento como posible aportante, cierre por Administrador sin confirmación de recibido ni límite de recepción; faltan rol/acción exactos y versiones/observaciones. E02 cambia lectores y R05 puede cambiar cifras/gris. Resolver CR-01/06/08; no conceder nuevos permisos ni dar por aprobada la política completa.
 - **Pendiente técnico:** implementar calendario, bloqueo servidor, estado gris por indicador/periodo y justificación sin exigir captura previa. Los módulos de negocio aún no tienen rutas, tablas ni persistencia. Adaptar el borrador antes de crear SQL de negocio. No confundir esta reapertura con corregir una publicación validada.
 - Los antecedentes sobre capturas atrasadas se conservan como historia de versiones de reglas, no como permiso vigente para enviar fuera de plazo. P-07/08/10/13/14 siguen abiertos en sus precisiones no resueltas.

@@ -1,5 +1,12 @@
 # Impacto de la API sobre el borrador de datos
 
+Conciliación del 24/11/2026: [respuestas recibidas y conflictos](conciliacion-respuestas-cuestionario.md)
+identifican cambios posibles de escritura tardía, correcciones históricas,
+justificación, archivos, permisos, retención e índice temático. Este análisis y
+OpenAPI conservan contratos candidatos anteriores, no actualizados ni aprobados
+por esas respuestas. Resolver CR-01–CR-12 antes de derivar estados, endpoints,
+permisos o nuevas entidades; no convertir una actualización documental en SQL.
+
 Versión 0.1 · 26/10/2026 · Evaluación documental. El modelo de 13 tablas, las decisiones y el alcance originales NO se modifican en esta tarea. Ninguna recomendación se convierte en aprobación.
 
 Actualización técnica del 27/10/2026: DEC-027 confirma Node.js + TypeScript; [arquitectura-tecnologica.md](arquitectura-tecnologica.md) define el stack vigente y las propuestas de operación. Se corrigen referencias al backend sin alterar el modelo ni los contratos OpenAPI.

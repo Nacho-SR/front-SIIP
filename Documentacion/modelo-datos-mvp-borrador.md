@@ -1,5 +1,13 @@
 # Borrador del modelo PostgreSQL del SIIP
 
+Conciliación del 24/11/2026: las [respuestas del cuestionario](conciliacion-respuestas-cuestionario.md)
+proponen cambios de captura tardía, propagación de antecedentes, formatos/acceso
+y retención de evidencia, histórico y retiro del semáforo temático. CR-01–CR-12
+detallan el impacto pendiente de validación. Este modelo conserva su condición
+de borrador: no es aprobación de esas alternativas ni de nuevos campos, snapshots,
+tablas o migraciones. No deducir borrado por E03 ni recálculo de publicaciones por
+H06; R12 mantiene una respuesta contraria. No se ejecuta SQL ni se actualiza BD.
+
 **Actualización 17/11/2026, DEC-045:** SQL 008 propone `activaciones_indicador` para
 conservar metodología y primer periodo, con cierre histórico al desactivar. SQL
 aplicado con autorización el 17/11/2026 solo en SIIP local, tras pruebas reales

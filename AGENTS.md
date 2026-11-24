@@ -3,6 +3,7 @@
 Este repositorio corresponde al **Sistema Integrado de Indicadores de Planeación (SIIP), Salamanca, Guanajuato**.
 
 ## Antes de actuar
+- Conciliación del 24/11/2026: leer `Documentacion/conciliacion-respuestas-cuestionario.md` antes de cambiar requisitos de operación. El cuestionario recibido contiene 66 respuestas sustantivas, 37 preguntas sin responder y 63 fichas sin autorización individual. Autoría/fecha y autorización final siguen sin completar. Hay propuestas explícitas que contradicen acuerdos previos: cifras tardías (R05), actualización automática de antecedentes (G11/H06), ZIP/120 mb (E01), acceso de Consulta a documentos (E02), retención hasta siguiente periodo (E03), gris genérico (E09) y retiro del semáforo temático (E05–E07). No presentarlas como aprobadas ni ignorarlas al proponer trabajo; los flujos afectados requieren conciliación. Los complementos de Menús no son respuestas del cliente. Esta tarea solo actualiza documentación; no autoriza código, permisos, SQL, datos o infraestructura.
 - Cuando la tarea sea el modelo de datos, lee `documentacion/contexto-siip.md`, `documentacion/decisiones-siip.md` y `documentacion/pendientes-siip.md`; consulta los documentos originales del cliente y el ERD del repositorio.
 - Inspecciona primero la estructura real del repositorio; no supongas tecnologías, rutas ni tablas que no existan.
 - Distingue en cada propuesta: **confirmado por el equipo**, **pendiente de cliente**, **recomendación técnica**, **fuera de MVP**. Una propuesta no equivale a una aprobación del cliente.

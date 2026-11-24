@@ -1,6 +1,28 @@
 # Matriz de permisos del SIIP
 
-Versión 0.2 · 06/11/2026 · Incorpora DEC-038/039; detalles pendientes explícitos.
+Versión 0.3 · 24/11/2026 · Permisos anteriores con respuestas del cuestionario en conciliación; sin cambios de autorización en código.
+
+## Permisos recibidos que requieren validación
+
+La [matriz de respuestas](conciliacion-respuestas-cuestionario.md) conserva el
+texto recibido y los acuerdos afectados. E02 propone acceso a documentos para
+Administrador, Revisión y Consulta y omite Captura. O09 menciona seguimiento
+como posible aportante de justificación. O11 limita Captura a definición,
+fórmula, periodo, fijas y su entrada; no resuelve la información interna visible
+a Consulta. R03 no ratifica expresamente toda la matriz de roles.
+
+Resolver CR-06/08 antes de cambiar las filas de lectura de envíos/PDF, subir
+justificación o descargar. Una lectura global de fichas no otorga acceso global
+a expedientes. Seguimiento es una vista del rol Revisión, no un rol nuevo.
+La validación por IMPLAN de G03 identifica una institución; no concede validación
+operativa a Administrador. E04/O12 no conceden exportación ni escritura en
+observaciones a perfiles nuevos por el solo hecho de elegir un canal.
+
+R05/O05 cambian condiciones de escritura posterior al cierre (CR-01); G01 limita
+edición/asignaciones, en tensión con G02/M06 (CR-02). La tabla siguiente conserva
+facultades anteriores y propuestas identificadas. Esos puntos en conflicto no
+son aprobación para ampliar ni retirar permisos, y los contratos existentes se
+conservan. Autoría/fecha y autorización final del Word siguen sin completar.
 
 Roles exclusivos: `captura`, `revision`, `administrador`, `consulta` (DEC-038, 06/11/2026). No existe un rol validador adicional. Consulta permite varias cuentas sin dependencia y lectura global de fichas, resultados publicados y estadísticas. Una cuenta Administrador no hereda permisos de Captura/Revisión. Identidad, rol y dependencia proceden de la sesión y cuenta vigente, no de campos enviados por cliente.
 

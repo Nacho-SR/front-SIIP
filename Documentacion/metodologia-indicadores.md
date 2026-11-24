@@ -1,5 +1,19 @@
 # Preparación de cálculo y semáforo — 10/11/2026
 
+Conciliación documental del 24/11/2026: [cuestionario recibido](conciliacion-respuestas-cuestionario.md).
+El contrato implementado que sigue se conserva. G05 no fija precisión ni momento
+del redondeo; G06 propone aceptar cualquier cantidad sin resolver signos/rangos
+ni anular divisiones imposibles. No retirar N <= D ni cambiar el ejemplo 130 por
+esa frase (CR-04). R11 mantiene metodología activa bloqueada, pero G01/G02/M06
+requieren delimitar campos y metas futuras (CR-02). G11/H06 proponen recálculo
+automático contrario a R12 si afecta publicaciones (CR-03).
+
+T01–T03 aportan interpretación de rachas; T04 no aporta colores para secuencias
+mixtas y T05 no define verde permanente frente a meta actual. E05–E07 retiran el
+temático como propuesta pendiente (CR-11), sin alterar las bandas individuales.
+Ninguna respuesta ni prellenado de Menús habilita nuevas reglas seleccionables,
+activa fichas o cambia metodologías persistidas con esta revisión.
+
 Actualización 17/11/2026: DEC-045 añade el flujo de activación y el snapshot de
 clave/fórmula/semáforo documentales. Una versión anterior sin ese contexto se
 conserva, pero debe actualizarse guardando una versión nueva antes de activar.

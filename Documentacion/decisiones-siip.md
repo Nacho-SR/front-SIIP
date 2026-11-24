@@ -1,6 +1,36 @@
 # Registro operativo de decisiones SIIP (copia para Codex)
 
-**Actualizado al 06/11/2026.** Basado en `SIIP_Registro_de_Decisiones_v0_2.docx` y los acuerdos posteriores del equipo. Los acuerdos anteriores conservan su historia; DEC-038 sustituye el alcance de roles de DEC-005 y DEC-039 el permiso de captura tardía de DEC-009/017. DEC-040 fija Hostinger VPS KVM 1 para frontend/API/PostgreSQL y DEC-041 sustituye Supabase Storage por Cloudflare R2. DEC-026 queda sustituida por DEC-027; DEC-028 registra PostgreSQL como motor propuesto, sin aprobación del esquema. La aprobación formal del cliente puede seguir pendiente. Las propuestas PROP-BD y PROP-TEC NO se convierten en decisiones aprobadas por documentarlas. Si existe discrepancia futura entre acuerdos confirmados, solicitar conciliación antes de cambiar su interpretación.
+**Actualizado al 24/11/2026 con conciliación de respuestas.** Basado en `SIIP_Registro_de_Decisiones_v0_2.docx` y los acuerdos posteriores del equipo. Los acuerdos anteriores conservan su historia; DEC-038 sustituye el alcance de roles de DEC-005 y DEC-039 el permiso de captura tardía de DEC-009/017. DEC-040 fija Hostinger VPS KVM 1 para frontend/API/PostgreSQL y DEC-041 sustituye Supabase Storage por Cloudflare R2. DEC-026 queda sustituida por DEC-027; DEC-028 registra PostgreSQL como motor propuesto, sin aprobación del esquema. La aprobación formal del cliente puede seguir pendiente. Las propuestas PROP-BD y PROP-TEC NO se convierten en decisiones aprobadas por documentarlas. Si existe discrepancia futura entre acuerdos confirmados, solicitar conciliación antes de cambiar su interpretación.
+
+## Cuestionario recibido y cambios pendientes de validación
+
+El 24/11/2026 se coteja el Word recibido con respuestas el 23/11 y la copia
+complementada con Menús. La [matriz de conciliación](conciliacion-respuestas-cuestionario.md)
+identifica fuente/hash, respuestas literales, 21 compatibles, 31 parciales, 14 con
+cambios o conflictos y 37 preguntas sin respuesta. Compatible no equivale a
+autorización formal. G01 incluye sus cuatro párrafos; las 63 fichas I siguen sin
+autorizar. No se atribuye la respuesta al director por el solo hecho de que R01
+lo nombre: identificación del respondiente y sección 10 siguen incompletas.
+
+| Acuerdos que deben cotejarse | Respuesta recibida y estado |
+|---|---|
+| DEC-039 y reaperturas DEC-012/016 | R05 permite cifras tardías; O05 acepta corrección acotada de envíos completos. Separar ambos flujos y resolver CR-01 antes de modificar bloqueo/gris. |
+| DEC-043/049/052 | G01 bloquea campos/dependencia pero deja Variables editables; G02 admite metas futuras y M06 actualizar universo. Campos, valores, asignaciones y excepciones requieren CR-02. |
+| DEC-025/030/031/049/050/052 | G11/H06 proponen actualización automática; H05 arrastre/retroactividad. R10/R12 mantienen vigencia inicial y no recálculo. Resolver CR-03; no sobrescribir historia. |
+| Contrato implementado del ejemplo 130 y DEC-045 | G05/G06 no bastan para cambiar redondeo/rangos. R04 ratifica siguiente periodo completo; M01/O01 deben precisar cercanía e inicio. CR-04/05. |
+| DEC-039 y permisos de justificación | O09 señala seguimiento como posible aportante; validar rol/acción exactos y controles. CR-06. |
+| DEC-024/038/041 y conservación DEC-008/016/025 | E01 propone ZIP/120 mb; E02 acceso a documentos para Consulta y omite Captura; E03 conservación hasta siguiente periodo. Son cambios pendientes CR-07/08/09, sin autorización para cargas, descargas nuevas ni borrado. |
+| DEC-014/039/048 | E09/G10 amplían gris; R08/T06 y G07/G08 distinguen historia insuficiente y causa no calculable. CR-10. |
+| DEC-020/021 y pendientes P-01/P-10 | E05–E07 retiran expresamente el semáforo temático conservando el individual. Cambio de alcance pendiente CR-11; no seguir tratándolo solo como falta de cobertura mínima. |
+| DEC-022 y P-13 | E08 pide histórico sin recálculo en pregunta sobre temático; precisar objeto y alcance frente al retiro propuesto. CR-12. |
+
+Las respuestas compatibles registran coincidencias y las parciales precisiones
+recibidas; todavía no se incorporan nuevas DEC aprobadas. Tras autorización
+identificada se anotará cada sustitución con alcance/fecha y se actualizarán sus
+requisitos derivados. Esta conciliación no implementa las respuestas ni modifica
+los Word, el anexo o la BD.
+
+## Registro de acuerdos anteriores del equipo
 
 | ID | Estado | Decisión |
 |---|---|---|

@@ -1,8 +1,34 @@
 # Contexto de trabajo — SIIP Salamanca
 
-**Corte de contexto:** 23 de noviembre de 2026; bandeja propia de Captura de solo lectura y conciliación metodológica documental pendiente de respuestas.
+**Corte de contexto:** 24 de noviembre de 2026; cuestionario parcialmente respondido y cotejado, con cambios de alcance pendientes de validación. Bandeja de Captura de solo lectura y avances técnicos del 23/11 conservados.
 **Origen:** conversación de requisitos entre equipo desarrollador y ChatGPT, Word del consultor, Excel de fichas técnicas, diagrama ERD de draw.io.  
 **Naturaleza:** resumen de trabajo; **no es transcripción literal completa de la conversación** ni evidencia de aprobación formal por parte del cliente.
+
+## Respuestas recibidas y acuerdos en conciliación
+
+La [matriz del cuestionario](conciliacion-respuestas-cuestionario.md) conserva las
+103 preguntas: 66 con respuesta sustantiva y 37 sin respuesta de la autoridad.
+G01 tiene respuesta en cuatro párrafos aunque su encabezado esté vacío. Las 63
+fichas I no están autorizadas; el prellenado de Menús de las secciones 8/9 es
+documental. Identidad/fecha de quien responde y autorización final siguen vacías.
+
+Son compatibles con acuerdos anteriores R04 (siguiente periodo completo), R06–R12,
+T01–T03/T06/T08 y otras respuestas detalladas en la matriz; compatible no significa
+aprobación institucional ni implementación. T04 no aporta colores para secuencias
+mixtas y T05 no aclara si basta haber cumplido la meta alguna vez. No dar por
+resueltos esos casos ni la precisión de G04/G05.
+
+Los 12 temas CR-01–CR-12 requieren conciliar cifras tardías, edición de metodología,
+referencias/recálculo, rangos/redondeo, fechas iniciales, aportante de justificación,
+ZIP/límites, acceso a documentos, retención, gris, retiro del semáforo temático e
+histórico. E05–E07 descartan expresamente el semáforo temático: P-01/P-10 quedan
+condicionados a validar ese retiro, no solo a definir cobertura. R05, G11/H06,
+E02/E03/E09 también contradicen acuerdos o respuestas anteriores. No sustituir DEC
+por inferencia ni desarrollar los flujos afectados eligiendo una alternativa.
+
+Las secciones operativas siguientes conservan acuerdos previos del equipo; deben
+leerse junto con esta conciliación antes de usarlas como especificación. No se
+han cambiado backend/frontend, contratos, BD, archivos originales ni permisos.
 
 ## 1. Objetivo
 Sistema Integrado de Indicadores de Planeación de Salamanca, Guanajuato: administrar indicadores municipales y sus fichas, capturar variables/evidencias por periodo, revisar y validar, calcular resultados y semáforos, conservar historia y consultar información publicada.

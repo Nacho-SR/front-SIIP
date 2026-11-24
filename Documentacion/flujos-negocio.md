@@ -1,6 +1,29 @@
 # Flujos de negocio del SIIP
 
-Versión 0.2 · 06/11/2026 · Borrador de flujos operativos con DEC-038/039. Auth y altas están implementadas; el esquema de negocio sigue pendiente de aprobación.
+Versión 0.3 · 24/11/2026 · Flujos anteriores con cuestionario parcialmente respondido en conciliación. Auth y altas están implementadas; los flujos de negocio pendientes no se habilitan con esta actualización documental.
+
+## Conciliación de los flujos recibidos
+
+Consultar [respuestas y conflictos CR-01–CR-12](conciliacion-respuestas-cuestionario.md)
+antes de implementar estas transiciones. El cuestionario propone cifras tardías
+R05, corrección acotada por observación O05 y reapertura a criterio del director
+O06. Son casos distintos de justificación documental O09; no usar una reapertura
+genérica para conceder todos esos permisos. Faltan condiciones y autorización
+institucional acreditada. DEC-039 se conserva como acuerdo anterior en conflicto,
+no como respuesta ratificada a R05.
+
+G11/H06 proponen propagación automática de antecedentes, mientras R12 conserva
+la prohibición de recalcular publicaciones. No reemplazar un resultado publicado
+sin resolver CR-03 y el ciclo de validación correspondiente. E09/G10 requieren
+conciliar gris frente a historia insuficiente/causa matemática (R08/T06/G07/G08).
+E01/E02/E03 cambian archivos, accesos y conservación; no ejecutar borrado ni
+ampliar descargas. E05–E07 proponen retirar el semáforo temático; la evaluación
+agregada descrita abajo permanece como requisito anterior en conciliación.
+
+R04 ratifica DEC-045: inicio en siguiente periodo natural completo. Los ejemplos
+anteriores de alta intermedia de DEC-033 no habilitan ahora un primer periodo
+parcial. El resto de los estados/contratos de este borrador requiere sus controles
+y decisiones pendientes; esta revisión no modifica OpenAPI ni el esquema.
 
 Nota técnica del 27/10/2026: DEC-027 confirma Node.js + TypeScript para la API; véase [arquitectura-tecnologica.md](arquitectura-tecnologica.md). Este ajuste no cambia estados, transiciones ni reglas funcionales.
 
@@ -39,7 +62,7 @@ Acuerdo con el director comunicado por el usuario. Sustituye la captura tardía 
 - Esta reapertura es distinta de corregir un resultado validado (DEC-012/016). No modifica resultados de otros periodos ni borra una publicación anterior. El gris no es desempeño rojo, no vale cero y no entra en N evaluables del índice temático. Los valores validados sin antecedentes suficientes siguen siendo otro caso distinto.
 - La definición de correcciones a envíos observados después del cierre sigue pendiente. Tampoco se presupone quién aprueba una justificación, un plazo adicional o acceso del rol Consulta a PDF internos.
 
-**Estado técnico:** especificación confirmada. Aún no existen tablas/endpoints operativos de captura, cierre ni justificaciones. El borrador debe adaptar el registro del incumplimiento y del PDF sin exigir que exista una captura o publicación previa. No se crea ni aplica SQL de negocio en esta actualización.
+**Estado técnico:** acuerdo anterior DEC-039, ahora en conciliación con R05/O05/O09 (CR-01/06). Aún no existen tablas/endpoints operativos de captura, cierre ni justificaciones. El borrador debe adaptar el registro del incumplimiento y del documento sin exigir una captura o publicación previa, después de resolver quién aporta, qué permite la reapertura y qué estado conserva. No se crea ni aplica SQL de negocio en esta actualización.
 
 ## 2. Vocabulario y estados
 
