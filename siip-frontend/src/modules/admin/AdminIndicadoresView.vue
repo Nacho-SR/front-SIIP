@@ -442,6 +442,11 @@ onMounted(() => {
                     : 'Inactivo'
                 }}
               </span>
+              <router-link
+                class="preparacion-link"
+                :to="{ name: 'AdministradorActivacionIndicador', params: { id: indicador.id } }"
+                :aria-label="`Ver preparación de ${indicador.campos.nombre}`"
+              >Ver preparación</router-link>
             </td>
 
             <!-- ACCIONES -->
@@ -601,6 +606,18 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.preparacion-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 4px;
+  color: var(--blue-dark);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.preparacion-link:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 /* ============================================
    CONTADORES DE INDICADORES
 ============================================ */

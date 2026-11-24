@@ -1,5 +1,11 @@
 # Activación controlada — 17/11/2026
 
+Actualización de interfaz del 24/11/2026: la misma ruta incorpora el [panel de
+preparación](preparacion-indicadores.md), con variables, responsables y requisitos
+existentes. El catálogo ofrece Ver preparación para activos e inactivos. No cambia
+los contratos ni la validación del backend; distingue versión guardada de la
+aplicada e inicio por elegir de inicio registrado. Sin SQL ni escrituras reales.
+
 DEC-045: implementación solicitada por el usuario (punto 2). Confirma que una
 activación comienza como mínimo en el **siguiente periodo natural completo**,
 incluida una reactivación. No se activa en el periodo en curso ni retroactivamente.

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, test } from 'node:test';
 import { AxiosError } from 'axios';
+import { setImmediate } from 'node:timers/promises';
 import { createPinia, setActivePinia } from 'pinia';
 import { createServer } from 'vite';
 import { createSSRApp } from 'vue';
@@ -711,7 +712,11 @@ async function activacionForm() {
   await router.replace('/administrador/indicadores/1/activacion');
   return (await renderComponent(ActivacionIndicadorView)).state;
 }
-function cargarActivacion() { responses.push({ data: structuredClone(fichaMetodologia) }, { data: structuredClone(preparacionActivacion) }); }
+const variablesActivacion = { indicadorId: '1', version: 1, variables: [
+  { ...entrada, dependenciaId: '7', dependenciaNombre: 'Planeación', dependenciaActiva: true },
+  { ...entrada, id: '2', codigo: 'D', dependenciaId: '7', dependenciaNombre: 'Planeación', dependenciaActiva: true },
+] };
+function cargarActivacion() { responses.push({ data: structuredClone(fichaMetodologia) }, { data: structuredClone(preparacionActivacion) }, { data: structuredClone(variablesActivacion) }); }
 test('activación exige confirmación y solo muestra éxito después de la respuesta del servidor', async () => {
   const form = await activacionForm(); cargarActivacion(); await form.cargar();
   form.primerPeriodo = '2026-12-01'; const count = requests.length;
@@ -729,13 +734,13 @@ test('un conflicto de activación conserva la fecha y requiere nueva confirmaci�
   responses.push({ status: 409, data: { detail: 'Cambió la metodología.' } }); await form.activar();
   assert.equal(form.primerPeriodo, '2026-12-01'); assert.equal(form.confirmar, false);
   assert.equal(form.preparacion.activo, false); assert.equal(form.mensaje, '');
-  responses.push({ data: fichaMetodologia }, { status: 503, data: { detail: 'Falta SQL 008.' } }); await form.cargar();
+  responses.push({ data: fichaMetodologia }, { status: 503, data: { detail: 'Falta SQL 008.' } }, { data: variablesActivacion }); await form.cargar();
   form.confirmar = true; const count = requests.length; await form.activar();
   assert.equal(requests.length, count); assert.equal(form.cargaCompleta, false);
 });
 test('los requisitos pendientes impiden activar desde el formulario y los otros perfiles no entran', async () => {
   const form = await activacionForm();
-  responses.push({ data: fichaMetodologia }, { data: { ...preparacionActivacion, puedeActivar: false, pendientes: ['Falta responsable'] } });
+  responses.push({ data: fichaMetodologia }, { data: { ...preparacionActivacion, puedeActivar: false, pendientes: ['Falta responsable'] } }, { data: variablesActivacion });
   await form.cargar(); form.primerPeriodo = '2026-12-01'; form.confirmar = true;
   const count = requests.length; await form.activar(); assert.equal(requests.length, count);
   for (const rol of ['captura','revision','consulta']) {
@@ -744,6 +749,133 @@ test('los requisitos pendientes impiden activar desde el formulario y los otros 
     await router.replace('/administrador/indicadores/1/activacion');
     assert.notEqual(router.currentRoute.value.name, 'AdministradorActivacionIndicador');
   }
+});
+
+async function mostrarPreparacion(form) {
+  return renderComponent(ActivacionIndicadorView, state => {
+    state.indicador = form.indicador; state.preparacion = form.preparacion;
+    state.configuracionVariables = form.configuracionVariables;
+    state.cargando = false; state.cargaCompleta = form.cargaCompleta;
+    state.error = form.error;
+  });
+}
+
+test('preparación distingue ficha documental de variables/metodología y no inventa un inicio registrado', async () => {
+  const form = await activacionForm();
+  responses.push({ data: fichaMetodologia }, { data: { ...preparacionActivacion, metodologiaId: null, versionMetodologia: 0,
+    puedeActivar: false, pendientes: ['Guarda primero una metodología de cálculo y semáforo.'] } },
+  { data: { indicadorId: '1', version: 0, variables: [] } });
+  await form.cargar();
+  const { html } = await mostrarPreparacion(form);
+  assert.match(html, /Preparación incompleta/);
+  assert.match(html, /Sin variables registradas/);
+  assert.match(html, /Sin metodología de cálculo y semáforo/);
+  assert.match(html, /Por elegir al activar/);
+  assert.match(html, /2026-12-01/);
+  assert.equal(form.activacionVigente, null);
+  assert.equal(form.primerPeriodo, '');
+  assert.equal(form.puedeEnviar, false);
+  assert.deepEqual(requests.map(r => [r.method, r.url]), [
+    ['get', '/administracion/indicadores/1'], ['get', '/administracion/indicadores/1/activacion'],
+    ['get', '/administracion/indicadores/1/variables'],
+  ]);
+});
+
+test('preparación detalla cada responsable activo, sin asignar o inactivo y conserva los pendientes del servidor', async () => {
+  const form = await activacionForm();
+  const variables = [variablesActivacion.variables[0], { ...entrada, id: '2', codigo: 'D' },
+    { ...entrada, id: '3', codigo: 'E', tipoDato: 'decimal', dependenciaId: '8', dependenciaNombre: '<Obras>', dependenciaActiva: false }];
+  responses.push({ data: fichaMetodologia }, { data: { ...preparacionActivacion, puedeActivar: false, pendientes: ['PENDIENTE_DEL_SERVIDOR'] } },
+    { data: { indicadorId: '1', version: 3, variables } });
+  await form.cargar();
+  assert.equal(form.asignadasActivas, 1); assert.equal(form.sinResponsable, 1); assert.equal(form.responsablesInactivos, 1);
+  const { html } = await mostrarPreparacion(form);
+  assert.match(html, /1 de 3 variables con responsable activo/);
+  assert.match(html, /1 sin asignar/);
+  assert.match(html, /1 con responsable inactivo/);
+  assert.match(html, /Número decimal/);
+  assert.match(html, /&lt;Obras&gt;/);
+  assert.match(html, /PENDIENTE_DEL_SERVIDOR/);
+  assert.match(html, /no sustituye la autorización de la ficha/);
+  form.primerPeriodo = '2026-12-01'; form.confirmar = true;
+  const count = requests.length; await form.activar(); assert.equal(requests.length, count);
+});
+
+test('un activo muestra inicio y metodología aplicados desde su historial, sin usar la última versión como sustituta', async () => {
+  const form = await activacionForm();
+  const historial = [{ id: '1', metodologiaId: '2', versionMetodologia: 2, primerPeriodo: '2026-12-01',
+    creadoEn: '2026-11-17T12:00:00Z', creadoPor: '1', desactivadoEn: null, desactivadoPor: null }];
+  responses.push({ data: { ...fichaMetodologia, activo: true } }, { data: { ...preparacionActivacion,
+    activo: true, puedeActivar: false, versionMetodologia: 9, historial } }, { data: variablesActivacion });
+  await form.cargar();
+  const { html } = await mostrarPreparacion(form);
+  assert.match(html, /Activación registrada/);
+  assert.match(html, /Versión 9/);
+  assert.match(html, /Registrado: 2026-12-01 · metodología versión 2/);
+  assert.doesNotMatch(html, /<form/);
+  form.preparacion.historial = [];
+  assert.equal(form.estadoPreparacion, 'Activación por revisar');
+  assert.equal(form.activacionVigente, null);
+  form.preparacion.historial = [historial[0], { ...historial[0], id: '2' }];
+  assert.equal(form.activacionVigente, null);
+});
+
+test('una recarga parcial o de otro indicador borra el panel previo y bloquea activación hasta comprobar de nuevo', async () => {
+  const form = await activacionForm(); cargarActivacion(); await form.cargar();
+  form.primerPeriodo = '2026-12-01'; form.confirmar = true;
+  responses.push({ data: fichaMetodologia }, { data: preparacionActivacion }, { status: 503, data: { detail: 'Variables no disponibles.' } });
+  await form.cargar();
+  assert.equal(form.indicador, null); assert.equal(form.preparacion, null); assert.equal(form.configuracionVariables, null);
+  assert.equal(form.cargaCompleta, false); assert.equal(form.primerPeriodo, ''); assert.equal(form.confirmar, false);
+  assert.equal(form.puedeEnviar, false); assert.match(form.error, /Variables no disponibles/);
+  responses.push({ data: fichaMetodologia }, { data: preparacionActivacion }, { data: { ...variablesActivacion, indicadorId: '2' } });
+  await form.cargar();
+  assert.equal(form.cargaCompleta, false); assert.match(form.error, /Cambió el indicador/);
+  cargarActivacion(); await form.cargar();
+  assert.equal(form.cargaCompleta, true); assert.equal(form.error, '');
+  assert.equal(form.estadoPreparacion, 'Puede elegir el periodo inicial');
+  assert.equal(form.primerPeriodo, ''); assert.equal(form.puedeEnviar, false);
+});
+
+test('respuestas atrasadas no mezclan fichas al cambiar de indicador o de cuenta', async () => {
+  const form = await activacionForm(), pending = [];
+  api.defaults.adapter = config => new Promise(resolve => pending.push(data => resolve({ status: 200, data, config, headers: {} })));
+  const first = form.cargar(); await setImmediate();
+  await router.replace('/administrador/indicadores/2/activacion');
+  const second = form.cargar(); await setImmediate();
+  assert.equal(pending.length, 6);
+  pending[3]({ ...fichaMetodologia, id: '2' }); pending[4]({ ...preparacionActivacion, indicadorId: '2' }); pending[5]({ ...variablesActivacion, indicadorId: '2' }); await second;
+  pending[0](fichaMetodologia); pending[1](preparacionActivacion); pending[2](variablesActivacion); await first;
+  assert.equal(form.indicador.id, '2'); assert.equal(form.preparacion.indicadorId, '2');
+  const third = form.cargar(); await setImmediate();
+  auth.user = null; await form.cargar();
+  pending[6]({ ...fichaMetodologia, id: '2' }); pending[7]({ ...preparacionActivacion, indicadorId: '2' }); pending[8]({ ...variablesActivacion, indicadorId: '2' }); await third;
+  assert.equal(form.indicador, null); assert.equal(form.preparacion, null); assert.equal(form.puedeEnviar, false);
+});
+
+test('el panel no consulta ni escribe desde otros perfiles aunque se instancie directamente', async () => {
+  for (const rol of ['captura', 'revision', 'consulta']) {
+    auth.user = { ...usuario, rol, dependencia_id: rol === 'consulta' ? null : '7' };
+    const { state, html } = await renderComponent(ActivacionIndicadorView);
+    await state.cargar(); await state.activar();
+    assert.match(html, /solo para Administración/);
+    assert.equal(state.cargaCompleta, false);
+  }
+  assert.equal(requests.length, 0);
+});
+
+test('el catálogo ofrece preparación para activos e inactivos sin cargar sus requisitos en lote', async () => {
+  auth.user = { ...usuario, rol: 'administrador', dependencia_id: null };
+  const { adminState } = await vite.ssrLoadModule('/src/modules/admin/data/admin.store.ts');
+  adminState.indicadores = [fichaMetodologia, { ...fichaMetodologia, id: '2', activo: true }];
+  adminState.cargando = false; adminState.error = '';
+  try {
+    const { html } = await renderComponent(AdminIndicadoresView);
+    assert.match(html, /indicadores\/1\/activacion/);
+    assert.match(html, /indicadores\/2\/activacion/);
+    assert.equal((html.match(/>Ver preparación<\/a>/g) ?? []).length, 2);
+    assert.equal(requests.length, 0);
+  } finally { adminState.indicadores = []; }
 });
 
 const grupoNuevo = { id: '90', codigo: '09', nombre: 'Agrupación nueva', activo: true };

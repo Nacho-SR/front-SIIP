@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, test } from 'node:test';
 import { createRequire } from 'node:module';
+import { readFile } from 'node:fs/promises';
 import { AxiosError } from 'axios';
 import { createPinia, setActivePinia } from 'pinia';
 import { createSSRApp } from 'vue';
@@ -16,6 +17,10 @@ const { envSchema } = await loader.import('../../siip-backend/src/env.ts', impor
 const { createBandejaRepository } = await loader.import('../../siip-backend/src/modules/operacion/repositories/bandeja.repository.ts', import.meta.url);
 const { createConsultaRepository } = await loader.import('../../siip-backend/src/modules/consulta/repositories/consulta.repository.ts', import.meta.url);
 const { fichaConsultaSchema } = await loader.import('../../siip-backend/src/modules/consulta/schemas/consulta.schema.ts', import.meta.url);
+const { createIndicatorSchema } = await loader.import('../../siip-backend/src/modules/indicadores/schemas/indicadores.schema.ts', import.meta.url);
+const { fichas: fichasPrueba } = JSON.parse(await readFile(new URL('../../siip-backend/test/fixtures/indicadores-prueba.json', import.meta.url), 'utf8'));
+const fichaAdmin = { id: '1', activo: false, campos: { ...createIndicatorSchema.parse(fichasPrueba[0].campos), consecutivo: '130' },
+  creadoEn: '2026-11-24T12:00:00Z', actualizadoEn: '2026-11-24T12:00:00Z' };
 const session = backendRequire('@fastify/session');
 const { hash } = backendRequire('argon2');
 const password = 'Synthetic-flow-password-2026!';
@@ -37,7 +42,7 @@ const rows = [
 ];
 const adminReads = ['usuarios', 'dependencias', 'indicadores', 'agrupaciones', 'familias',
   'indicadores/1/variables', 'indicadores/1/metodologia', 'indicadores/1/activacion'];
-let vite, api, router, auth, useAuthStore, CaptureView, ConsultaView, app, accounts, cookie, sqlCalls, adminCalls;
+let vite, api, router, auth, useAuthStore, CaptureView, ConsultaView, ActivacionIndicadorView, app, accounts, cookie, sqlCalls, adminCalls;
 const fichas = [...new Map(rows.map(row => [row.indicadorId, {
   ...Object.fromEntries(Object.keys(fichaConsultaSchema.shape).map(key => [key, ''])),
   id: row.indicadorId, activo: row.activo, clave: row.clave, nombre: row.nombre,
@@ -57,6 +62,7 @@ before(async () => {
   ({ useAuthStore } = await vite.ssrLoadModule('/src/store/auth.store.ts'));
   ({ default: CaptureView } = await vite.ssrLoadModule('/src/modules/capture/CaptureView.vue'));
   ({ default: ConsultaView } = await vite.ssrLoadModule('/src/modules/consulta/ConsultaView.vue'));
+  ({ default: ActivacionIndicadorView } = await vite.ssrLoadModule('/src/modules/admin/ActivacionIndicadorView.vue'));
   for (const route of router.getRoutes()) if (route.components) route.components.default = { render: () => null };
 });
 after(async () => { await vite?.close(); await loader.unregister(); });
@@ -95,7 +101,7 @@ beforeEach(async t => {
     bandeja: createBandejaRepository(pool, () => new Date('2026-11-23T12:00:00Z')),
     consulta: createConsultaRepository(pool),
     users: { listUsers: read('usuarios', []), listDependencies: read('dependencias', dependencies) },
-    indicators: { list: read('indicadores', []) },
+    indicators: { list: read('indicadores', []), find: read('ficha', fichaAdmin) },
     classifications: { listAgrupaciones: read('agrupaciones', []), listFamilias: read('familias', []) },
     variables: { find: read('variables', { indicadorId: '1', version: 0, variables: [] }) },
     metodologias: { find: read('metodologia', { indicadorId: '1', version: 0, metodologias: [] }) },
@@ -132,6 +138,28 @@ async function render(preparar, view = CaptureView) {
   return { html: await renderToString(component), state };
 }
 const denied = error => error.response?.status === 403 && error.response.data.codigo === 'NO_PERMITIDO';
+
+test('preparación administrativa consulta tres recursos protegidos sin activar ni crear configuración', async () => {
+  await login('4'); await router.replace('/administrador/indicadores/1/activacion');
+  const view = await render(undefined, ActivacionIndicadorView);
+  await view.state.cargar();
+  assert.equal(view.state.cargaCompleta, true);
+  assert.deepEqual(adminCalls.sort(), ['activacion', 'ficha', 'variables']);
+  assert.equal(view.state.variables.length, 0);
+  assert.equal(view.state.estadoPreparacion, 'Preparación incompleta');
+  const count = adminCalls.length;
+  view.state.primerPeriodo = '2026-12-01'; view.state.confirmar = true;
+  await view.state.activar();
+  assert.equal(adminCalls.length, count);
+  const { html } = await render(s => {
+    s.indicador = view.state.indicador; s.preparacion = view.state.preparacion;
+    s.configuracionVariables = view.state.configuracionVariables; s.cargaCompleta = true; s.cargando = false;
+  }, ActivacionIndicadorView);
+  assert.match(html, /Sin variables registradas/);
+  assert.match(html, /Sin configurar/);
+  assert.match(html, /Por elegir al activar/);
+  assert.equal(sqlCalls.length, 0);
+});
 
 for (const [id, expected] of [['1', 1], ['2', 2], ['3', 2], ['4', 2], ['5', 2], ['6', 0]]) {
   test(`Consulta → API → repositorio: alcance de cuenta ${id} con ${expected} fichas`, async () => {

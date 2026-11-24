@@ -33,6 +33,15 @@ han cambiado backend/frontend, contratos, BD, archivos originales ni permisos.
 ## 1. Objetivo
 Sistema Integrado de Indicadores de Planeación de Salamanca, Guanajuato: administrar indicadores municipales y sus fichas, capturar variables/evidencias por periodo, revisar y validar, calcular resultados y semáforos, conservar historia y consultar información publicada.
 
+Punto 2 del 24/11/2026: Administración reúne la preparación en la pantalla de
+activación existente. Cada indicador ofrece Ver preparación; muestra variables,
+responsables y su disponibilidad, metodología guardada y comienzo registrado o
+pendiente de elegir. Reutiliza tres GET protegidos, sin consultar requisitos en
+lote ni añadir backend/SQL. Mantiene la decisión de activación en el servidor y
+la confirmación explícita existente; no convierte ficha documental en aprobación.
+Historial aplicado y versión guardada se distinguen. Pruebas automatizadas y
+compilación realizadas; sin BD real ni revisión visual. [Alcance](preparacion-indicadores.md).
+
 Punto 1 del 24/11/2026: Consulta obtiene fichas documentales reales por API y
 PostgreSQL, con catálogo global para Consulta/Revisión/Administrador y limitado
 a indicadores asignados a la dependencia vigente de Captura. Incluye fichas
